@@ -14,6 +14,7 @@ public class AudioSettings : MonoBehaviour {
     public Slider masterVolumeSlider;
     public TextMeshProUGUI masterVolumeText;
     public AudioMixer masterMixer;
+    public bool hubFirstData = true;
 
     public static event Action OnSaveLoaded;
 
@@ -29,11 +30,15 @@ public class AudioSettings : MonoBehaviour {
 
         // -80 / 20  0/100
 
-        SaveSystem.Save(level, value, sfxVolume, musicVolume, ambientVolume);
+        SaveSystem.Save(level, value, sfxVolume, musicVolume, ambientVolume, hubFirstData);
     }
 
     public void SetLevel(int newLevel) {
-        SaveSystem.Save(newLevel, masterVolume, sfxVolume, musicVolume, ambientVolume);
+        SaveSystem.Save(newLevel, masterVolume, sfxVolume, musicVolume, ambientVolume, hubFirstData);
+    }
+
+    public void SetHubFirst() {
+        SaveSystem.Save(level, masterVolume, sfxVolume, musicVolume, ambientVolume, false);
     }
 
     public void Load() {
@@ -48,6 +53,7 @@ public class AudioSettings : MonoBehaviour {
             sfxVolume = saveData.sfxVolume;
             musicVolume = saveData.musicVolume;
             ambientVolume = saveData.ambientVolume;
+            hubFirstData = saveData.hubFirstMessage;
         }
         else {
             //masterVolume = 80f;

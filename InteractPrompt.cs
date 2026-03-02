@@ -6,7 +6,7 @@ public class InteractPrompt : MonoBehaviour {
 
     public string displayText = "This doesn't look important.";
     public AudioClip textSound, interactWithSound;
-    public bool list = false, oneTime = false, touchTrigger = false, curseObjectInteract = false;
+    public bool list = false, oneTime = false, touchTrigger = false, curseObjectInteract = false, hubTutorial = false;
     public float volumeOfPopup = 0.2f; // Should be same as InteractRaycast's volume float.
     public float delay = 0f;
     public GameObject[] objectsToAffect;
@@ -21,6 +21,8 @@ public class InteractPrompt : MonoBehaviour {
             InteractWithObject();
             if(textPromptScript == null) textPromptScript = GameObject.Find("Game Manager").GetComponent<TextPrompter>();
             textPromptScript.source.PlayOneShot(interactWithSound, volumeOfPopup);
+
+            if(hubTutorial) GameObject.FindAnyObjectByType<AudioSettings>().SetHubFirst();
         }
     }
 

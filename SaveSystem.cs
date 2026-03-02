@@ -6,8 +6,8 @@ public static class SaveSystem {
     private static string path => Application.persistentDataPath + "/hideData.json";
 
     // SAVE
-    public static void Save(int level, float masterVolume, float sfxVolume, float musicVolume, float ambientVolume) {
-        SaveData data = new SaveData(level, masterVolume, sfxVolume, musicVolume, ambientVolume);
+    public static void Save(int level, float masterVolume, float sfxVolume, float musicVolume, float ambientVolume, bool hubState) {
+        SaveData data = new SaveData(level, masterVolume, sfxVolume, musicVolume, ambientVolume, hubState);
 
         string json = JsonUtility.ToJson(data, true); // true = pretty print (optional)
         File.WriteAllText(path, json);

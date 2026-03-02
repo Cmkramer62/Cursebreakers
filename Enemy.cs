@@ -19,7 +19,8 @@ public class Enemy : MonoBehaviour {
     public Mode currentMode;
 
     public AudioSource musicSource, monsterSource, ambientSource;
-    public AudioClip screamClip, attackClip, chaseMusicClip, normalMusicClip;
+    public AudioClip attackClip, chaseMusicClip, normalMusicClip;
+    public AudioClip[] screamClips;
 
     public Death deathScript;
     public Vector3 walkPoint, playerLastSeen;
@@ -80,15 +81,18 @@ public class Enemy : MonoBehaviour {
                     else chaseMeter = 80f;
 
                     // if its not the ritual and I see your back, do silent. else:
-                    if(!GetComponent<ConeLOSDetector>().visibilityOverride && !playerVision.targetVisible ) {
+                    if(!GetComponent<ConeLOSDetector>().visibilityOverride && !playerVision.targetVisible && transform.parent.GetComponentInChildren<ToolController>().heldIndex != 1) {
                         ModeChase();
                         // We still want to Fade to chase music if player now turns and sees. Or maybe not necessary.
+                        Debug.Log("Saw you with back turned. ");
                     }
                     else {
                         StartCoroutine(ScreamAnimTimer());
                         AudioController.FadeToAnother(this, musicSource, .3f, chaseMusicClip, .1f);//FadeInAudio(this, chaseClip, 3, .1f);
+                        Debug.Log("Saw you when you saw me. ");
+
                     }
-                    
+
 
                     playerLastSeen = player.position;
                 }
@@ -180,8 +184,8 @@ public class Enemy : MonoBehaviour {
     }
 
     private IEnumerator ScreamAnimTimer() {
-        monsterSource.pitch = Random.Range(.9f, 1.1f);
-        monsterSource.PlayOneShot(screamClip);
+        monsterSource.pitch = Random.Range(.85f, 1.2f);
+        monsterSource.PlayOneShot(screamClips[Random.Range(0, screamClips.Length)]);
         waitingForScream = true;
         animator.Play("Scream");
         shadowAnimator.Play("Scream");

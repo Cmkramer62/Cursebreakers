@@ -7,6 +7,7 @@ public class Homebase : MonoBehaviour {
 
     public AudioSettings saveSystem;
     public TextMeshProUGUI resultsText;
+    public GameObject firstMessage;
 
     // Start is called before the first frame update
 
@@ -36,6 +37,8 @@ public class Homebase : MonoBehaviour {
             resultsText.gameObject.GetComponent<TextAdder>().endWord = "Welcome";
             resultsText.gameObject.SetActive(true);
         }
+
+        firstMessage.SetActive(saveSystem.hubFirstData);
 
         // InitializeMySystem(level);
     }

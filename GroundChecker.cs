@@ -12,6 +12,8 @@ public class GroundChecker : MonoBehaviour {
 
     public AudioSource footSource;
     public AudioClip[] normalStepClips, metalStepClips, woodStepClips, ventStepClips, waterStepClips, tileStepClips, carpetStepClips, rockStepClips;
+
+    public AudioClip[] normalLandClips, metalLandClips, woodLandClips, ventLandClips, waterLandClips, tileLandClips, carpetLandClips, rockLandClips;
     private AudioClip[] playingFromClips;
     /*
      * Goal is to check the ground beneath the user.
@@ -32,18 +34,24 @@ public class GroundChecker : MonoBehaviour {
     void Update() {
         //isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundMask);
         RaycastHit hit;
+        bool priorState = isGrounded;
         isGrounded = Physics.Raycast(groundCheck.position, Vector3.down, out hit, groundDistance, groundMask);
+        if(!priorState && isGrounded) {
+            currentTag = hit.collider.tag;
+
+            Debug.Log("Landed.");
+
+            AudioClip[] playingLandingClips = AssignList(false);
+
+            footSource.pitch = (Random.Range(0.87f, 0.93f)); //(Random.Range(0.78f, 0.87f));
+            AudioClip clip = GetRandomClip(playingLandingClips);
+            footSource.PlayOneShot(clip, footstepVolume);
+        }
+
         if(isGrounded && !hit.collider.CompareTag(currentTag)) {
             currentTag = hit.collider.tag;
 
-            if(currentTag.Equals("Concrete")) playingFromClips = normalStepClips;
-            else if(currentTag.Equals("Metal")) playingFromClips = metalStepClips;
-            else if(currentTag.Equals("Wood")) playingFromClips = woodStepClips;
-            else if(currentTag.Equals("Vent")) playingFromClips = ventStepClips;
-            else if(currentTag.Equals("Water")) playingFromClips = waterStepClips;
-            else if(currentTag.Equals("Tile")) playingFromClips = tileStepClips;
-            else if(currentTag.Equals("Carpet")) playingFromClips = carpetStepClips;
-            else if(currentTag.Equals("Rock")) playingFromClips = rockStepClips;
+            playingFromClips = AssignList(true);
         }
     }
 
@@ -53,5 +61,16 @@ public class GroundChecker : MonoBehaviour {
         AudioClip clip = GetRandomClip(playingFromClips);
         footSource.PlayOneShot(clip, footstepVolume);
         //footSource.pitch = 1f;
+    }
+
+    private AudioClip[] AssignList(bool walking) {
+        if(currentTag.Equals("Metal")) return walking ? metalStepClips : metalLandClips;
+        else if(currentTag.Equals("Wood")) return walking ? woodStepClips : woodLandClips;
+        else if(currentTag.Equals("Vent")) return walking ? ventStepClips : ventLandClips;
+        else if(currentTag.Equals("Water")) return walking ? waterStepClips : waterLandClips;
+        else if(currentTag.Equals("Tile")) return walking ? tileStepClips : tileLandClips;
+        else if(currentTag.Equals("Carpet")) return walking ? carpetStepClips : carpetLandClips;
+        else if(currentTag.Equals("Rock")) return walking ? rockStepClips : rockLandClips;
+        else return walking ? normalStepClips : normalLandClips;
     }
 }

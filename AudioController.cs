@@ -5,7 +5,7 @@ using UnityEngine;
 public static class AudioController {
     
     public static void FadeToAnother(MonoBehaviour caller, AudioSource source, float timeToFade, AudioClip newClip, float newVolume) {
-        Debug.Log("FadeToAnother -> " + newClip.name);
+        //Debug.Log("FadeToAnother -> " + newClip.name);
         if(newClip != source.clip) caller.StartCoroutine(FadeToAnotherCoroutine(caller, source, timeToFade, newClip, newVolume));
     }
 
@@ -28,7 +28,7 @@ public static class AudioController {
     }
 
     public static void FadeOutAudio(MonoBehaviour caller, AudioSource source, float timeToFade) {
-        Debug.Log("FadeOutThis -> " + source.name);
+        //Debug.Log("FadeOutThis -> " + source.name);
         caller.StartCoroutine(FadeOutCoroutine(source, timeToFade));
     }
 
@@ -61,7 +61,7 @@ public static class AudioController {
     }
     
     public static void FadeInAudio(MonoBehaviour caller, AudioSource source, float timeToFade, float endVolume) {
-        Debug.Log("FadeInThis -> " + source.name);
+        //Debug.Log("FadeInThis -> " + source.name);
         caller.StartCoroutine(FadeInCoroutine(source, timeToFade, endVolume));
     }
 

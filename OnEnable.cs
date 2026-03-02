@@ -10,13 +10,16 @@ public class OnEnable : MonoBehaviour {
     private bool triggered = false;
 
     private void OnTriggerEnter(Collider other) {
-        if(repeatable || !triggered) {
-            triggered = true;
-            foreach(GameObject objectee in objectsToAffect) {
-                if(reverse) objectee.SetActive(!objectee.activeSelf);
-                else objectee.SetActive(state);
+        if(other.name == "Player") {
+            if(repeatable || !triggered) {
+                triggered = true;
+                foreach(GameObject objectee in objectsToAffect) {
+                    if(reverse) objectee.SetActive(!objectee.activeSelf);
+                    else objectee.SetActive(state);
+                }
             }
         }
+        
         
     }
 

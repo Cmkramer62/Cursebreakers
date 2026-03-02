@@ -62,7 +62,6 @@ public class ConeLOSDetector : MonoBehaviour {
             if(hit.transform.name.Equals(target.name)) {
                 return true;
             }
-            if(target.name == "Ghost Enemy") Debug.Log(hit.transform.name);
         }
         return false;
     }

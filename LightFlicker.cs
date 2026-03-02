@@ -26,7 +26,8 @@ public class LightFlicker : MonoBehaviour {
     public Material deadBulbMat, originalAliveBulbMat;
     [SerializeField] private Material aliveBulbMat;
     public MeshRenderer bulbRenderer;
-    public AudioSource buzzSound, flickerSound;
+    public AudioSource buzzingSource, flickeringSource, interactSource;
+    public AudioClip turnOnSound, turnOffSound;
 
     public bool alive = true;
 
@@ -36,7 +37,7 @@ public class LightFlicker : MonoBehaviour {
         defaultIntensity = source.intensity;
         maximumBoost = defaultIntensity;
 
-        if(makesNoise) buzzSound.Play();
+        if(makesNoise) buzzingSource.Play();
         if(materialSwap) aliveBulbMat = new Material(originalAliveBulbMat);
 
         StartCoroutine(StartCycleBuffer());
@@ -64,7 +65,7 @@ public class LightFlicker : MonoBehaviour {
 
     private IEnumerator AwakenLight() {
         if(makesNoise) {
-            buzzSound.UnPause();
+            buzzingSource.UnPause();
         }
         if(materialSwap) {
             bulbRenderer.material = aliveBulbMat;
@@ -76,15 +77,15 @@ public class LightFlicker : MonoBehaviour {
     }
 
     private IEnumerator StartFlickerLight() {
-        if(makesNoise && flickerSound.isPlaying) flickerSound.UnPause();
-        else if(makesNoise) flickerSound.Play();
+        if(makesNoise && flickeringSource.isPlaying) flickeringSource.UnPause();
+        else if(makesNoise) flickeringSource.Play();
 
         flickeringActive = true;
         StartCoroutine(FlickerLight());
         yield return new WaitForSeconds(1f);
         flickeringActive = false;
 
-        if(makesNoise) flickerSound.Pause();
+        if(makesNoise) flickeringSource.Pause();
         if(!forceChange) {
             if(Random.Range(1, 3) == 1) StartCoroutine(KillLight()); // 1 in 3 chance light dies when flickering.
             else StartCoroutine(AwakenLight());
@@ -101,8 +102,8 @@ public class LightFlicker : MonoBehaviour {
 
     private IEnumerator KillLight() {
         if(makesNoise) {
-            flickerSound.Pause();
-            buzzSound.Pause();
+            flickeringSource.Pause();
+            buzzingSource.Pause();
         }
         if(materialSwap) {
             bulbRenderer.material = deadBulbMat;
@@ -123,8 +124,10 @@ public class LightFlicker : MonoBehaviour {
     public void TurnOffLight(bool flickerOff) {
         alive = false;
         forceChange = true;
+
         if(flickerOff) StartCoroutine(StartFlickerLight());
         else StartCoroutine(KillLight());
+        interactSource.PlayOneShot(turnOffSound);
     }
 
     /*
@@ -135,9 +138,10 @@ public class LightFlicker : MonoBehaviour {
         alive = true;
         forceChange = false;
         StartCoroutine(AwakenLight());
+        interactSource.PlayOneShot(turnOnSound);
     }
 
-    public void ChangeLight() {
+    public void InvertLightState() {
         if(alive) TurnOffLight(false);
         else TurnOnLight();
     }

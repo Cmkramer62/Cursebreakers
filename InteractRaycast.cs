@@ -58,7 +58,10 @@ public class InteractRaycast : MonoBehaviour {
                         hit.transform.GetComponent<Candle>().InteractWithCandle();
                         break;
                     case "Light":
-                        hit.transform.GetComponent<LightFlicker>().ChangeLight();
+                        hit.transform.GetComponent<LightFlicker>().InvertLightState();
+                        break;
+                    case "Activator":
+                        hit.transform.GetComponent<ActivatorSwitch>().Activate();
                         break;
                 }
             }
