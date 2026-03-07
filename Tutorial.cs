@@ -4,11 +4,12 @@ using UnityEngine;
 
 public class Tutorial : MonoBehaviour {
 
-    public enum TutorialState { Waiting, Wasd, Shift, Crouch, Jump, Hiding, TabClues, TabAspects, Tools, Done}
+    public enum TutorialState { Waiting, Wasd, Shift, Crouch, Jump, Hiding, CursedObjects, TabTraitsAndClues, TabTools, Tools, Done}
     public TutorialState currentState = TutorialState.Waiting;
 
     public string[] tutorialLists;
     public Door[] tutorialDoors;
+    public CursedObject[] pingObjects;
     public int index = 0, doorIndex = 0;
 
     public AudioClip textSound;
@@ -21,6 +22,7 @@ public class Tutorial : MonoBehaviour {
     private TextPrompter textPromptScript;
     private Coroutine routine;
     private bool done = false;
+    private float checkPingsInterval = 0f;
 
     private void OnEnable() {
         //start the first one. index = 0
@@ -40,13 +42,21 @@ public class Tutorial : MonoBehaviour {
         // better sound
     }
 
+    private bool CheckPingObjects() {
+        bool found = true;
+        foreach(CursedObject curse in pingObjects) {
+            if(!curse.pinged) found = false;
+        }
+        return found;
+    }
+
     // Called by individual hitboxes for the major tutorial starts. Called by Update() for the mini tutorial starts.
     public void StartNextTutorial() {
         if(currentState == TutorialState.Waiting) {
             playerScript.allowedToMove = true;
             currentState = TutorialState.Wasd;
         }
-        else if(currentState == TutorialState.TabAspects) {
+        else if(currentState == TutorialState.TabTools) {
             finishedClues = true;
             toolScript.masterAllowed = true;
         }
@@ -62,11 +72,8 @@ public class Tutorial : MonoBehaviour {
                 walkedAround = true;
             }
         }
-        if(currentState == TutorialState.TabClues && Input.GetKeyDown(KeyCode.Tab)) {
-            checkedInventory = true;
-        }
 
-            // The text box should already be there.
+        // The text box should already be there.
         if(currentState == TutorialState.Wasd && walkedAround) {
             // Done with movement.
             Increment();
@@ -92,13 +99,26 @@ public class Tutorial : MonoBehaviour {
         }
         else if(currentState == TutorialState.Hiding && usedHidingSpot) {
             IncrementDoor();
-            currentState = TutorialState.TabClues;
+            currentState = TutorialState.CursedObjects;
         }
-        else if(currentState == TutorialState.TabClues && checkedInventory == true && Input.GetKeyDown(KeyCode.Tab)) {
-            IncrementDoor();
-            currentState = TutorialState.TabAspects;
+        else if(currentState == TutorialState.CursedObjects) {
+            checkPingsInterval += 1 * Time.deltaTime;
+            if(checkPingsInterval >= 2f) {
+                checkPingsInterval = 0f;
+                if(CheckPingObjects()) {
+                    IncrementDoor();
+                    currentState = TutorialState.TabTraitsAndClues;
+                }
+            }
         }
-        else if(currentState == TutorialState.TabAspects && checkedInventory == true && Input.GetKeyDown(KeyCode.Tab) && finishedClues) {
+        else if(currentState == TutorialState.TabTraitsAndClues) {
+            if(Input.GetKeyDown(KeyCode.Tab)) checkedInventory = true;
+            if(checkedInventory == true && Input.GetKeyDown(KeyCode.Tab)) {
+                IncrementDoor();
+                currentState = TutorialState.TabTools;
+            }
+        }
+        else if(currentState == TutorialState.TabTools && checkedInventory == true && Input.GetKeyDown(KeyCode.Tab) && finishedClues) {
             IncrementDoor();
             currentState = TutorialState.Tools;
         }
