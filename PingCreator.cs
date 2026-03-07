@@ -18,7 +18,7 @@ public class PingCreator : MonoBehaviour {
     public float distanceToTrim = 5f;
     public List<GameObject> pingPositions = new List<GameObject>();
 
-    public AudioSource source;
+    private AudioSource source;
     public AudioClip pingDown, pingAnti, pingRemove;
     // Raycast to nearest collider.
     // if collider belongs to a cursed object, do something?
@@ -72,9 +72,12 @@ public class PingCreator : MonoBehaviour {
                 }
                 i++;
             }
-            if(!foundPingNearby) {
-                InstantiatePing(pingPrefab, hitPosition, pingDown);
-            } 
+            if(!foundPingNearby) InstantiatePing(pingPrefab, hitPosition, pingDown);
+            if(hit.transform.gameObject.tag == "CursedObject") {
+                if(!foundPingNearby) hit.transform.GetComponentInChildren<CursedObject>().pinged = true;
+                else hit.transform.GetComponentInChildren<CursedObject>().pinged = false;
+            }
+
         }
     }
 

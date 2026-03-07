@@ -31,7 +31,7 @@ public class CursedObject : MonoBehaviour {
     public AudioSource pSourceA, pSourceB;
 
     public int goalCurseThirdAspectIndex = -1;
-    public bool tutorialCurse = false;
+    public bool tutorialCurse = false, pinged = false;
 
     void Start() {
         pSourceA.Play();
