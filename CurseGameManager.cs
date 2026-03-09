@@ -24,6 +24,7 @@ public class CurseGameManager : MonoBehaviour {
 
     public GameObject[] enviroParticles;
     public GhostRandomizer ghostRandomizer;
+    public ObjectivesUI objectivesScript;
     //public ParticleSystem auraEnviroParticles;
     
     // Start is called before the first frame update
@@ -41,6 +42,7 @@ public class CurseGameManager : MonoBehaviour {
         goalCurse.name = "Goal Curse";
         goalCurseImage.sprite = curseTypeSprites[goalCurse.GetComponentInChildren<CursedObject>().index[0]]; // First curse reveal.
         goalCurseText.text = curseTypeSprites[goalCurse.GetComponentInChildren<CursedObject>().index[0]].name;
+        objectivesScript.SetFreebieTrait(goalCurse.GetComponentInChildren<CursedObject>().index[0]);
 
         ApplyCursedAura(); // Second curse reveal.
         ApplyCursedEnvironment(); // Third curse reveal.

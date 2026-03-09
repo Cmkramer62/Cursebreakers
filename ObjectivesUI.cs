@@ -6,15 +6,9 @@ using TMPro;
 public class ObjectivesUI : MonoBehaviour {
 
     public GameObject[] traitsColumnB, traitsColumnC;
-    public TextMeshProUGUI traitTitleB, traitTitleC;
+    public TextMeshProUGUI traitTitleA, traitTitleB, traitTitleC;
 
-    public void SetTraitBName(string name) {
-        traitTitleB.text = name;
-    }
-    
-    public void SetTraitCName(string name) {
-        traitTitleC.text = name;
-    }
+    private string[] storedTitles = { "Glowing", "Radioactive", "Vision", "Freezing", "Unholy", "Whispering" };
 
     public void ButtonPressedB(int index) {
         CycleButton(index, true);
@@ -24,12 +18,9 @@ public class ObjectivesUI : MonoBehaviour {
         CycleButton(index, false);
     }
 
-    private void SetButton(int index, bool listB) {
-
-    }
-
     private void CycleButton(int index, bool listB) {
         GameObject[] currentListReference = listB ? traitsColumnB : traitsColumnC;
+        GameObject[] oppositeListReference = listB ? traitsColumnC : traitsColumnB;
         var highlightA = currentListReference[index].transform.GetChild(0).gameObject;
         var highlightB = currentListReference[index].transform.GetChild(1).gameObject;
         var highlightC = currentListReference[index].transform.GetChild(2).gameObject;
@@ -43,34 +34,68 @@ public class ObjectivesUI : MonoBehaviour {
 
         if(highlightB.activeSelf) { // If we are highlighting something as selected, turn off all other selected highlights in this row.
             for(int i = 0; i < currentListReference.Length; i++) {
-                if(i != index && currentListReference[i].transform.GetChild(1).gameObject.activeSelf) {
-                    currentListReference[i].transform.GetChild(0).gameObject.SetActive(true);
-                    currentListReference[i].transform.GetChild(1).gameObject.SetActive(false);
-                    currentListReference[i].transform.GetChild(2).gameObject.SetActive(false);
-                }
+                if(i != index && currentListReference[i].transform.GetChild(1).gameObject.activeSelf) SetButton(currentListReference, i, 0);
             }
         }
-        
 
+        if(highlightB.activeSelf) SetButton(oppositeListReference, index, 2);
+        else if(highlightC.activeSelf) SetButton(oppositeListReference, index, 0);
 
+        SetNames();
+    }
 
-        GameObject[] currentListReference2 = listB ? traitsColumnC : traitsColumnB;
-        var highlightA2 = currentListReference2[index].transform.GetChild(0).gameObject;
-        var highlightB2 = currentListReference2[index].transform.GetChild(1).gameObject;
-        var highlightC2 = currentListReference2[index].transform.GetChild(2).gameObject;
+    private void SetNames() {
+        int foundInBIndex = -1;
+        int foundInCIndex = -1;
 
-        if(highlightB.activeSelf) {
-            highlightA2.SetActive(false);
-            highlightB2.SetActive(false);
-            highlightC2.SetActive(true);
+        for(int i = 0; i < traitsColumnB.Length; i++) {
+            if(traitsColumnB[i].transform.GetChild(1).gameObject.activeSelf) {
+                foundInBIndex = i;
+            }
+            if(traitsColumnC[i].transform.GetChild(1).gameObject.activeSelf) {
+                foundInCIndex = i;
+            }
         }
-        else if(highlightC.activeSelf) {
-            highlightA2.SetActive(true);
-            highlightB2.SetActive(false);
-            highlightC2.SetActive(false);
+
+        traitTitleB.text = "\"" + (foundInBIndex == -1 ? "???" : storedTitles[foundInBIndex]) + "\"";
+        traitTitleB.GetComponent<TextAdder>().endWord = "\"" + (foundInBIndex == -1 ? "???" : storedTitles[foundInBIndex]) + "\"";
+        traitTitleC.text = "\"" + (foundInCIndex == -1 ? "???" : storedTitles[foundInCIndex]) + "\"";
+        traitTitleC.GetComponent<TextAdder>().endWord = "\"" + (foundInCIndex == -1 ? "???" : storedTitles[foundInCIndex]) + "\"";
+    }
+
+    public void ClearRows(int index) {
+        SetButton(traitsColumnB, index, 0);
+        SetButton(traitsColumnC, index, 0);
+
+        SetNames();
+    }
+
+    public void UntrueRows(int index) {
+        SetButton(traitsColumnB, index, 2);
+        SetButton(traitsColumnC, index, 2);
+
+        SetNames();
+    }
+
+    public void SetFreebieTrait(int index) {
+        traitTitleA.text = "\"" + storedTitles[index] + "\"";
+        traitTitleA.GetComponent<TextAdder>().endWord = "\"" + storedTitles[index] + "\"";
+    }
+
+    private void SetButton(GameObject[] specificList, int buttonIndex, int childIndex) {
+        GameObject[] subChildren = { specificList[buttonIndex].transform.GetChild(0).gameObject, 
+            specificList[buttonIndex].transform.GetChild(1).gameObject, 
+                specificList[buttonIndex].transform.GetChild(2).gameObject };
+
+        for(int i = 0; i < subChildren.Length; i++) {
+            subChildren[i].SetActive(i == childIndex);
         }
+    }
 
-
+    public void ClearAll() {
+        for(int i = 0; i < traitsColumnB.Length; i++) {
+            ClearRows(i);
+        }
     }
 
 }
