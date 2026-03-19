@@ -51,6 +51,7 @@ public class Enemy : MonoBehaviour {
         agent.updateRotation = false;
         playerVision = playerTransform.GetChild(1).GetChild(0).GetComponent<ConeLOSDetector>();
         cachedTransform = gameObject.transform;
+        InvertVisibility();
     }
 
 
@@ -224,6 +225,13 @@ public class Enemy : MonoBehaviour {
                 walkPoint = point;
                 walkPointSet = true;
                 
+                /*
+                 * int i = 0; 0 = 0% chance.
+                 * event raises by 1. 1 = 25% chance. 2 = 50% chance.
+                 * 
+                 * 
+                 */
+
                 // Go invis, but only if not close to player and it's not the ritual.
                 if(!GetComponent<ConeLOSDetector>().visibilityOverride && ((Random.Range(0, invisibilityOdds) != 0 && !invisible) || 
                     (Random.Range(0, invisibilityOdds) == 0 && invisible && Vector3.Distance(playerTransform.position, cachedTransform.position) > walkPointRange * 0.5f)) ) {
