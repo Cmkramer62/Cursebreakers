@@ -6,14 +6,14 @@ using UnityEngine.AI;
 public class Enemy : MonoBehaviour {
 
     public LayerMask groundLayer, playerLayer;
-    public float health, walkPointMin, walkPointRange, timeBetweenAttacks, attackRange, walkSpeed, runSpeed, chaseMeter = 100f, rotationSpeed = 5f;
+    public float health, walkPointMin, walkPointRange, timeBetweenAttacks, attackRange, walkSpeed, runSpeed, invisSpeed, chaseMeter = 100f, rotationSpeed = 5f;
     [SerializeField] private int damage, invisibilityOdds = 3, pauseChance = 4, deAggroCooldown = 10, eventCharge = 0;
     public ParticleSystem hitEffect;
     public bool invisible = false, freezingAura = false, attractedToSound = false, allowedToMove = true, geistAura = false;
     public SkinnedMeshRenderer[] meshRenderers;
     public GameObject[] horns;
     public ParticleSystem geistlightAura;
-    public GameObject shadow;
+    public GameObject shadow, paranormalSounds;
 
     public enum Mode { chasing, patrolling }
     public Mode currentMode;
@@ -36,8 +36,7 @@ public class Enemy : MonoBehaviour {
     public bool normalAggro = true;
     private ConeLOSDetector coneDetector;
     private ParticleSystem playersBreath;
-    private float initSpeed, longestChaseDuration = 0, currentChaseDuration = 0;
-
+    private float initSpeed, longestChaseDuration = 0, currentChaseDuration = 0, walkSpeedOG = -1;
     private ConeLOSDetector playerVision;
     #endregion
 
@@ -51,6 +50,7 @@ public class Enemy : MonoBehaviour {
         agent.updateRotation = false;
         playerVision = playerTransform.GetChild(1).GetChild(0).GetComponent<ConeLOSDetector>();
         cachedTransform = gameObject.transform;
+        walkSpeedOG = walkSpeed;
         InvertVisibility();
     }
 
@@ -62,10 +62,13 @@ public class Enemy : MonoBehaviour {
             bool playerInAttackRange = Physics.CheckSphere(cachedTransform.position, attackRange, playerLayer) && normalAggro;
             // If I can't see you and you're not in melee range
             if(!playerSeen && !playerInAttackRange) {
-                if((chaseMeter == 100f || invisible) || !normalAggro) {
+                if(chaseMeter == 100f || invisible || !normalAggro) {
                     if(currentMode == Mode.chasing) {
                         AudioController.FadeToAnother(this, musicSource, 4, normalMusicClip, .1f);
                         walkPointSet = false;
+                        eventCharge--;
+                        if(eventCharge < 0) eventCharge = 0;
+                        Debug.Log("Lowering from escaping a chase.");
                     }
                     ModePatrolling();
                     if(currentChaseDuration > longestChaseDuration) {
@@ -238,11 +241,17 @@ public class Enemy : MonoBehaviour {
                     (Random.Range(0, invisibilityOdds) == 0 && invisible && Vector3.Distance(playerTransform.position, cachedTransform.position) > walkPointRange * 0.5f)) ) {
                     InvertVisibility();
                 }*/
-                // INVIS -> VISI
+                // INVIS -> VISI.... If It's not the purification, AND we're invis, AND the eventCharges are greater than 0, AND we're not close to the player
                 if(!GetComponent<ConeLOSDetector>().visibilityOverride && invisible && eventCharge > 0 && Vector3.Distance(playerTransform.position, cachedTransform.position) > walkPointRange * 0.5f) {
-                    eventCharge--;
+                    //eventCharge--;
+                    //if(eventCharge < 0) eventCharge = 0;
+                    //Debug.Log("lowering from going Visible.");
                     InvertVisibility();
                     // foreach player withing radius walk point range, flicker their lanterns.
+                }
+                // VISI -> INVIS
+                else if(!invisible && !GetComponent<ConeLOSDetector>().visibilityOverride && eventCharge <= 0) {
+                    InvertVisibility();
                 }
                 // else only go VISI -> INVIS when hitting a player
                 //else if(!GetComponent<ConeLOSDetector>().visibilityOverride && invisible && eventCharge > 0) {
@@ -307,8 +316,13 @@ public class Enemy : MonoBehaviour {
             foreach(GameObject horn in horns) {
                 horn.SetActive(false);
             }
+            walkSpeed = invisSpeed;
+        }
+        else {
+            walkSpeed = walkSpeedOG;
         }
         
+
         if(geistAura && !invisible) geistlightAura.Play();
         else if(geistAura) geistlightAura.Stop();
         ambientSource.volume = invisible ? 0 : 1;
@@ -329,6 +343,8 @@ public class Enemy : MonoBehaviour {
                 horn.SetActive(true);
             }
         }
+        yield return new WaitForSeconds(2f);
+        paranormalSounds.SetActive(invisible);
     }
 
     // Called by jumpscare to instantly make visible.
@@ -365,7 +381,10 @@ public class Enemy : MonoBehaviour {
                 Debug.Log("Hit");
                 deathScript.LoseLife();
             }
-
+            //InvertVisibility();
+            eventCharge--;
+            if(eventCharge < 0) eventCharge = 0;
+            Debug.Log("lowering from attacking a player.");
         }
 
     }
