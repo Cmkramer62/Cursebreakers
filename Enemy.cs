@@ -151,7 +151,7 @@ public class Enemy : MonoBehaviour {
 
             Vector3 repulsion = Vector3.zero;
             float checkDistance = 1.2f;
-            float strength = 2f;
+            float strength = 0f;
 
             RaycastHit hit;
 
@@ -248,6 +248,9 @@ public class Enemy : MonoBehaviour {
                     //Debug.Log("lowering from going Visible.");
                     InvertVisibility();
                     // foreach player withing radius walk point range, flicker their lanterns.
+                    if(Vector3.Distance(playerTransform.position, cachedTransform.position) < walkPointRange) {
+                        playerTransform.GetComponent<PlayerMovement>().lanternReference.StartFlickerPeriod(2f);
+                    }
                 }
                 // VISI -> INVIS
                 else if(!invisible && !GetComponent<ConeLOSDetector>().visibilityOverride && eventCharge <= 0) {
@@ -450,7 +453,6 @@ public class Enemy : MonoBehaviour {
 
         if(!found) {
             // Return a safe fallback point (the origin)
-            Debug.Log("failed");
             return origin;
         }
         //walkPointSet = true;

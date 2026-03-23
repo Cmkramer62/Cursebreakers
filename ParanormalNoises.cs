@@ -13,6 +13,7 @@ public class ParanormalNoises : MonoBehaviour {
     [SerializeField] private bool randomlyDelayIfStinger = true;
     [SerializeField] private float minRandomDelay = 0f, maxRandomDelay = 8f;
     [SerializeField, Range(1, 5), Tooltip("Random(0, lateOdds): 1=alwaysLate, 2=1/2, 3=1/3")] private int lateOdds = 3;
+    [SerializeField] private LightFlicker lanternScript;
 
     private Enemy ghostScript;
     private AudioClip lastPlayedClip;
@@ -44,6 +45,7 @@ public class ParanormalNoises : MonoBehaviour {
     }
 
     private void PlayNoise(bool spatial) {
+        lanternScript.StartFlickerPeriod(lastPlayedClip.length);
         if(spatial) {
             spatialSource.pitch = Random.Range(randomMinPitch, randomMaxPitch);
             spatialSource.PlayOneShot(lastPlayedClip, volumeScale);

@@ -16,8 +16,9 @@ public class Tutorial : MonoBehaviour {
     public PlayerMovement playerScript;
     public ToolController toolScript;
 
-    public bool usedHidingSpot = false, walkedAround = false, checkedInventory = false, finishedClues = false, toolDone = false;
+    public bool usedHidingSpot = false, walkedAround = false, checkedInventory = false, tabInitial = false, toolDone = false, finishedPings = false;
 
+    [SerializeField] private GameObject traitsCluesVisual, toolsVisual;
     public float walkedAroundAmount = 0f;
     private TextPrompter textPromptScript;
     private Coroutine routine;
@@ -57,9 +58,16 @@ public class Tutorial : MonoBehaviour {
             currentState = TutorialState.Wasd;
         }
         else if(currentState == TutorialState.TabTools) {
-            finishedClues = true;
+            tabInitial = true;
             toolScript.masterAllowed = true;
         }
+        else if(currentState == TutorialState.TabTraitsAndClues) {
+            finishedPings = true;
+        }
+
+        traitsCluesVisual.SetActive(currentState == TutorialState.TabTraitsAndClues);
+        toolsVisual.SetActive(currentState == TutorialState.TabTools);
+        
         DisplayIt(tutorialLists[index]);
     }
 
@@ -111,14 +119,14 @@ public class Tutorial : MonoBehaviour {
                 }
             }
         }
-        else if(currentState == TutorialState.TabTraitsAndClues) {
+        else if(currentState == TutorialState.TabTraitsAndClues && finishedPings) {
             if(Input.GetKeyDown(KeyCode.Tab)) checkedInventory = true;
             if(checkedInventory == true && Input.GetKeyDown(KeyCode.Tab)) {
                 IncrementDoor();
                 currentState = TutorialState.TabTools;
             }
         }
-        else if(currentState == TutorialState.TabTools && checkedInventory == true && Input.GetKeyDown(KeyCode.Tab) && finishedClues) {
+        else if(currentState == TutorialState.TabTools && checkedInventory == true && Input.GetKeyDown(KeyCode.Tab) && tabInitial) {
             IncrementDoor();
             currentState = TutorialState.Tools;
         }

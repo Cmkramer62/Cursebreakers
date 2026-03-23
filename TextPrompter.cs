@@ -7,7 +7,7 @@ public class TextPrompter : MonoBehaviour {
     public TextAdder textAdderScript;
     private Coroutine routine;
     public bool waitingForResponse = false;
-    private int index = 0;
+    [SerializeField] private int index = 0;
     public string[] currentList;
     public GameObject enterUI, textBackground;
     private int layerCurrent;
@@ -20,18 +20,20 @@ public class TextPrompter : MonoBehaviour {
 
     public void Update() {
         if(waitingForResponse && (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.Mouse0))) {
-            Debug.Log("Tried to play " + currentList[index]);
-            TextPromptIndefinite(currentList[index]);
-            index++;
             if(index >= currentList.Length) {
                 waitingForResponse = false;
                 if(routine != null) StopCoroutine(routine);
-                routine = StartCoroutine(StopPromptTimer());
+                routine = StartCoroutine(StopPromptTimer(0));
                 //textBackground.GetComponent<Animator>().Play("FadeIn 0");
                 if(promptScriptCurrent != null) {
                     promptScriptCurrent.EndEffect();
                     promptScriptCurrent = null;
                 }
+            }
+            else {
+                Debug.Log("Tried to play " + currentList[index]);
+                TextPromptIndefinite(currentList[index]);
+                index++;
             }
             source.PlayOneShot(enterClip, raycastScript.volumeOfClick);
         }
@@ -76,7 +78,7 @@ public class TextPrompter : MonoBehaviour {
         textBackground.SetActive(true);
 
         if(routine != null) StopCoroutine(routine);
-        routine = StartCoroutine(StopPromptTimer());
+        routine = StartCoroutine(StopPromptTimer(2));
 
         textAdderScript.CancelText();
         textAdderScript.endWord = text;
@@ -97,8 +99,8 @@ public class TextPrompter : MonoBehaviour {
         enterUI.SetActive(true);
     }
 
-    private IEnumerator StopPromptTimer() {
-        yield return new WaitForSeconds(2f);
+    private IEnumerator StopPromptTimer(int delay) {
+        yield return new WaitForSeconds(delay);
         
         textAdderScript.CancelText();
         GetComponent<PauseGame>().allowedToPause = true;

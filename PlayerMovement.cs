@@ -38,6 +38,8 @@ public class PlayerMovement : MonoBehaviour {
         public AudioClip[] jumpClip;
     #endregion
 
+    public LightFlicker lanternReference;
+
     private Vector3 fallingVelocity, originalScale;
     private Color stamBarUIColor;
     private Transform cachedTransform;

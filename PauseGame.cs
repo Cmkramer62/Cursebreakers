@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class PauseGame : MonoBehaviour {
 
-    public GameObject normalUI, pausedUI, pausedUIText, questionUI;//, question, title, mapUI;
+    public GameObject normalUI, pausedUI, objectivesUI, questionUI;//, question, title, mapUI;
     public bool paused = false, questionPaused = false;
     public MouseLook mouseLook;
     public PlayerMovement playerMovement;
@@ -103,7 +103,8 @@ public class PauseGame : MonoBehaviour {
         for(int i = 0; i < pauseMainChildren.Length; i++) {
             pauseMainChildren[i].SetActive(false);
         }
-        pausedUIText.SetActive(true);
+        PauseTitleButtonPressed(2);
+        objectivesUI.SetActive(true);
     }
 
 }

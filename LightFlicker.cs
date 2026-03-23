@@ -93,6 +93,18 @@ public class LightFlicker : MonoBehaviour {
         else StartCoroutine(KillLight());
     }
 
+    // Only called by lantern.
+    public void StartFlickerPeriod(float duration) {
+        StartCoroutine(StartFlickerPeriodTimer(duration));
+    }
+
+    private IEnumerator StartFlickerPeriodTimer(float duration) {
+        flickeringActive = true;
+        StartCoroutine(FlickerLight());
+        yield return new WaitForSeconds(duration);
+        flickeringActive = false;
+    }
+
     private IEnumerator FlickerLight() {
         source.intensity = Mathf.Lerp(source.intensity, Random.Range(maximumDim, maximumBoost), strength * Time.deltaTime);
         //if(materialSwap) aliveBulbMat.SetColor("_EmissionColor", Color.white * source.intensity);

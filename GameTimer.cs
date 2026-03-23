@@ -11,14 +11,18 @@ public class GameTimer : MonoBehaviour {
     public int minFlameTick = 3, maxFlameTick = 10;
     public Volume mainVolume;
     public Death deathScript;
+    [SerializeField] private Enemy ghostScript;
 
     public AudioSource source;
     public AudioClip[] warningClipsA, warningClipsB, warningClipsC;
+    [SerializeField] private AudioClip rumbleSmall, rumbleMedium, rumbleLarge;
 
     public Material smokeMaterial;
 
     public bool startTimer = true;
 
+    [SerializeField] private Animator cameraShakeAnimator;
+    
     private Vignette vignetteComponent;
     private int totalTimeStored, stageOne, stageTwo, stageThree;
     private bool allowedToTimer = true;
@@ -74,14 +78,23 @@ public class GameTimer : MonoBehaviour {
         if(totalTimeLimit == stageOne && allowedToTimer) {
             StartCoroutine(SpawnFlames(0, diff));
             source.PlayOneShot(warningClipsA[Random.Range(0, warningClipsA.Length)], .7f);
+            ghostScript.invisSpeed += 2;
+            cameraShakeAnimator.Play("ShakeSmall");
+            source.PlayOneShot(rumbleSmall);
         }
         else if(totalTimeLimit == stageTwo && allowedToTimer) {
             StartCoroutine(SpawnFlames(diff, diff * 2));
             source.PlayOneShot(warningClipsB[Random.Range(0, warningClipsB.Length)], .8f);
+            ghostScript.invisSpeed += 2;
+            cameraShakeAnimator.Play("ShakeMedium");
+            source.PlayOneShot(rumbleMedium);
         }
         else if(totalTimeLimit == stageThree && allowedToTimer) {
             StartCoroutine(SpawnFlames(diff * 2, diff * 3 + 1));
             source.PlayOneShot(warningClipsC[Random.Range(0, warningClipsC.Length)], 1f);
+            ghostScript.invisSpeed += 3;
+            cameraShakeAnimator.Play("ShakeLarge");
+            source.PlayOneShot(rumbleLarge);
         }
 
         if(totalTimeLimit <= 0 && allowedToTimer) {
