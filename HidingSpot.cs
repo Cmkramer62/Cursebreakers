@@ -5,18 +5,9 @@ using UnityEngine;
 public class HidingSpot : MonoBehaviour {
 
     public Transform positionHide;
-    public bool hidingHere = false, alteredSpot = false, scareOnExit = false;
+    public bool hidingHere = false, scareOnExit = false;
     public AudioClip enterClip, exitClip;
     public GameObject hidingUI;
-
-    public enum Variations { newObject, newColor, newRotation }
-    public Variations currentVariation;
-    public GameObject objectToAlter;
-    public Material[] newColor;
-    public Material ogColor;
-    public MeshRenderer mesh;
-    public Vector3 rotationAltered;
-    public int materialIndex = 0;
 
     public bool tutorialHidingSpot = false;
 
@@ -97,63 +88,4 @@ public class HidingSpot : MonoBehaviour {
     }
     #endregion
 
-    public void ScrambleSpot() {
-
-    }
-
-    public void AlterHidingSpot() {
-        alteredSpot = true;
-        
-        switch(currentVariation) {
-            case Variations.newObject:
-                objectToAlter.SetActive(!objectToAlter.activeSelf);
-                break;
-            case Variations.newColor:
-                mesh.material = newColor[NewColorApply()];
-                //newColor = ogColor;
-                //ogColor = mesh.material;
-                break;
-            case Variations.newRotation:
-                gameObject.transform.Rotate(rotationAltered);
-                rotationAltered = -rotationAltered;
-                break;
-        }
-
-        /*
-        int tem = Random.Range(0, 3);
-        if(tem == 0) currentVariation = Variations.newObject;
-        else if(tem == 1) currentVariation = Variations.newColor;
-        else currentVariation = Variations.newRotation;
-        */
-    }
-
-    public int NewColorApply() {
-        int rand = Random.Range(0, newColor.Length);
-        if(rand == materialIndex) {
-            return NewColorApply();
-        }
-        else {
-            materialIndex = rand;
-            return rand;
-        }
-    }
-
-    public void UndoAlteration() {
-        if(alteredSpot) {
-            alteredSpot = false;
-            /*
-            switch(currentVariation) {
-                case Variations.newObject:
-                    objectToAlter.SetActive(false);
-                    break;
-                case Variations.newColor:
-                    mesh.material = ogColor;
-                    break;
-                case Variations.newRotation:
-                    gameObject.transform.Rotate(-rotationAltered);
-                    break;
-            }
-            */
-        }
-    }
 }
