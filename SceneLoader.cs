@@ -20,6 +20,8 @@ public class SceneLoader : MonoBehaviour {
     public SaveDataHandler saveSystem;
     public AudioMixer masterMixer;
 
+    [SerializeField, Range(0.1f, 3f)] private float delay = 1f;
+
     private void Start() {
         masterMixer.SetFloat("MainVolumeParam", 0);
     }
@@ -36,6 +38,15 @@ public class SceneLoader : MonoBehaviour {
         PlayerPrefs.SetInt("levelNumber", sceneNumber);
         FadeOutAllSources();
         StartCoroutine(LoadAsynchronously(sceneNumber));
+    }
+
+    public void LoadSceneDelay(int sceneNumber) {
+        StartCoroutine(LoadSceneDelayTimer(sceneNumber));
+    }
+
+    private IEnumerator LoadSceneDelayTimer(int sceneNumber) {
+        yield return new WaitForSeconds(delay);
+        LoadScene(sceneNumber);
     }
 
     /*
@@ -59,6 +70,15 @@ public class SceneLoader : MonoBehaviour {
         saveSystem.SetLevel(0);
         FadeOutAllSources();
         StartCoroutine(ExitGameTimer());
+    }
+
+    public void ExitGameDelay() {
+        StartCoroutine(ExitGameWait());
+    }
+
+    private IEnumerator ExitGameWait() {
+        yield return new WaitForSeconds(delay);
+        ExitGame();
     }
 
     private IEnumerator ExitGameTimer() {
