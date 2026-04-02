@@ -58,7 +58,7 @@ public class Enemy : MonoBehaviour {
     // Update is called once per frame
     private void Update() {
         if(allowedToMove) {
-            bool playerSeen = coneDetector.targetVisible && !playerTransform.GetComponent<PlayerMovement>().isHiding && normalAggro;// && //!player.GetComponent<PlayerMovement>().isHiding;
+            bool playerSeen = coneDetector.aTargetVisible && !playerTransform.GetComponent<PlayerMovement>().isHiding && normalAggro;// && //!player.GetComponent<PlayerMovement>().isHiding;
             bool playerInAttackRange = Physics.CheckSphere(cachedTransform.position, attackRange, playerLayer) && normalAggro;
             // If I can't see you and you're not in melee range
             if(!playerSeen && !playerInAttackRange) {
@@ -94,7 +94,7 @@ public class Enemy : MonoBehaviour {
                     else chaseMeter = 80f;
 
                     // if its not the ritual and I see your back, do silent. else:
-                    if(!GetComponent<ConeLOSDetector>().visibilityOverride && !playerVision.targetVisible && cachedTransform.parent.GetComponentInChildren<ToolController>().heldIndex != 1) {
+                    if(!GetComponent<ConeLOSDetector>().visibilityOverride && !playerVision.aTargetVisible && cachedTransform.parent.GetComponentInChildren<ToolController>().heldIndex != 1) {
                         ModeChase();
                         // We still want to Fade to chase music if player now turns and sees. Or maybe not necessary.
                         Debug.Log("Saw you with back turned. ");

@@ -1,8 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Unity.Netcode;
 
-public class Bell : MonoBehaviour {
+public class Bell : NetworkBehaviour {
 
     public AudioSource source;
     public AudioClip ringClip;
@@ -15,26 +16,48 @@ public class Bell : MonoBehaviour {
     public bool ghostSearchWithSound = false;
     public int ghostSoundOdds = 3;
 
-    // Start is called before the first frame update
+    public NetworkVariable<bool> bellTriggered = new NetworkVariable<bool>();
+
+    public override void OnNetworkSpawn() {
+        bellTriggered.OnValueChanged += OnBellTriggered;
+    }
+
     void Start() {
         ghostScript = GameObject.Find("Ghost Enemy").GetComponent<Enemy>();
     }
 
-    // Update is called once per frame
     void Update() {
-        if(!bellOnCooldown && Input.GetKeyUp(KeyCode.F)) {
+        if(!IsOwner) return;
 
-            bellAnimator.Play("BellRing");
-            source.pitch = Random.Range(.95f, 1.1f);
-            source.PlayOneShot(ringClip);
-            StartCoroutine(BellCooldownTimer());
-            TriggerCurse(true); // state here is not used.
-            if(ghostSearchWithSound && !ghostScript.invisible) ghostScript.walkPoint = gameObject.transform.parent.parent.parent.transform.GetChild(1).transform.position;
+        if(Input.GetKeyUp(KeyCode.F)) {
+            RingBellServerRpc();
         }
     }
 
-    private IEnumerator BellCooldownTimer() {
+    [ServerRpc]
+    void RingBellServerRpc() {
+        if(bellOnCooldown) return;
+        
         bellOnCooldown = true;
+        
+        bellTriggered.Value = !bellTriggered.Value; // Setting RPC value
+        
+        TriggerCurse(true); // state here is not used. This may be wrong, depending on how ghost is synced.
+        
+        if(ghostScript != null && ghostSearchWithSound && !ghostScript.invisible)
+            ghostScript.walkPoint = gameObject.transform.parent.parent.parent.transform.GetChild(1).transform.position;
+
+        StartCoroutine(BellCooldownTimer());
+    }
+
+    void OnBellTriggered(bool oldValue, bool newValue) {
+        bellAnimator.Play("BellRing");
+
+        source.pitch = Random.Range(.95f, 1.1f);
+        source.PlayOneShot(ringClip);
+    }
+
+    private IEnumerator BellCooldownTimer() {
         yield return new WaitForSeconds(2f);
         bellOnCooldown = false;
     }

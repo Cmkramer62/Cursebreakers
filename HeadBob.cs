@@ -9,8 +9,8 @@ public class HeadBob : MonoBehaviour {
 
     [SerializeField]
     private GroundChecker groundChecker;
-    [SerializeField]
-    private PlayerMovement playerMovement;
+
+    [HideInInspector] public PlayerMovement playerMovement;
 
     private bool stepped = false;
     private bool isIdle = false;
@@ -22,7 +22,13 @@ public class HeadBob : MonoBehaviour {
     private float normalCounter;
     private Vector3 objectBobPosition;
 
+    [SerializeField] private PlayerHandler playerHandlerScript;
+
     private void Start() {
+        if(playerHandlerScript != null && !playerHandlerScript.IsOwner) {
+            enabled = false;
+            return;
+        }
         objectOrigin = objectParent.localPosition;
     }
 
@@ -43,27 +49,28 @@ public class HeadBob : MonoBehaviour {
     }
 
     private void Update() {
-
-        objectParent.localPosition = Vector3.Lerp(objectParent.localPosition, objectBobPosition, Time.deltaTime * 8f);
-        if(playerMovement.allowedToMove && playerMovement.isSprinting){ //&& playerMovement.allowedToMove) {
-            HeadBobCall(normalCounter, sprintDepth, sprintDepth);
-            normalCounter += (Time.deltaTime * sprintingIntensity);
-            isIdle = false;
-        }
-        else if(playerMovement.allowedToMove && (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.D)) && !playerMovement.isSprinting){// && playerMovement.allowedToMove) {
-            HeadBobCall(idleCounter, walkingDepth, walkingDepth);
-            idleCounter += (Time.deltaTime * walkingIntensity);
-            isIdle = false;
-        }
-        else if(playerMovement.allowedToMove) {
-            isIdle = true;
-            HeadBobCall(idleCounter, idleDepth, idleDepth);
-            idleCounter += (Time.deltaTime * idleIntensity);
-        }
-        else {
-            isIdle = true;
-            HeadBobCall(idleCounter, idleDepth / 2, idleDepth / 2);
-            idleCounter += (Time.deltaTime * (idleIntensity / 2));
+        if(playerMovement!= null) {
+            objectParent.localPosition = Vector3.Lerp(objectParent.localPosition, objectBobPosition, Time.deltaTime * 8f);
+            if(playerMovement.allowedToMove && playerMovement.isSprinting) { //&& playerMovement.allowedToMove) {
+                HeadBobCall(normalCounter, sprintDepth, sprintDepth);
+                normalCounter += (Time.deltaTime * sprintingIntensity);
+                isIdle = false;
+            }
+            else if(playerMovement.allowedToMove && (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.D)) && !playerMovement.isSprinting) {// && playerMovement.allowedToMove) {
+                HeadBobCall(idleCounter, walkingDepth, walkingDepth);
+                idleCounter += (Time.deltaTime * walkingIntensity);
+                isIdle = false;
+            }
+            else if(playerMovement.allowedToMove) {
+                isIdle = true;
+                HeadBobCall(idleCounter, idleDepth, idleDepth);
+                idleCounter += (Time.deltaTime * idleIntensity);
+            }
+            else {
+                isIdle = true;
+                HeadBobCall(idleCounter, idleDepth / 2, idleDepth / 2);
+                idleCounter += (Time.deltaTime * (idleIntensity / 2));
+            }
         }
     }
 

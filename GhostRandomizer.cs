@@ -26,10 +26,12 @@ public class GhostRandomizer : MonoBehaviour {
     public void RandomizeGhost() {
         index = Random.Range(0, ghostBodies.Length);
         ghostBodies[index].SetActive(true);
-        deathScript.realGhostChild = ghostBodies[index];
+        //deathScript.realGhostChild = ghostBodies[index];
         ghostScript.animator = ghostBodies[index].GetComponent<Animator>();
         SetGhostGeneral();
     }
+
+
 
     private void SetGhostGeneral() {
         if(index == 0) SetGownLongHair();

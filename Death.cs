@@ -12,7 +12,7 @@ public class Death : MonoBehaviour {
     public AudioClip[] stingerClips;
     public float scareVolume = 1.0f;
 
-    public int lives = 3;
+    //public int lives = 3;
     public GameObject[] bloodUI, heartsUI;
     public bool allowDeath = true;
 
@@ -53,7 +53,6 @@ public class Death : MonoBehaviour {
         realGhostChild.transform.GetChild(1).GetComponent<Animator>().Play("JumpscareFaceAnimator");
 
         source.PlayOneShot(jumpscareClip, 0.4f);
-        //Debug.Log("J soiund");
         Cursor.lockState = CursorLockMode.None;
         GetComponent<PauseGame>().normalUI.SetActive(false);
         GetComponent<PauseGame>().pausedUI.SetActive(false);
@@ -67,9 +66,8 @@ public class Death : MonoBehaviour {
         
         if(GetComponent<PurificationManager>().cursedObjectScript != null) AudioController.FadeOutAudio(this, GetComponent<PurificationManager>().cursedObjectScript.pSourceB, .5f);
         yield return new WaitForSeconds(1.5f);
-        deathUI.SetActive(true);
+      //  deathUI.SetActive(true);
 
-        //SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
     private IEnumerator JumpscareAngelTimer() {
@@ -97,9 +95,8 @@ public class Death : MonoBehaviour {
 
         if(GetComponent<PurificationManager>().cursedObjectScript != null) AudioController.FadeOutAudio(this, GetComponent<PurificationManager>().cursedObjectScript.pSourceB, .5f);
         yield return new WaitForSeconds(2.5f);
-        deathUI.SetActive(true);
+       // deathUI.SetActive(true);
 
-        //SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
     public void LoseLife() {
@@ -114,28 +111,28 @@ public class Death : MonoBehaviour {
             }
         }
 
-        if(lives - 1 == 0) {
-            // player is dead.
-            bloodUI[3 - lives].SetActive(true);
-            heartsUI[lives - 1].GetComponent<Animator>().Play("HeartIconLoss");
+        if(GetComponent<PlayerHandler>().lives.Value - 1 == 0) { // player is dead.
+
+            //bloodUI[3 - GetComponent<PlayerHandler>().lives.Value].SetActive(true);
+            //heartsUI[GetComponent<PlayerHandler>().lives.Value - 1].GetComponent<Animator>().Play("HeartIconLoss");
             GetComponent<CurseGameManager>().livesLeft = 0;
-            source.PlayOneShot(stingerClips[3 - lives]);
+            source.PlayOneShot(stingerClips[3 - GetComponent<PlayerHandler>().lives.Value]);
             if(allowDeath) Jumpscare(false);
             else {
                 yield return new WaitForSeconds(1f);
-                bloodUI[3 - lives].SetActive(false);
-                heartsUI[lives - 1].transform.GetChild(1).gameObject.SetActive(false);
+                //bloodUI[3 - GetComponent<PlayerHandler>().lives.Value].SetActive(false);
+                //heartsUI[GetComponent<PlayerHandler>().lives.Value - 1].transform.GetChild(1).gameObject.SetActive(false);
             }
         }
         else {
-            bloodUI[3 - lives].SetActive(true);
-            heartsUI[lives - 1].GetComponent<Animator>().Play("HeartIconLoss");
-            source.PlayOneShot(stingerClips[3 - lives]);
+           // bloodUI[3 - GetComponent<PlayerHandler>().lives.Value].SetActive(true);
+           // heartsUI[GetComponent<PlayerHandler>().lives.Value - 1].GetComponent<Animator>().Play("HeartIconLoss");
+            source.PlayOneShot(stingerClips[3 - GetComponent<PlayerHandler>().lives.Value]);
             yield return new WaitForSeconds(1f);
-            bloodUI[3 - lives].SetActive(false);
-            heartsUI[lives - 1].transform.GetChild(1).gameObject.SetActive(false);
-            lives--;
-            GetComponent<CurseGameManager>().livesLeft = lives;
+           // bloodUI[3 - GetComponent<PlayerHandler>().lives.Value].SetActive(false);
+            //heartsUI[GetComponent<PlayerHandler>().lives.Value - 1].transform.GetChild(1).gameObject.SetActive(false);
+            GetComponent<PlayerHandler>().lives.Value--;
+            GetComponent<CurseGameManager>().livesLeft = GetComponent<PlayerHandler>().lives.Value;
         }
     }
 

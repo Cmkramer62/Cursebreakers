@@ -4,23 +4,23 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Audio;
 using TMPro;
+using Unity.Netcode;
 
 public class PlayerMovement : MonoBehaviour {
     
     public GroundChecker groundCheckerScript;
 
-    [SerializeField]
-    private float speed = 12f, OGspeed, HFspeed, gravity = -9.81f, jumpHeight = 3f, pitchValue = 1f, sprintMultiplier = 2f,
-        sprintRemaining = 40, sprintRecoveryDec = 1f, sprintDuration = 5f, crouchHeight = 0.75f, currentHeight = .75f;
+    public float speed = 12f, staminaRecoveryRate = 1f, staminaDuration = 40f;
 
-    private float sprintActualMultiplier = 1f;
+    
+
+    private float originalSpeed, crouchingSpeed, sprintActualMultiplier = 1f, gravity = -22f, jumpHeight = 1, sprintMultiplier = 3f, crouchHeight = 0.75f, currentHeight = .75f;
 
     [SerializeField]
-    private bool shouldBeSlowed = false, isTired = false, useSprintBar = true, hideBarWhenFull = true;
+    private bool shouldBeSlowed = false, isTired = false;
     public bool allowedToMove = true, allowedToCrouch = true, isSprinting = false, isCrouched = false, isHiding = false;
 
     [SerializeField]
-    public Image sprintBarBG, sprintBar;
     public CharacterController controller;
     public bool lockCursor = true;
     public Transform groundCheck;
@@ -29,7 +29,6 @@ public class PlayerMovement : MonoBehaviour {
     public KeyCode crouchKey = KeyCode.LeftControl;
 
 
-    public CanvasGroup sprintBarCG;
 
     public ConeLOSDetector enemyVisionScript;
     #region SOUND VARIABLES
@@ -41,20 +40,28 @@ public class PlayerMovement : MonoBehaviour {
     public LightFlicker lanternReference;
 
     private Vector3 fallingVelocity, originalScale;
-    private Color stamBarUIColor;
     private Transform cachedTransform;
+    [SerializeField] private PlayerHandler playerHandlerScript;
 
     private void Awake() {
+
+        if(!playerHandlerScript.IsOwner) {
+            enabled = false;
+            return;
+        }
+
         //sprintRemaining = sprintDuration;
         cachedTransform = GetComponent<Transform>();
         originalScale = cachedTransform.localScale;
-        stamBarUIColor = sprintBar.color;
     }
 
     private void Start() {
-        
-        OGspeed = speed;
-        HFspeed = speed / 2;
+        if(!playerHandlerScript.IsOwner) {
+            enabled = false;
+            return;
+        }
+        originalSpeed = speed;
+        crouchingSpeed = speed / 2;
         if(lockCursor) {
             Cursor.lockState = CursorLockMode.Locked;
         }
@@ -69,9 +76,9 @@ public class PlayerMovement : MonoBehaviour {
 
     public void Crouch() {
         source.PlayOneShot(crouchClip);
-        speed = isCrouched ? OGspeed : HFspeed;
+        speed = isCrouched ? originalSpeed : crouchingSpeed;
         currentHeight = isCrouched ? crouchHeight : originalScale.y;
-        enemyVisionScript.fieldOfViewAngle += isCrouched ? 30 : -30;
+        //enemyVisionScript.fieldOfViewAngle += isCrouched ? 30 : -30;
         isCrouched = !isCrouched;
     }
 
@@ -85,10 +92,14 @@ public class PlayerMovement : MonoBehaviour {
     }
 
     public float GetRemainingStam() {
-        return sprintRemaining / sprintDuration;
+        return transform.parent.GetComponent<PlayerHandler>().stamina.Value / staminaDuration;
     }
 
     void Update() {
+        if(!playerHandlerScript.IsOwner) {
+            enabled = false;
+            return;
+        }
         // MOVEMENT Section
         Vector3 inputVector = cachedTransform.right * Input.GetAxis("Horizontal") + cachedTransform.forward * Input.GetAxis("Vertical");
         if(inputVector.magnitude > 1)
@@ -99,47 +110,61 @@ public class PlayerMovement : MonoBehaviour {
         // CROUCH Section
         cachedTransform.localScale = new Vector3(originalScale.x, Mathf.Clamp(currentHeight -= (isCrouched ? 2f : -2f) * Time.deltaTime, crouchHeight, originalScale.y), originalScale.z);
 
-        if(allowedToCrouch && allowedToMove && (Input.GetKeyDown(crouchKey) || Input.GetKeyUp(crouchKey)) ) {
+        if(allowedToCrouch && allowedToMove && (Input.GetKeyDown(crouchKey) || Input.GetKeyUp(crouchKey))) {
             isCrouched = !Input.GetKeyDown(crouchKey);
             Crouch();
         }
-       
+
         // JUMP Section
         if(groundCheckerScript.isGrounded && fallingVelocity.y < 0)
             fallingVelocity.y = -2f;
 
         if(Input.GetButtonDown("Jump") && allowedToMove && groundCheckerScript.isGrounded)
             Jump();
-        
+
         fallingVelocity.y += gravity * Time.deltaTime;
 
         if(allowedToMove)
             controller.Move(fallingVelocity * Time.deltaTime);
-        
+
 
         // SPRINT & SPRINT UI Section
         if(isSprinting && !isTired) {
-            sprintRemaining -= 1 * Time.deltaTime;
+            transform.parent.GetComponent<PlayerHandler>().stamina.Value -= 1 * Time.deltaTime;
+        }
+        else {
+            transform.parent.GetComponent<PlayerHandler>().stamina.Value = Mathf.Clamp(transform.parent.GetComponent<PlayerHandler>().stamina.Value += staminaRecoveryRate * Time.deltaTime, 0, staminaDuration);
+        }
+
+        if(transform.parent.GetComponent<PlayerHandler>().stamina.Value <= 0) {
+            source.PlayOneShot(breathClip);
+        }
+        if(transform.parent.GetComponent<PlayerHandler>().stamina.Value == staminaDuration) {
+            isTired = false;
+        }
+        /*
+        if(isSprinting && !isTired) {
+            stamina -= 1 * Time.deltaTime;
             if(hideBarWhenFull && useSprintBar) { sprintBarCG.alpha += 5 * Time.deltaTime; }
         }
         else {
-            sprintRemaining = Mathf.Clamp(sprintRemaining += sprintRecoveryDec * Time.deltaTime, 0, sprintDuration);
+            stamina = Mathf.Clamp(stamina += staminaRecoveryRate * Time.deltaTime, 0, staminaDuration);
         }
 
-        if(useSprintBar) sprintBar.rectTransform.sizeDelta = new Vector2(sprintRemaining / sprintDuration * 175, sprintBar.rectTransform.sizeDelta.y);
+        if(useSprintBar) sprintBar.rectTransform.sizeDelta = new Vector2(stamina / staminaDuration * 175, sprintBar.rectTransform.sizeDelta.y);
 
-        if(sprintRemaining <= 0) {
+        if(stamina <= 0) {
             isTired = true;
             sprintBar.color = Color.red;
             source.PlayOneShot(breathClip);
         }
-        if(sprintRemaining == sprintDuration) {
+        if(stamina == staminaDuration) {
             isTired = false;
             if(hideBarWhenFull && useSprintBar) sprintBarCG.alpha -= 3 * Time.deltaTime;
             if(useSprintBar) sprintBar.color = stamBarUIColor;
         }
-
-        if((Input.GetKey(KeyCode.W)) && groundCheckerScript.isGrounded && Input.GetKey(KeyCode.LeftShift) && useSprintBar && !isTired && allowedToMove && !isCrouched) {
+        */
+        if((Input.GetKey(KeyCode.W)) && groundCheckerScript.isGrounded && Input.GetKey(KeyCode.LeftShift) && !isTired && allowedToMove && !isCrouched) {
             isSprinting = true;
             sprintActualMultiplier = sprintMultiplier;
         }
@@ -148,7 +173,7 @@ public class PlayerMovement : MonoBehaviour {
             isSprinting = false;
             sprintActualMultiplier = 1;
         }
-
+        
     }
 
 

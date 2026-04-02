@@ -21,6 +21,11 @@ public class InteractRaycast : MonoBehaviour {
     public Animator crosshairAnimator;
     public CursedObject curseScript;
 
+    private void OnEnable() {
+        //crosshairUI = GameObject.Find("Default Crosshair");
+    }
+
+
     private void Update() {
         RaycastHit hit;
         Vector3 fwd = transform.TransformDirection(Vector3.forward);

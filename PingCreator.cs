@@ -29,11 +29,15 @@ public class PingCreator : MonoBehaviour {
     private bool waitUntilNext = false;
 
     private void Update() {
-        if(playerScript.allowedToMove && Input.GetKeyDown(KeyCode.Mouse2) && !waitUntilNext) {
-            SpawnPing();
-            waitUntilNext = true;
+
+        if(playerScript != null) {
+            if(playerScript.allowedToMove && Input.GetKeyDown(KeyCode.Mouse2) && !waitUntilNext) {
+                SpawnPing();
+                waitUntilNext = true;
+            }
+            else if(Input.GetKeyUp(KeyCode.Mouse2) || !playerScript.allowedToMove) waitUntilNext = false;
         }
-        else if(Input.GetKeyUp(KeyCode.Mouse2) || !playerScript.allowedToMove) waitUntilNext = false;
+        
     }
 
     public void SpawnPing() {

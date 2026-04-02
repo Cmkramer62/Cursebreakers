@@ -13,13 +13,18 @@ public class CameraFlash : MonoBehaviour {
     public float staminaRemaining = 5f, sprintDuration = 5f;
     public Image sprintBar;
     public GameObject cameraUI;
+    [SerializeField] private PlayerHandler playerHandlerScript;
 
     public void OnEnable() {
-        cameraUI.SetActive(true);
+        //cameraUI.SetActive(true);
+        if(!playerHandlerScript.IsOwner) {
+            enabled = false;
+            return;
+        }
     }
     private void OnDisable() {
         lightFlash.SetActive(false);
-        cameraUI.SetActive(false);
+        //cameraUI.SetActive(false);
         flashOnCooldown = false;
     }
 
@@ -68,6 +73,6 @@ public class CameraFlash : MonoBehaviour {
     public void CameraUIUpdate() {
         staminaRemaining = Mathf.Clamp(staminaRemaining += 1f * Time.deltaTime, 0, sprintDuration);
         float sprintRemainingPercent = staminaRemaining / sprintDuration;
-        sprintBar.rectTransform.sizeDelta = new Vector2(sprintRemainingPercent * 175, sprintBar.rectTransform.sizeDelta.y);
+        //sprintBar.rectTransform.sizeDelta = new Vector2(sprintRemainingPercent * 175, sprintBar.rectTransform.sizeDelta.y);
     }
 }

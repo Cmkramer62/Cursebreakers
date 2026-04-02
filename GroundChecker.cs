@@ -22,6 +22,10 @@ public class GroundChecker : MonoBehaviour {
     //Types: Concrete, Metal, Wood, Snow, Vent, Water, Tile
 
     void Start() {
+        if(!gameObject.transform.parent.parent.GetComponent<PlayerHandler>().IsOwner) {
+            enabled = false;
+            return;
+        }
         playingFromClips = normalStepClips;
     }
 
@@ -39,7 +43,7 @@ public class GroundChecker : MonoBehaviour {
         if(!priorState && isGrounded) {
             currentTag = hit.collider.tag;
 
-            Debug.Log("Landed.");
+           // Debug.Log("Landed.");
 
             AudioClip[] playingLandingClips = AssignList(false);
 

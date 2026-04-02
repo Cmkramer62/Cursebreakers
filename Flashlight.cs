@@ -20,14 +20,15 @@ public class Flashlight : MonoBehaviour {
 
     public ParticleSystem geistParticles;
     public Color stamBarUIColor;
+    [SerializeField] private PlayerHandler playerHandlerScript;
 
     private void OnEnable() {
-        flashlightUI.SetActive(true);
+        //flashlightUI.SetActive(true);
     }
 
 
     public void OnDisable() {
-        flashlightUI.SetActive(false);
+        //flashlightUI.SetActive(false);
         if(geistParticles.isPlaying) geistParticles.Stop();
     }
 
@@ -40,23 +41,21 @@ public class Flashlight : MonoBehaviour {
     }
 
     private void Update() {
+        if(!playerHandlerScript.IsOwner) {
+            enabled = false;
+            return;
+        }
         if(!isFlashing && Input.GetKeyDown(KeyCode.F) && !isTired) {
             source.PlayOneShot(turnOffClip);
-            //glowingSource.volume = lightBlastVolume;
-            //glowingSource.Play();
         }
         if(isFlashing && Input.GetKeyUp(KeyCode.F)) {
             source.PlayOneShot(turnOnClip);
-            //AudioController.FadeOutAudio(this, glowingSource, 0.2f);
         }
-
         if(Input.GetKeyDown(KeyCode.F) && !isTired) {
             isFlashing = true;
         }
         if(Input.GetKeyUp(KeyCode.F) || isTired) {
             isFlashing = false;
-            //AudioController.FadeOutAudio(this, glowingSource, 0.2f);
-
         }
 
         flashlightState = isFlashing;
@@ -64,9 +63,6 @@ public class Flashlight : MonoBehaviour {
 
         if(isFlashing && !geistParticles.isPlaying) geistParticles.Play();
         else if(!isFlashing && geistParticles.isPlaying) geistParticles.Stop();
-
-        
-
     }
 
     public void GeistLightUIUpdate() {
@@ -95,18 +91,18 @@ public class Flashlight : MonoBehaviour {
         }
 
         float sprintRemainingPercent = staminaRemaining / sprintDuration;
-        if(useSprintBar) sprintBar.rectTransform.sizeDelta = new Vector2(sprintRemainingPercent * 175, sprintBar.rectTransform.sizeDelta.y);//sprintBar.transform.localScale = new Vector3(sprintRemainingPercent, 1f, 1f);
+        //if(useSprintBar) sprintBar.rectTransform.sizeDelta = new Vector2(sprintRemainingPercent * 175, sprintBar.rectTransform.sizeDelta.y);//sprintBar.transform.localScale = new Vector3(sprintRemainingPercent, 1f, 1f);
 
         if(staminaRemaining <= 0) {
             isTired = true;
-            sprintBar.color = Color.red;
+            //sprintBar.color = Color.red;
             source.PlayOneShot(turnOnClip);
 
         }
         if(staminaRemaining == sprintDuration) {
             isTired = false;
-            if(hideBarWhenFull && useSprintBar) { sprintBarCG.alpha -= 3 * Time.deltaTime; }
-            if(useSprintBar) sprintBar.color = stamBarUIColor;
+            //if(hideBarWhenFull && useSprintBar) { sprintBarCG.alpha -= 3 * Time.deltaTime; }
+            //if(useSprintBar) sprintBar.color = stamBarUIColor;
         }
     }
 }

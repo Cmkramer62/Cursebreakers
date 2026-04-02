@@ -20,8 +20,14 @@ public class ToolController : MonoBehaviour {
     public Flashlight geistLightScript;
     public CameraFlash cameraScript;
     public Thermometer thermometerScript;
+    [SerializeField] private PlayerHandler playerHandlerScript;
 
     private void Start() {
+        if(!playerHandlerScript.IsOwner) {
+            enabled = false;
+            return;
+        }
+
         InvokeRepeating("UpdateTemp", 0, Random.Range(0.5f, 1));
         InvokeRepeating("UpdateEMF", 0, Random.Range(1, 4));
         InvokeRepeating("CheckHolyWater", 0, Random.Range(2, 4));
@@ -29,6 +35,11 @@ public class ToolController : MonoBehaviour {
 
     // Update is called once per frame
     void Update() {
+        if(!playerHandlerScript.IsOwner) {
+            enabled = false;
+            return;
+        }
+
         if(!cycleCooldown && masterAllowed && allowedToCycle && Input.GetAxis("Mouse ScrollWheel") > 0f) CycleDown();
         else if(!cycleCooldown && masterAllowed && allowedToCycle && Input.GetAxis("Mouse ScrollWheel") < 0f) CycleUp();
         else if(!cycleCooldown && masterAllowed && allowedToCycle && Input.GetKeyDown(KeyCode.Alpha1)) CycleTo(0);
@@ -107,22 +118,15 @@ public class ToolController : MonoBehaviour {
     private IEnumerator AnimationTimer(GameObject swapFrom, GameObject swapTo, int from, int to) {
         StartCoroutine(ToolbeltCooldown());
         yield return new WaitForSeconds(.35f);
-        toolbarUI[from].transform.localScale = new Vector3(.35f, .35f, .35f);
-        toolbarUI[from].GetComponent<CanvasGroup>().alpha = .4f;
-        toolbarMarkerUI[from].SetActive(false);
-        //toolbarUIs[to].SetActive(true);
-        toolbarUI[to].transform.localScale = new Vector3(.37f, .37f, .37f);
-        toolbarUI[to].GetComponent<CanvasGroup>().alpha = 1f;
-        toolbarMarkerUI[to].SetActive(true);
+        //toolbarUI[from].transform.localScale = new Vector3(.35f, .35f, .35f);
+        //toolbarUI[from].GetComponent<CanvasGroup>().alpha = .4f;
+        //toolbarMarkerUI[from].SetActive(false);
+
+        //toolbarUI[to].transform.localScale = new Vector3(.37f, .37f, .37f);
+        //toolbarUI[to].GetComponent<CanvasGroup>().alpha = 1f;
+        //toolbarMarkerUI[to].SetActive(true);
         swapFrom.SetActive(false);
         swapTo.SetActive(true);
-        /*
-        if(swapTo.name.Equals("Camera Device")) HelperText.HeldButtonGuidanceOn("Camera", "F");
-        else if(swapTo.name.Equals("Flashlight")) HelperText.HeldButtonGuidanceOn("Flashlight", "F");
-        else if(swapTo.name.Equals("Communicator Parent")) HelperText.HeldButtonGuidanceOn("Communicator", "LMB");
-        else if(swapTo.name.Equals("Wrench")) HelperText.HeldButtonGuidanceOn("Wrench", "LMB");
-        else if(swapTo.name.Equals("Axe")) HelperText.HeldButtonGuidanceOn("Axe", "LMB");
-        */
     }
 
     public void ForceToBarehand() {
@@ -166,7 +170,7 @@ public class ToolController : MonoBehaviour {
     }
 
     private void UpdateEMF() {
-        playerItemMeshes[3].GetComponent<Scanner>().levelEMF = defaultEMF;
+        //playerItemMeshes[3].GetComponent<Scanner>().levelEMF = defaultEMF;
     }
 
     private void CheckHolyWater() {
