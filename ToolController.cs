@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Unity.Netcode;
+using Unity.Netcode.Components;
 
 public class ToolController : NetworkBehaviour {
 
@@ -10,7 +11,7 @@ public class ToolController : NetworkBehaviour {
     public Animator swapperAnimator;
     public GameObject[] playerItemMeshes, toolbarUI, toolbarMarkerUI;
 
-    public int heldIndex = 0;
+    public NetworkVariable<int> heldIndex = new NetworkVariable<int>();
 
     public AudioSource source;
     public AudioClip swapClip;
@@ -22,6 +23,17 @@ public class ToolController : NetworkBehaviour {
     public CameraFlash cameraScript;
     public Thermometer thermometerScript;
     [SerializeField] private PlayerHandler playerHandlerScript;
+
+    public override void OnNetworkSpawn() {
+        heldIndex.OnValueChanged += OnHeldIndexChanged;
+    }
+
+    void OnHeldIndexChanged(int oldValue, int newValue) {
+        // play animation here instead of ClientRpc
+        //swapperAnimator.SetTrigger("SwapTrigger");
+        swapperAnimator.GetComponent<ClientNetworkAnimator>().SetTrigger("SwapTrigger");
+        StartCoroutine(AnimationTimer(newValue));
+    }
 
     private void Start() {
         if(!IsServer) {
@@ -62,18 +74,18 @@ public class ToolController : NetworkBehaviour {
         if(playerItemMeshes[5].activeSelf) playerItemMeshes[5].GetComponent<Thermometer>().allowedToScan = false;
         source.PlayOneShot(swapClip);
         bool found = false;
-        for(int i = heldIndex + 1; i < playerItemMeshes.Length; i++) {
+        for(int i = heldIndex.Value + 1; i < playerItemMeshes.Length; i++) {
             found = true;
-            swapperAnimator.Play("SwapAnim");
-            StartCoroutine(AnimationTimer(playerItemMeshes[heldIndex], playerItemMeshes[i], heldIndex, i));
-            heldIndex = i;
+            //
+            //StartCoroutine(AnimationTimer(playerItemMeshes[heldIndex.Value], playerItemMeshes[i], heldIndex.Value, i));
+            heldIndex.Value = i;
             break;
         }
         if(!found) {
-            for(int i = 0; i < heldIndex; i++) {
-                swapperAnimator.Play("SwapAnim");
-                StartCoroutine(AnimationTimer(playerItemMeshes[heldIndex], playerItemMeshes[i], heldIndex, i));
-                heldIndex = i;
+            for(int i = 0; i < heldIndex.Value; i++) {
+                //swapperAnimator.Play("SwapAnim");
+                //StartCoroutine(AnimationTimer(playerItemMeshes[heldIndex.Value], playerItemMeshes[i], heldIndex.Value, i));
+                heldIndex.Value = i;
                 break;
             }
         }
@@ -85,20 +97,20 @@ public class ToolController : NetworkBehaviour {
         if(playerItemMeshes[5].activeSelf) playerItemMeshes[5].GetComponent<Thermometer>().allowedToScan = false;
         source.PlayOneShot(swapClip);
         bool found = false;
-        if(heldIndex != 0) {
-            for(int i = heldIndex - 1; i >= 0; i--) {
+        if(heldIndex.Value != 0) {
+            for(int i = heldIndex.Value - 1; i >= 0; i--) {
                 found = true;
-                swapperAnimator.Play("SwapAnim");
-                StartCoroutine(AnimationTimer(playerItemMeshes[heldIndex], playerItemMeshes[i], heldIndex, i));
-                heldIndex = i;
+                //swapperAnimator.Play("SwapAnim");
+                //StartCoroutine(AnimationTimer(playerItemMeshes[heldIndex.Value], playerItemMeshes[i], heldIndex.Value, i));
+                heldIndex.Value = i;
                 break;
             }
         }
         if(!found) {
-            for(int i = playerItemMeshes.Length - 1; i > heldIndex; i--) {
-                swapperAnimator.Play("SwapAnim");
-                StartCoroutine(AnimationTimer(playerItemMeshes[heldIndex], playerItemMeshes[i], heldIndex, i));
-                heldIndex = i;
+            for(int i = playerItemMeshes.Length - 1; i > heldIndex.Value; i--) {
+                //swapperAnimator.Play("SwapAnim");
+                //StartCoroutine(AnimationTimer(playerItemMeshes[heldIndex.Value], playerItemMeshes[i], heldIndex.Value, i));
+                heldIndex.Value = i;
                 break;
             }
         }
@@ -106,18 +118,19 @@ public class ToolController : NetworkBehaviour {
 
     [ServerRpc]
     public void CycleToServerRpc(int to) {
-        if(heldIndex == to) return;
+        if(heldIndex.Value == to) return;
 
         if(playerItemMeshes[3].activeSelf) playerItemMeshes[3].GetComponent<Scanner>().allowedToScan = false;
         if(playerItemMeshes[5].activeSelf) playerItemMeshes[5].GetComponent<Thermometer>().allowedToScan = false;
-        source.PlayOneShot(swapClip);
 
-        swapperAnimator.Play("SwapAnim");
-        StartCoroutine(AnimationTimer(playerItemMeshes[heldIndex], playerItemMeshes[to], heldIndex, to));
-        heldIndex = to;
+        source.PlayOneShot(swapClip);
+        //swapperAnimator.Play("SwapAnim");
+
+        //StartCoroutine(AnimationTimer(playerItemMeshes[heldIndex.Value], playerItemMeshes[to], heldIndex.Value, to));
+        heldIndex.Value = to;
     }
 
-    private IEnumerator AnimationTimer(GameObject swapFrom, GameObject swapTo, int from, int to) {
+    private IEnumerator AnimationTimer(int newIndex) {
         StartCoroutine(ToolbeltCooldown());
         yield return new WaitForSeconds(.35f);
         //toolbarUI[from].transform.localScale = new Vector3(.35f, .35f, .35f);
@@ -127,8 +140,12 @@ public class ToolController : NetworkBehaviour {
         //toolbarUI[to].transform.localScale = new Vector3(.37f, .37f, .37f);
         //toolbarUI[to].GetComponent<CanvasGroup>().alpha = 1f;
         //toolbarMarkerUI[to].SetActive(true);
-        swapFrom.SetActive(false);
-        swapTo.SetActive(true);
+
+        //swapFrom.SetActive(false);
+        //swapTo.SetActive(true);
+        for(int i = 0; i < playerItemMeshes.Length; i++) {
+            playerItemMeshes[i].SetActive(i == newIndex);
+        }
     }
 
     public void ForceToBarehand() {

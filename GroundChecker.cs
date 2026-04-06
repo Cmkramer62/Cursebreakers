@@ -8,6 +8,8 @@ public class GroundChecker : MonoBehaviour {
     public LayerMask groundMask;
     public bool isGrounded = false;
 
+    [SerializeField] private Animator playerAnimator;
+
     private string currentTag = "Grass";
 
     public AudioSource footSource;
@@ -40,6 +42,7 @@ public class GroundChecker : MonoBehaviour {
         RaycastHit hit;
         bool priorState = isGrounded;
         isGrounded = Physics.Raycast(groundCheck.position, Vector3.down, out hit, groundDistance, groundMask);
+        playerAnimator.SetBool("IsGrounded", isGrounded); 
         if(!priorState && isGrounded) {
             currentTag = hit.collider.tag;
 

@@ -22,6 +22,10 @@ public class Bell : NetworkBehaviour {
         bellTriggered.OnValueChanged += OnBellTriggered;
     }
 
+    public override void OnNetworkDespawn() {
+        bellTriggered.OnValueChanged -= OnBellTriggered;
+    }
+
     void Start() {
         ghostScript = GameObject.Find("Ghost Enemy").GetComponent<Enemy>();
     }

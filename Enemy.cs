@@ -94,7 +94,7 @@ public class Enemy : MonoBehaviour {
                     else chaseMeter = 80f;
 
                     // if its not the ritual and I see your back, do silent. else:
-                    if(!GetComponent<ConeLOSDetector>().visibilityOverride && !playerVision.aTargetVisible && cachedTransform.parent.GetComponentInChildren<ToolController>().heldIndex != 1) {
+                    if(!GetComponent<ConeLOSDetector>().visibilityOverride && !playerVision.aTargetVisible && cachedTransform.parent.GetComponentInChildren<ToolController>().heldIndex.Value != 1) {
                         ModeChase();
                         // We still want to Fade to chase music if player now turns and sees. Or maybe not necessary.
                         Debug.Log("Saw you with back turned. ");
