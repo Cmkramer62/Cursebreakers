@@ -183,7 +183,7 @@ public class PlayerMovement : NetworkBehaviour {
             isSprinting = false;
             sprintActualMultiplier = 1;
         }
-
+        playerAnimator.SetBool("Sprinting", isSprinting);
         playerAnimator.SetBool("Crouching", isCrouched);
 
     }
