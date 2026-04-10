@@ -3,18 +3,19 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using Unity.Netcode;
 
-public class CurseGameManager : MonoBehaviour {
-
+public class CurseGameManager : NetworkBehaviour {
+    
+    //public NetworkVariable<List<GameObject>> spawnPoints = new NetworkVariable<List<GameObject>>();
     public List<GameObject> spawnPoints = new List<GameObject>();
     public GameObject[] cursedObjectPrefabs;
     public int oddsSpawnRate = 3, goalCurseIndex, curseSpawnBufferMax = 6, curseSpawnBuffer = 0;
 
+    public NetworkVariable<ulong> goalCurseTrackedID = new NetworkVariable<ulong>();
     public GameObject goalCurse;
 
-    public Image goalCurseImage;
-    public TextMeshProUGUI goalCurseText;
-    public Sprite[] curseTypeSprites;
+
 
     public Animator ghostAnimator;
     public RuntimeAnimatorController floatingController;
@@ -24,13 +25,13 @@ public class CurseGameManager : MonoBehaviour {
 
     public GameObject[] enviroParticles;
     public GhostRandomizer ghostRandomizer;
-    public ObjectivesUI objectivesScript;
 
     public int timeSpent = 0, livesLeft = 3, timeSpotted = 0, longestChase = 0, purifyState = 0;
     // purified, not purified, incorrect object purified
 
     // Start is called before the first frame update
-    void Start() {
+    public override void OnNetworkSpawn() {
+        if(!IsServer) return;
 
         foreach(GameObject obj in GameObject.FindGameObjectsWithTag("CurseSpawn")) {
             spawnPoints.Add(obj);
@@ -39,13 +40,15 @@ public class CurseGameManager : MonoBehaviour {
 
         // goal curse section. goalCurseIndex used to be 'i'
         goalCurse = GameObject.Instantiate(cursedObjectPrefabs[Random.Range(0, cursedObjectPrefabs.Length)], spawnPoints[goalCurseIndex].transform);
-        goalCurse.GetComponentInChildren<CursedObject>().toolControllerScript = GetComponent<ToolController>();
-        goalCurse.GetComponentInChildren<CursedObject>().SetRandomGoal(); // set the curses to be random 3.
-        goalCurse.name = "Goal Curse";
-        goalCurseImage.sprite = curseTypeSprites[goalCurse.GetComponentInChildren<CursedObject>().index[0]]; // First curse reveal.
-        goalCurseText.text = curseTypeSprites[goalCurse.GetComponentInChildren<CursedObject>().index[0]].name;
-        objectivesScript.SetFreebieTrait(goalCurse.GetComponentInChildren<CursedObject>().index[0]);
+        goalCurse.GetComponent<NetworkObject>().Spawn();
 
+        goalCurse.GetComponentInChildren<CursedObject>().toolControllerScript = GetComponent<ToolController>();
+        goalCurse.GetComponentInChildren<CursedObject>().SetRandomGoal(); // set the curses to be a random 3.
+
+        goalCurseTrackedID.Value = goalCurse.GetComponent<NetworkObject>().NetworkObjectId;
+        // Freebie is found and handled on client-side manager script, ONLY after the networked cursedObject is given its curses.
+
+        goalCurse.name = "Goal Curse";
         ApplyCursedAura(); // Second curse reveal.
         ApplyCursedEnvironment(); // Third curse reveal.
 
@@ -55,6 +58,8 @@ public class CurseGameManager : MonoBehaviour {
                 if(curseSpawnBuffer >= curseSpawnBufferMax) {
                     if(Random.Range(0, oddsSpawnRate) == 0) {
                         GameObject newCurse = GameObject.Instantiate(cursedObjectPrefabs[Random.Range(0, cursedObjectPrefabs.Length)], spawnPoints[i].transform);
+                        newCurse.GetComponent<NetworkObject>().Spawn();
+
                         newCurse.GetComponentInChildren<CursedObject>().toolControllerScript = GetComponent<ToolController>();
                         newCurse.GetComponentInChildren<CursedObject>().SetRandomCurses();
                         // set random number of curses
@@ -67,7 +72,7 @@ public class CurseGameManager : MonoBehaviour {
         }
     }
 
-    public void ApplyCursedEnvironment() {
+    private void ApplyCursedEnvironment() {
         var goalCurseSpecific = goalCurse.GetComponentInChildren<CursedObject>().cursesList[1];
         
         enviroParticles[0].SetActive(goalCurseSpecific == CursedObject.CursedTypes.Glowing);
@@ -79,7 +84,7 @@ public class CurseGameManager : MonoBehaviour {
         if(goalCurseSpecific == CursedObject.CursedTypes.Sound) bellScript.ghostSearchWithSound = true;
     }
     
-    public void ApplyCursedAura() {
+    private void ApplyCursedAura() {
         var goalCurseSpecific = goalCurse.GetComponentInChildren<CursedObject>().cursesList[2];
         if(goalCurseSpecific == CursedObject.CursedTypes.Glowing) {
             ghostGeistParticles.SetActive(true);
@@ -116,5 +121,5 @@ public class CurseGameManager : MonoBehaviour {
             spawnPoints[i].transform.parent.transform.Find("Item A3").gameObject.SetActive(false);
         }
     }
-
+    
 }
