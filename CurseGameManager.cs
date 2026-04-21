@@ -8,30 +8,35 @@ using Unity.Netcode;
 public class CurseGameManager : NetworkBehaviour {
     
     //public NetworkVariable<List<GameObject>> spawnPoints = new NetworkVariable<List<GameObject>>();
-    public List<GameObject> spawnPoints = new List<GameObject>();
+    [HideInInspector] public List<GameObject> spawnPoints = new List<GameObject>();
     public GameObject[] cursedObjectPrefabs;
     public int oddsSpawnRate = 3, goalCurseIndex, curseSpawnBufferMax = 6, curseSpawnBuffer = 0;
 
     public NetworkVariable<ulong> goalCurseTrackedID = new NetworkVariable<ulong>();
     public GameObject goalCurse;
 
-
-
-    public Animator ghostAnimator;
+    //public Animator ghostAnimator;
     public RuntimeAnimatorController floatingController;
-    public GameObject ghostGeistParticles;
-    public GameObject[] ghostHorns;
+    //public GameObject ghostGeistParticles;
+    //public GameObject[] ghostHorns;
     public Bell bellScript;
 
     public GameObject[] enviroParticles;
-    public GhostRandomizer ghostRandomizer;
+    //public GhostRandomizer ghostRandomizer;
 
     public int timeSpent = 0, livesLeft = 3, timeSpotted = 0, longestChase = 0, purifyState = 0;
-    // purified, not purified, incorrect object purified
 
-    // Start is called before the first frame update
+
+    private void OnClientConnected(ulong clientId) {
+        var playerObj = NetworkManager.Singleton.ConnectedClients[clientId].PlayerObject;
+
+        // Now you have the player's NetworkObject
+    }
+
     public override void OnNetworkSpawn() {
         if(!IsServer) return;
+
+        NetworkManager.OnClientConnectedCallback += OnClientConnected;
 
         foreach(GameObject obj in GameObject.FindGameObjectsWithTag("CurseSpawn")) {
             spawnPoints.Add(obj);
@@ -81,33 +86,33 @@ public class CurseGameManager : NetworkBehaviour {
         enviroParticles[3].SetActive(goalCurseSpecific == CursedObject.CursedTypes.Thermo);
         enviroParticles[4].SetActive(goalCurseSpecific == CursedObject.CursedTypes.Unholy);
 
-        if(goalCurseSpecific == CursedObject.CursedTypes.Sound) bellScript.ghostSearchWithSound = true;
+        //if(goalCurseSpecific == CursedObject.CursedTypes.Sound) bellScript.ghostSearchWithSound = true;
     }
     
     private void ApplyCursedAura() {
         var goalCurseSpecific = goalCurse.GetComponentInChildren<CursedObject>().cursesList[2];
         if(goalCurseSpecific == CursedObject.CursedTypes.Glowing) {
-            ghostGeistParticles.SetActive(true);
-            ghostAnimator.transform.parent.gameObject.GetComponent<Enemy>().geistAura = true;
+            //ghostGeistParticles.SetActive(true);
+            //ghostAnimator.transform.parent.gameObject.GetComponent<Enemy>().geistAura = true;
         }
         else if(goalCurseSpecific == CursedObject.CursedTypes.EMF) {
-            ghostAnimator.runtimeAnimatorController = floatingController;
+            //ghostAnimator.runtimeAnimatorController = floatingController;
         }
         else if(goalCurseSpecific == CursedObject.CursedTypes.Aura) {
-            ghostRandomizer.overrideEyes = true;
+            //ghostRandomizer.overrideEyes = true;
         }
         else if(goalCurseSpecific == CursedObject.CursedTypes.Thermo) {
-            ghostAnimator.transform.parent.gameObject.GetComponent<Enemy>().freezingAura = true;
+            //ghostAnimator.transform.parent.gameObject.GetComponent<Enemy>().freezingAura = true;
         }
         else if(goalCurseSpecific == CursedObject.CursedTypes.Unholy) {
-            foreach(GameObject horns in ghostHorns) {
-                horns.SetActive(true);
-            }
+            //foreach(GameObject horns in ghostHorns) {
+            //    horns.SetActive(true);
+            //}
         }
         else {
-            bellScript.ghostSearchWithSound = true;
+            //bellScript.ghostSearchWithSound = true;
         }
-        ghostRandomizer.RandomizeGhost();
+        //ghostRandomizer.RandomizeGhost();
     }
 
     private void RemovePropItem(int i) {
