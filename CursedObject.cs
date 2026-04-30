@@ -33,6 +33,8 @@ public class CursedObject : MonoBehaviour {
     public int goalCurseThirdAspectIndex = -1;
     public bool tutorialCurse = false, pinged = false;
 
+    [HideInInspector] public CurseGameManager curseGameManager;
+
     void Start() {
         pSourceA.Play();
         pSourceA.Stop();
@@ -86,7 +88,7 @@ public class CursedObject : MonoBehaviour {
     public void SetRandomCurses() {
         if(cursesList.Count == 3) return;
         else {
-            int antiInt = GameObject.Find("Game Manager").GetComponent<CurseGameManager>().goalCurse.GetComponentInChildren<CursedObject>().goalCurseThirdAspectIndex;
+            int antiInt = curseGameManager.goalCurse.GetComponentInChildren<CursedObject>().goalCurseThirdAspectIndex;
 
             CursedTypes curseToAdd;
             int rand = Random.Range(0, 6);

@@ -81,7 +81,7 @@ public class PlayerMovement : NetworkBehaviour {
         fallingVelocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
         source.PlayOneShot(jumpClip[Random.Range(0, jumpClip.Length)]);
 
-        playerAnimator.SetTrigger("Jump");
+        playerAnimator.SetBool("Jump", true);
     }
 
     public bool TiredState() {

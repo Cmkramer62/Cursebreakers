@@ -8,10 +8,11 @@ using Unity.Netcode;
 public class CurseGameManager : NetworkBehaviour {
     
     //public NetworkVariable<List<GameObject>> spawnPoints = new NetworkVariable<List<GameObject>>();
-    [HideInInspector] public List<GameObject> spawnPoints = new List<GameObject>();
+    public List<GameObject> spawnPoints = new List<GameObject>();
     public GameObject[] cursedObjectPrefabs;
-    public int oddsSpawnRate = 3, goalCurseIndex, curseSpawnBufferMax = 6, curseSpawnBuffer = 0;
+    public int oddsSpawnRate = 3, curseSpawnBufferMax = 6, curseSpawnBuffer = 0;
 
+    public NetworkVariable<int> goalCurseIndex, latestFalseCurseIndex = new NetworkVariable<int>(-1);
     public NetworkVariable<ulong> goalCurseTrackedID = new NetworkVariable<ulong>();
     public GameObject goalCurse;
 
@@ -29,7 +30,6 @@ public class CurseGameManager : NetworkBehaviour {
 
     private void OnClientConnected(ulong clientId) {
         var playerObj = NetworkManager.Singleton.ConnectedClients[clientId].PlayerObject;
-
         // Now you have the player's NetworkObject
     }
 
@@ -41,10 +41,10 @@ public class CurseGameManager : NetworkBehaviour {
         foreach(GameObject obj in GameObject.FindGameObjectsWithTag("CurseSpawn")) {
             spawnPoints.Add(obj);
         }
-        goalCurseIndex = Random.Range(0, spawnPoints.Count);
+        goalCurseIndex.Value = Random.Range(0, spawnPoints.Count);
 
         // goal curse section. goalCurseIndex used to be 'i'
-        goalCurse = GameObject.Instantiate(cursedObjectPrefabs[Random.Range(0, cursedObjectPrefabs.Length)], spawnPoints[goalCurseIndex].transform);
+        goalCurse = GameObject.Instantiate(cursedObjectPrefabs[Random.Range(0, cursedObjectPrefabs.Length)], spawnPoints[goalCurseIndex.Value].transform);
         goalCurse.GetComponent<NetworkObject>().Spawn();
 
         goalCurse.GetComponentInChildren<CursedObject>().toolControllerScript = GetComponent<ToolController>();
@@ -57,19 +57,26 @@ public class CurseGameManager : NetworkBehaviour {
         ApplyCursedAura(); // Second curse reveal.
         ApplyCursedEnvironment(); // Third curse reveal.
 
-        RemovePropItem(goalCurseIndex);
+       // RemovePropItem(goalCurseIndex);
         for (int i = 0; i < spawnPoints.Count; i++) {
-            if(i != goalCurseIndex) {
+            if(i != goalCurseIndex.Value) {
                 if(curseSpawnBuffer >= curseSpawnBufferMax) {
                     if(Random.Range(0, oddsSpawnRate) == 0) {
                         GameObject newCurse = GameObject.Instantiate(cursedObjectPrefabs[Random.Range(0, cursedObjectPrefabs.Length)], spawnPoints[i].transform);
+                        Debug.Log("--Spawned in new non-goal curse: " + newCurse.name);
                         newCurse.GetComponent<NetworkObject>().Spawn();
+                        Debug.Log("--Spawn in new non-goal curse.");
 
                         newCurse.GetComponentInChildren<CursedObject>().toolControllerScript = GetComponent<ToolController>();
+                        newCurse.GetComponentInChildren<CursedObject>().curseGameManager = this;
                         newCurse.GetComponentInChildren<CursedObject>().SetRandomCurses();
+                        Debug.Log("--Spawn in new non-goal curse.");
+
                         // set random number of curses
                         curseSpawnBuffer = 0;
-                        RemovePropItem(i);
+                        Debug.Log("--About to call remove with: " + i);
+                        latestFalseCurseIndex.Value = i;
+                     //   RemovePropItem(i);
                     }
                 }
                 else curseSpawnBuffer++;
@@ -81,7 +88,7 @@ public class CurseGameManager : NetworkBehaviour {
         var goalCurseSpecific = goalCurse.GetComponentInChildren<CursedObject>().cursesList[1];
         
         //enviroParticles[0].SetActive(goalCurseSpecific == CursedObject.CursedTypes.Glowing);
-        ///enviroParticles[1].SetActive(goalCurseSpecific == CursedObject.CursedTypes.EMF);
+        //enviroParticles[1].SetActive(goalCurseSpecific == CursedObject.CursedTypes.EMF);
         //enviroParticles[2].SetActive(goalCurseSpecific == CursedObject.CursedTypes.Aura);
         //enviroParticles[3].SetActive(goalCurseSpecific == CursedObject.CursedTypes.Thermo);
         //enviroParticles[4].SetActive(goalCurseSpecific == CursedObject.CursedTypes.Unholy);
@@ -115,16 +122,6 @@ public class CurseGameManager : NetworkBehaviour {
         //ghostRandomizer.RandomizeGhost();
     }
 
-    private void RemovePropItem(int i) {
-        if(spawnPoints[i].transform.gameObject.name == "Spawnpoint A1") {
-            spawnPoints[i].transform.parent.transform.Find("Item A1").gameObject.SetActive(false);
-        }
-        else if(spawnPoints[i].transform.gameObject.name == "Spawnpoint A2") {
-            spawnPoints[i].transform.parent.transform.Find("Item A2").gameObject.SetActive(false);
-        }
-        else if(spawnPoints[i].transform.gameObject.name == "Spawnpoint A3") {
-            spawnPoints[i].transform.parent.transform.Find("Item A3").gameObject.SetActive(false);
-        }
-    }
+    
     
 }
