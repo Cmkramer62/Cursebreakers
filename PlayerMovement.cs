@@ -18,7 +18,7 @@ public class PlayerMovement : NetworkBehaviour {
     public float crouchHeight = -0.696f, currentHeight = 0f;
 
     [SerializeField]
-    private bool shouldBeSlowed = false, isTired = false;
+    private bool shouldBeSlowed = false, isTired = false, sliding = false;
     public bool allowedToMove = true, allowedToCrouch = true, isSprinting = false, isCrouched = false, isHiding = false;
 
     [SerializeField]
@@ -115,35 +115,25 @@ public class PlayerMovement : NetworkBehaviour {
         playerAnimator.SetFloat("Vertical", vert);
         playerAnimator.SetFloat("Horizontal", horiz);
 
-        // Debug.Log(Input.GetAxis("Horizontal") + " = " + Input.GetAxis("Vertical"));
-
-
         if(inputVector.magnitude > 1) {
             inputVector.Normalize();
-           
         }
-        //playerAnimator.SetFloat("InputMagnitude", inputVector.magnitude);
 
-        if(inputVector.magnitude == 0) {
-            if(Random.Range(0, 0) == 0) playerAnimator.SetBool("IsStopRU", true);
-            else playerAnimator.SetBool("IsStopLU", true);
-        }
-        else {
-            playerAnimator.SetBool("IsStopRU", false);
-            playerAnimator.SetBool("IsStopLU", false);
-        }
         playerAnimator.SetBool("Walking", horiz != 0 || vert != 0);
         if(allowedToMove)
             controller.Move(inputVector * sprintActualMultiplier * speed * Time.deltaTime);
-
 
         // CROUCH Section
         //cachedTransform.localScale = new Vector3(originalScale.x, Mathf.Clamp(currentHeight -= (isCrouched ? 2f : -2f) * Time.deltaTime, crouchHeight, originalScale.y), originalScale.z);
         headTransform.localPosition = new Vector3(originalHeadHeight.x, Mathf.Clamp(currentHeight -= (isCrouched ? 2f : -2f) * Time.deltaTime, crouchHeight, originalHeadHeight.y), originalHeadHeight.z);
 
-        if(allowedToCrouch && allowedToMove && (Input.GetKeyDown(crouchKey) || Input.GetKeyUp(crouchKey))) {
+        if(allowedToCrouch && allowedToMove && (Input.GetKeyDown(crouchKey) || Input.GetKeyUp(crouchKey)) && !isSprinting) {
             isCrouched = !Input.GetKeyDown(crouchKey);
             Crouch();
+        }
+        else if(!sliding && allowedToCrouch && allowedToMove && (Input.GetKeyDown(crouchKey) || Input.GetKeyUp(crouchKey)) 
+            && isSprinting && groundCheckerScript.isGrounded) {
+            StartCoroutine(SlideRoutine());
         }
 
         // JUMP Section
@@ -207,12 +197,25 @@ public class PlayerMovement : NetworkBehaviour {
         playerAnimator.SetBool("Sprinting", isSprinting);
         playerAnimator.SetBool("Crouching", isCrouched);
 
+        if(sliding) {
+            Vector3 inputVectorSliding = cachedTransform.right * 0 + cachedTransform.forward * 1;
+            controller.Move(inputVectorSliding * 3 * speed * Time.deltaTime);
+        }
+     
     }
 
     private IEnumerator SlideRoutine() {
+        playerAnimator.SetTrigger("Slide");
+        sliding = true;
+
         allowedToCrouch = false;
-        
-        yield return new WaitForSeconds(1f);
+        //allowedToMove = false;
+       
+        yield return new WaitForSeconds(4f);
+        sliding = false;
+        allowedToCrouch = true;
+        //allowedToMove = true;
+
     }
 
 }
