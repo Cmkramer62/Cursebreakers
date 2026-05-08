@@ -17,6 +17,7 @@ public class PlayerHandler : NetworkBehaviour {
     [SerializeField] private SkinnedMeshRenderer[] bodySkinnedRenderers;
     [SerializeField] private MeshRenderer[] bodyMeshRenderers;
     [SerializeField] private Animator animatorRef;
+    [SerializeField] private Flashlight flashlightScript;
 
     public override void OnNetworkSpawn() {
         if(!IsOwner) return;
@@ -43,5 +44,7 @@ public class PlayerHandler : NetworkBehaviour {
         foreach(MeshRenderer meshRenderObj in bodyMeshRenderers) {
             meshRenderObj.enabled = false;
         }
+
+        flashlightScript.raycastScript = cam.GetComponent<InteractRaycast>();
     }
 }

@@ -3,10 +3,11 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using Unity.Netcode;
 
-public class Flashlight : MonoBehaviour {
+public class Flashlight : NetworkBehaviour {
 
-    public bool flashlightState = true;
+    public NetworkVariable<bool> flashlightEnabled = new NetworkVariable<bool>(false);
     public GameObject flashlightObject, flashlightUI, defaultLookPoint;
     public AudioSource source;//, glowingSource;
     public AudioClip turnOnClip, turnOffClip;
@@ -14,58 +15,74 @@ public class Flashlight : MonoBehaviour {
     public CanvasGroup sprintBarCG;
     public Image sprintBar;
     public float sprintDuration, staminaRemaining, sprintRecoveryDec;//, lightBlastVolume = 0.7f;
-    public bool isFlashing, isTired, hideBarWhenFull = false, useSprintBar = true;
+    public bool isTired, hideBarWhenFull = false, useSprintBar = true;
 
     public InteractRaycast raycastScript;
 
     public ParticleSystem geistParticles;
     public Color stamBarUIColor;
+
     [SerializeField] private PlayerHandler playerHandlerScript;
 
-    private void OnEnable() {
+    public override void OnNetworkSpawn() {
         //flashlightUI.SetActive(true);
-    }
 
+        // Subscribe to changes
+        flashlightEnabled.OnValueChanged += OnFlashlightChanged;
+
+        // Apply initial state
+        ApplyFlashlightState(flashlightEnabled.Value);
+
+        gameObject.SetActive(false);
+    }
 
     public void OnDisable() {
         //flashlightUI.SetActive(false);
         if(geistParticles.isPlaying) geistParticles.Stop();
     }
 
-    public void SwapOver() {
-        flashlightState = !flashlightState;
-        flashlightObject.SetActive(flashlightState);
+    private void OnFlashlightChanged(bool oldValue, bool newValue) {
+        ApplyFlashlightState(newValue);
+    }
 
-        if(flashlightState) source.PlayOneShot(turnOnClip);
-        else source.PlayOneShot(turnOffClip);
+    public void ApplyFlashlightState(bool newState) {
+        flashlightEnabled.Value = newState;
+        flashlightObject.SetActive(newState);
+
+        if(flashlightEnabled.Value) {
+            source.PlayOneShot(turnOnClip);
+            geistParticles.Play();
+        }
+        else {
+            source.PlayOneShot(turnOffClip);
+            geistParticles.Stop();
+        }
+    }
+
+    [ServerRpc]
+    private void ToggleFlashlightServerRpc() {
+        Debug.Log("Activate Flashlight.");
+        flashlightEnabled.Value = !flashlightEnabled.Value;
     }
 
     private void Update() {
-        if(!playerHandlerScript.IsOwner) {
-            enabled = false;
+
+        
+        if(!IsOwner) {
             return;
         }
-        if(!isFlashing && Input.GetKeyDown(KeyCode.F) && !isTired) {
-            source.PlayOneShot(turnOffClip);
-        }
-        if(isFlashing && Input.GetKeyUp(KeyCode.F)) {
-            source.PlayOneShot(turnOnClip);
-        }
-        if(Input.GetKeyDown(KeyCode.F) && !isTired) {
-            isFlashing = true;
-        }
-        if(Input.GetKeyUp(KeyCode.F) || isTired) {
-            isFlashing = false;
-        }
 
-        flashlightState = isFlashing;
-        flashlightObject.SetActive(isFlashing);
+        Debug.Log("I AM THE OWNER");
 
-        if(isFlashing && !geistParticles.isPlaying) geistParticles.Play();
-        else if(!isFlashing && geistParticles.isPlaying) geistParticles.Stop();
+        if(Input.GetKeyDown(KeyCode.F)) {
+            Debug.Log("Activate Flashlight2.");
+
+            ToggleFlashlightServerRpc();
+        }
     }
 
     public void GeistLightUIUpdate() {
+        /*
         if(isFlashing && !isTired) {
             staminaRemaining -= 1 * Time.deltaTime;
 
@@ -104,5 +121,6 @@ public class Flashlight : MonoBehaviour {
             //if(hideBarWhenFull && useSprintBar) { sprintBarCG.alpha -= 3 * Time.deltaTime; }
             //if(useSprintBar) sprintBar.color = stamBarUIColor;
         }
+        */
     }
 }
