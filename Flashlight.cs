@@ -60,13 +60,13 @@ public class Flashlight : NetworkBehaviour {
     }
 
     [ServerRpc]
-    private void TurnFlashLightOn() {
+    private void TurnFlashLightOnServerRpc() {
         Debug.Log("Activate Flashlight.");
         flashlightEnabled.Value = true;
     }
 
     [ServerRpc]
-    private void TurnFlashLightOff() {
+    private void TurnFlashLightOffServerRpc() {
         Debug.Log("Deactivate Flashlight.");
         flashlightEnabled.Value = false;
     }
@@ -77,10 +77,10 @@ public class Flashlight : NetworkBehaviour {
         }
 
         if(Input.GetKeyDown(KeyCode.F) && !flashlightEnabled.Value) {
-            TurnFlashLightOn();
+            TurnFlashLightOnServerRpc();
         }
         else if(Input.GetKeyUp(KeyCode.F) && flashlightEnabled.Value) {
-            TurnFlashLightOff();
+            TurnFlashLightOffServerRpc();
         }
     }
 
