@@ -62,7 +62,7 @@ public class ToolController : NetworkBehaviour {
         else if(!cycleCooldown && masterAllowed && allowedToCycle && Input.GetKeyDown(KeyCode.Alpha7)) CycleToServerRpc(6);
         else if(!cycleCooldown && masterAllowed && allowedToCycle && Input.GetKeyDown(KeyCode.Alpha8)) CycleToServerRpc(7);
 
-        geistLightScript.GeistLightUIUpdate();
+        //geistLightScript.GeistLightUIUpdate();
         cameraScript.CameraUIUpdate();
         thermometerScript.ThermometerStatusAndUIUpdate();
     }

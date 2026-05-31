@@ -12,19 +12,18 @@ public class Flashlight : NetworkBehaviour {
     public AudioSource source;//, glowingSource;
     public AudioClip turnOnClip, turnOffClip;
 
-    public CanvasGroup sprintBarCG;
-    public Image sprintBar;
     public float sprintDuration, staminaRemaining, sprintRecoveryDec;//, lightBlastVolume = 0.7f;
-    public bool isTired, hideBarWhenFull = false, useSprintBar = true;
+    public bool isTired, isFlashing = false;
 
     public InteractRaycast raycastScript;
 
     public ParticleSystem geistParticles;
-    public Color stamBarUIColor;
 
     [SerializeField] private PlayerHandler playerHandlerScript;
 
     public override void OnNetworkSpawn() {
+        if(!IsOwner) return;
+
         //flashlightUI.SetActive(true);
 
         // Subscribe to changes
@@ -33,20 +32,28 @@ public class Flashlight : NetworkBehaviour {
         // Apply initial state
         ApplyFlashlightState(flashlightEnabled.Value);
 
+        // Pass this self to the client-side UI Manager so it can handle the UI of this.
+        UIManager.Instance.RegisterPlayer(this);
+        
         gameObject.SetActive(false);
+
+
     }
 
     public void OnDisable() {
+        if(!IsOwner) return;
+
         //flashlightUI.SetActive(false);
         if(geistParticles.isPlaying) geistParticles.Stop();
     }
 
-    private void OnFlashlightChanged(bool oldValue, bool newValue) {
+    public void OnFlashlightChanged(bool oldValue, bool newValue) {
         ApplyFlashlightState(newValue);
     }
 
     public void ApplyFlashlightState(bool newState) {
         flashlightEnabled.Value = newState;
+        isFlashing = flashlightEnabled.Value;
         flashlightObject.SetActive(newState);
 
         if(flashlightEnabled.Value) {
@@ -84,46 +91,5 @@ public class Flashlight : NetworkBehaviour {
         }
     }
 
-    public void GeistLightUIUpdate() {
-        /*
-        if(isFlashing && !isTired) {
-            staminaRemaining -= 1 * Time.deltaTime;
-
-            if(raycastScript.curseScript != null && raycastScript.curseScript.charge <= 100f) {
-                raycastScript.curseScript.charge += 40 * Time.deltaTime;
-                gameObject.GetComponent<LookAtWithDelay>().targetObject = raycastScript.curseScript.transform;
-                gameObject.GetComponent<LookAtWithDelay>().working = true;
-            }
-            if(raycastScript.curseScript != null && raycastScript.curseScript.charge >= 100f && raycastScript.curseScript.geistLight.intensity == 0) {
-                raycastScript.curseScript.DisplayCurse(CursedObject.CursedTypes.Glowing, true);
-
-            }
-        }
-
-        if(isFlashing && !isTired) {
-            staminaRemaining -= 1 * Time.deltaTime;
-            if(hideBarWhenFull && useSprintBar) { sprintBarCG.alpha += 5 * Time.deltaTime; }
-
-        }
-        else {
-            staminaRemaining = Mathf.Clamp(staminaRemaining += sprintRecoveryDec * Time.deltaTime, 0, sprintDuration);
-            gameObject.GetComponent<LookAtWithDelay>().targetObject = defaultLookPoint.transform; //.working = false;
-        }
-
-        float sprintRemainingPercent = staminaRemaining / sprintDuration;
-        //if(useSprintBar) sprintBar.rectTransform.sizeDelta = new Vector2(sprintRemainingPercent * 175, sprintBar.rectTransform.sizeDelta.y);//sprintBar.transform.localScale = new Vector3(sprintRemainingPercent, 1f, 1f);
-
-        if(staminaRemaining <= 0) {
-            isTired = true;
-            //sprintBar.color = Color.red;
-            source.PlayOneShot(turnOnClip);
-
-        }
-        if(staminaRemaining == sprintDuration) {
-            isTired = false;
-            //if(hideBarWhenFull && useSprintBar) { sprintBarCG.alpha -= 3 * Time.deltaTime; }
-            //if(useSprintBar) sprintBar.color = stamBarUIColor;
-        }
-        */
-    }
+   
 }
