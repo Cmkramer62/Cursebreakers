@@ -22,7 +22,6 @@ public class Flashlight : NetworkBehaviour {
     [SerializeField] private PlayerHandler playerHandlerScript;
 
     public override void OnNetworkSpawn() {
-        if(!IsOwner) return;
 
         //flashlightUI.SetActive(true);
 
@@ -31,14 +30,16 @@ public class Flashlight : NetworkBehaviour {
 
         // Apply initial state
         ApplyFlashlightState(flashlightEnabled.Value);
-
-        // Pass this self to the client-side UI Manager so it can handle the UI of this.
-        UIManager.Instance.RegisterPlayer(this);
+        
         
         gameObject.SetActive(false);
 
-
+        if(!IsOwner) return;
+        // Pass this self to the client-side UI Manager so it can handle the UI of this.
+        UIManager.Instance.RegisterPlayer(this);
     }
+
+
 
     public void OnDisable() {
         if(!IsOwner) return;

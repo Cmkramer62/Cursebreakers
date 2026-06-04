@@ -51,7 +51,8 @@ public class UIManager : MonoBehaviour {
     }
     
     public void GeistLightUIUpdate() {
-        
+        geistlightUICanvasGroup.gameObject.SetActive(geistlightReference.gameObject.activeInHierarchy);
+
         if(geistlightReference.isFlashing && !geistlightReference.isTired) {
             geistlightReference.staminaRemaining -= 1 * Time.deltaTime;
 
