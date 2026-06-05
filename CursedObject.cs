@@ -119,15 +119,21 @@ public class CursedObject : MonoBehaviour {
         }
     }
 
+    // Will this trigger for my tool controller if another player triggers this?
     private void OnTriggerEnter(Collider other) {
-        if(other.name == "Player") {
+        if(other.name.Contains("Player")) {
+            toolControllerScript = other.GetComponent<ToolController>();
             toolControllerScript.objectsList.Add(this);
 
             //if(cursesList.Contains(CursedTypes.Thermo)) {
             //    toolControllerScript.defaultTemp = temperature;
             //}
+
             if(cursesList.Contains(CursedTypes.EMF)) {
-                toolControllerScript.defaultEMF = emfLevel;
+                toolControllerScript.defaultEMF.Value = emfLevel;
+            }
+            else if(toolControllerScript.defaultEMF.Value != 7) {
+                toolControllerScript.defaultEMF.Value = Random.Range(0, 6);
             }
         }
     }
@@ -145,16 +151,22 @@ public class CursedObject : MonoBehaviour {
 
     }
 
-
+    // Will this trigger for my tool controller if another player triggers this?
     private void OnTriggerExit(Collider other) {
-        if(other.name == "Player") {
+        if(other.name.Contains("Player")) {
             toolControllerScript.objectsList.Remove(this); //flawed. What if another curse removes itself before
                                                            // we have a chance to for this specific one?
            // if(cursesList.Contains(CursedTypes.Thermo)) {
            //     toolControllerScript.defaultTemp = 60;
            // }
+
+            // If leaving an EMF, set value to 0.
             if(cursesList.Contains(CursedTypes.EMF)) {
-                toolControllerScript.defaultEMF = 0;
+                toolControllerScript.defaultEMF.Value = 0;
+            }
+            // If this isn't an EMF and they're not currently in a real EMF, set value to 0;
+            else if(toolControllerScript.defaultEMF.Value != 7) {
+                toolControllerScript.defaultEMF.Value = 0;
             }
         }
     }

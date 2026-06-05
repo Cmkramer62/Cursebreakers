@@ -4,6 +4,11 @@ using UnityEngine;
 using Unity.Netcode;
 using Unity.Netcode.Components;
 
+/*
+ * ToolController acts as both owner-only input for selecting tools and
+ * a synchronized manager of various tool variables.
+ * This exists on each player themself. (4 in total if across 2 players/systems).
+ */
 public class ToolController : NetworkBehaviour {
 
     public bool cycleCooldown = false, masterAllowed = true;
@@ -17,7 +22,7 @@ public class ToolController : NetworkBehaviour {
     public AudioClip swapClip;
 
     public List<CursedObject> objectsList = new List<CursedObject>();
-    public int defaultEMF = 0, defaultTemp = 60;
+    public NetworkVariable<int> defaultEMF = new NetworkVariable<int>(0), defaultTemp = new NetworkVariable<int>(60);
 
     public Flashlight geistLightScript;
     public CameraFlash cameraScript;
@@ -184,8 +189,9 @@ public class ToolController : NetworkBehaviour {
             //}
         }
 
-        if(distTemp != -99) playerItemMeshes[5].GetComponent<Thermometer>().goalTemp = distTemp;
-        else playerItemMeshes[5].GetComponent<Thermometer>().goalTemp = defaultTemp;
+        // Uncomment this, when reimplementing thermometer!
+        //if(distTemp != -99) playerItemMeshes[5].GetComponent<Thermometer>().goalTemp = distTemp;
+       // else playerItemMeshes[5].GetComponent<Thermometer>().goalTemp = defaultTemp;
     }
 
     private void UpdateEMF() {
