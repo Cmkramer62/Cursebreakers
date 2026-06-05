@@ -19,6 +19,10 @@ public class PlayerHandler : NetworkBehaviour {
     [SerializeField] private Animator animatorRef;
     [SerializeField] private Flashlight flashlightScript;
 
+    // Both the toolbelt and the main camera script need to match the camera's rotation. Tools for the obv.
+    // Camera for the reason of mimicing the position of the cam's sphere child.
+    [SerializeField] private MatchRotation rotationMatchingScriptCamhead, rotationMatchingScriptToolbelt;
+
     public override void OnNetworkSpawn() {
         if(!IsOwner) return;
 
@@ -30,6 +34,9 @@ public class PlayerHandler : NetworkBehaviour {
         cam.transform.GetChild(3).GetComponent<HeadBob>().playerMovement = playerMovementScript;
         cam.GetComponent<MouseLook>().playerBody = playerMovementScript.transform.parent;
         cam.GetComponent<MouseLook>().cameraAnimator = animatorRef;
+
+        rotationMatchingScriptCamhead.goFollow = cam.gameObject;
+        rotationMatchingScriptToolbelt.goFollow = cam.gameObject;
 
         if(ghostScript != null) {
             playerMovementScript.enemyVisionScript = ghostScript.GetComponent<ConeLOSDetector>();
