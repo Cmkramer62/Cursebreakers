@@ -22,7 +22,8 @@ public class ToolController : NetworkBehaviour {
     public AudioClip swapClip;
 
     public List<CursedObject> objectsList = new List<CursedObject>();
-    public NetworkVariable<int> defaultEMF = new NetworkVariable<int>(0), defaultTemp = new NetworkVariable<int>(60);
+    public NetworkVariable<int> defaultEMF = new NetworkVariable<int>(0), 
+        defaultTemp = new NetworkVariable<int>(60);
 
     public Flashlight geistLightScript;
     public CameraFlash cameraScript;
