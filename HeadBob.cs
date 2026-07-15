@@ -28,7 +28,7 @@ public class HeadBob : MonoBehaviour {
 
     private void OnEnable() {
         if(!alwaysBeMine && playerHandlerScript == null) {
-            playerHandlerScript.transform.parent.parent.parent.parent.GetComponent<NetworkObject>();
+            playerHandlerScript = transform.parent.parent.parent.parent.GetComponent<NetworkObject>();
         }
 
         if(!alwaysBeMine && !playerHandlerScript.IsOwner) {
