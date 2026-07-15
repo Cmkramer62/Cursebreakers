@@ -203,7 +203,7 @@ public class ToolController : NetworkBehaviour {
         bool anyActive = false;
         //if(playerItemMeshes[6].activeSelf) {
         foreach(CursedObject curse in objectsList) {
-            if(curse.cursesList.Contains(CursedObject.CursedTypes.Unholy)) {
+            if(curse.cursesList.Contains((int)CursedObject.CursedTypes.Unholy)) {
                 playerItemMeshes[6].GetComponent<HolyWater>().TurnSteam(true);
                 anyActive = true;
             }

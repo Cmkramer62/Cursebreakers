@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Animations;
+using Unity.Netcode;
 
-public class CursedObject : MonoBehaviour {
+public class CursedObject : NetworkBehaviour {
 
+    // How do I make the below a synchronized thing? Data type is not normal.
     public enum CursedTypes { Glowing, EMF, Aura, Thermo, Unholy, Sound}
-    public List<CursedTypes> cursesList;
+    public NetworkList<int> cursesList = new NetworkList<int>();
 
     public GameObject distortion;
     public Light geistLight;
@@ -75,8 +77,8 @@ public class CursedObject : MonoBehaviour {
             else if(rand == 4) curseToAdd = CursedTypes.Unholy;
             else curseToAdd = CursedTypes.Sound;
 
-            if(!cursesList.Contains(curseToAdd)) {
-                cursesList.Add(curseToAdd);
+            if(!cursesList.Contains((int)curseToAdd)) {
+                cursesList.Add((int)curseToAdd);
                 //Debug.Log("Goal Curse: " + curseToAdd.ToString());
                 index.Add(rand);
             }
@@ -111,8 +113,8 @@ public class CursedObject : MonoBehaviour {
             else if(rand == 4) curseToAdd = CursedTypes.Unholy;
             else curseToAdd = CursedTypes.Sound;
 
-            if(!cursesList.Contains(curseToAdd)) {
-                cursesList.Add(curseToAdd);
+            if(!cursesList.Contains((int)curseToAdd)) {
+                cursesList.Add((int)curseToAdd);
             }
             SetRandomCurses();
             
@@ -129,7 +131,7 @@ public class CursedObject : MonoBehaviour {
             //    toolControllerScript.defaultTemp = temperature;
             //}
 
-            if(cursesList.Contains(CursedTypes.EMF)) {
+            if(cursesList.Contains((int)CursedTypes.EMF)) {
                 toolControllerScript.defaultEMF.Value = emfLevel;
             }
             else if(toolControllerScript.defaultEMF.Value != 7) {
@@ -161,7 +163,7 @@ public class CursedObject : MonoBehaviour {
            // }
 
             // If leaving an EMF, set value to 0.
-            if(cursesList.Contains(CursedTypes.EMF)) {
+            if(cursesList.Contains((int)CursedTypes.EMF)) {
                 toolControllerScript.defaultEMF.Value = 0;
             }
             // If this isn't an EMF and they're not currently in a real EMF, set value to 0;
@@ -172,6 +174,7 @@ public class CursedObject : MonoBehaviour {
     }
 
     public void DisplayCurse(CursedTypes type, bool state) {
+        Debug.Log("Displaying curse ");
         bool found = false;
         foreach(CursedTypes curCurse in cursesList) {
             if(type == curCurse) found = true;

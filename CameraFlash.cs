@@ -2,8 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using Unity.Netcode;
 
-public class CameraFlash : MonoBehaviour {
+public class CameraFlash : NetworkBehaviour {
 
     public GameObject lightFlash;
     public AudioSource source;
@@ -13,15 +14,16 @@ public class CameraFlash : MonoBehaviour {
     public float staminaRemaining = 5f, sprintDuration = 5f;
     public Image sprintBar;
     public GameObject cameraUI;
-    [SerializeField] private PlayerHandler playerHandlerScript;
+
+    public override void OnNetworkSpawn() {
+        gameObject.SetActive(false);
+    }
 
     public void OnEnable() {
         //cameraUI.SetActive(true);
-        if(!playerHandlerScript.IsOwner) {
-            enabled = false;
-            return;
-        }
+       
     }
+
     private void OnDisable() {
         lightFlash.SetActive(false);
         //cameraUI.SetActive(false);
@@ -30,15 +32,29 @@ public class CameraFlash : MonoBehaviour {
 
     // Update is called once per frame
     void Update() {
+        if(!IsOwner) return;
+
         if(Input.GetKeyDown(KeyCode.F) && !flashOnCooldown) {
-            StartCoroutine(FlashTimer());
+            TakePictureServerRpc();
+            
             StartCoroutine(Cooldown());
         }
-
-        
     }
 
-    private IEnumerator FlashTimer() {
+    [ServerRpc]
+    void TakePictureServerRpc() {
+        Debug.Log("Server one");
+        TakePictureClientRpc();
+
+    }
+
+    [ClientRpc]
+    void TakePictureClientRpc() {
+        Debug.Log("client one");
+        StartCoroutine(FlashVisualEffects());
+    }
+
+    private IEnumerator FlashVisualEffects() {
         source.PlayOneShot(flashClip);
         staminaRemaining = 0;
 
@@ -59,9 +75,14 @@ public class CameraFlash : MonoBehaviour {
     }
 
     private void TriggerCurse(bool state) {
-        foreach(CursedObject objectee in gameObject.transform.parent.parent.parent.GetComponentInChildren<ToolController>().objectsList) {
+        string temp = "";
+        temp += "curse trig ";
+        foreach(CursedObject objectee in gameObject.transform.parent.parent.parent.GetComponent<ToolController>().objectsList) {
+            temp += (" - ");
             objectee.DisplayCurse(CursedObject.CursedTypes.Aura, state);
         }
+        Debug.Log(temp);
+
     }
 
     private IEnumerator Cooldown() {

@@ -2,8 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
+using Unity.Netcode;
 
-public class Thermometer : MonoBehaviour {
+public class Thermometer : NetworkBehaviour {
 
     //public GameObject[] levelsUI;
     public Animator scannerAnimator;
@@ -17,14 +18,20 @@ public class Thermometer : MonoBehaviour {
     private float temt = 60;
     private Coroutine fluctuationRoutine;
 
+    public override void OnNetworkSpawn() {
+        //toolController.defaultEMF.OnValueChanged += OnScannerChanged;
+        //OnScannerChanged(0, toolController.defaultEMF.Value);
+
+        gameObject.SetActive(false);
+    }
+
     private void OnEnable() {
         allowedToScan = true;
     }
 
     // Start is called before the first frame update
     void Start() {
-        InvokeRepeating("RandomFluctuation", 0, Random.Range(1f, 1.3f));  //in one second, start calling this function, every 2secs
-        //ActivateEffectsEMF(2);
+        if(IsServer) InvokeRepeating("RandomFluctuation", 0, Random.Range(1f, 1.3f));  //in one second, start calling this function, every 2secs
     }
 
     // Update is called once per frame
@@ -59,12 +66,6 @@ public class Thermometer : MonoBehaviour {
 
     private IEnumerator FluctuationActivationTimer() {
         FluctuationAmount();
-        //ActivateEffectsEMF(fakeTemp);
-        //yield return new WaitForSeconds(Random.Range(0f, 1f));
-        //FluctuationAmount();
-        //ActivateEffectsEMF(fakeTemp);
-        //yield return new WaitForSeconds(Random.Range(0f, 1f));
-        //FluctuationAmount();
         ActivateEffectsEMF(fakeTemp);
         yield return new WaitForSeconds(Random.Range(0f, 1f));
         ActivateEffectsEMF(currentTemp);
@@ -85,8 +86,8 @@ public class Thermometer : MonoBehaviour {
         //}
         source.pitch = .8f;
         source.pitch += level / 30f;
-       // Debug.Log(level / 10f);
-       if(gameObject.activeSelf) source.PlayOneShot(beep);
+        // Debug.Log(level / 10f);
+        if(gameObject.activeSelf) source.PlayOneShot(beep);
     }
 
 }

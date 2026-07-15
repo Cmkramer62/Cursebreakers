@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Unity.Netcode;
 
 public class HeadBob : MonoBehaviour {
 
@@ -10,11 +11,11 @@ public class HeadBob : MonoBehaviour {
     [SerializeField]
     private GroundChecker groundChecker;
 
-    [HideInInspector] public PlayerMovement playerMovement;
+    public PlayerMovement playerMovement;
 
     private bool stepped = false;
     private bool isIdle = false;
-    public bool playSounds = true;
+    public bool playSounds = true; // The other player's headbobs are turned off, so this won't work for hearing friends.
 
     private Vector3 objectOrigin;
     public Transform objectParent;
@@ -22,16 +23,21 @@ public class HeadBob : MonoBehaviour {
     private float normalCounter;
     private Vector3 objectBobPosition;
 
-    [SerializeField] private PlayerHandler playerHandlerScript;
+    public bool alwaysBeMine = false; // Should be set to true for the Main Camera's Bob.
+    private NetworkObject playerHandlerScript;
 
-    private void Start() {
-        if(playerHandlerScript != null && !playerHandlerScript.IsOwner) {
+    private void OnEnable() {
+        if(!alwaysBeMine && playerHandlerScript == null) {
+            playerHandlerScript.transform.parent.parent.parent.parent.GetComponent<NetworkObject>();
+        }
+
+        if(!alwaysBeMine && !playerHandlerScript.IsOwner) {
             enabled = false;
             return;
         }
+
         objectOrigin = objectParent.localPosition;
     }
-
 
     private void HeadBobCall(float p_z, float p_x_intensity, float p_y_intesity) {//Headbob for Camera
         objectBobPosition = objectOrigin + new Vector3(Mathf.Cos(p_z) * p_x_intensity, Mathf.Sin(p_z * 2) * p_y_intesity, 0);

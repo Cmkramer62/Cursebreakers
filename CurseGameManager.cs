@@ -47,7 +47,7 @@ public class CurseGameManager : NetworkBehaviour {
         goalCurse = GameObject.Instantiate(cursedObjectPrefabs[Random.Range(0, cursedObjectPrefabs.Length)], spawnPoints[goalCurseIndex.Value].transform);
         goalCurse.GetComponent<NetworkObject>().Spawn();
 
-        goalCurse.GetComponentInChildren<CursedObject>().toolControllerScript = GetComponent<ToolController>();
+        //goalCurse.GetComponentInChildren<CursedObject>().toolControllerScript = GetComponent<ToolController>();
         goalCurse.GetComponentInChildren<CursedObject>().SetRandomGoal(); // set the curses to be a random 3.
 
         goalCurseTrackedID.Value = goalCurse.GetComponent<NetworkObject>().NetworkObjectId;
@@ -98,20 +98,20 @@ public class CurseGameManager : NetworkBehaviour {
     
     private void ApplyCursedAura() {
         var goalCurseSpecific = goalCurse.GetComponentInChildren<CursedObject>().cursesList[2];
-        if(goalCurseSpecific == CursedObject.CursedTypes.Glowing) {
+        if(goalCurseSpecific == (int)CursedObject.CursedTypes.Glowing) {
             //ghostGeistParticles.SetActive(true);
             //ghostAnimator.transform.parent.gameObject.GetComponent<Enemy>().geistAura = true;
         }
-        else if(goalCurseSpecific == CursedObject.CursedTypes.EMF) {
+        else if(goalCurseSpecific == (int)CursedObject.CursedTypes.EMF) {
             //ghostAnimator.runtimeAnimatorController = floatingController;
         }
-        else if(goalCurseSpecific == CursedObject.CursedTypes.Aura) {
+        else if(goalCurseSpecific == (int)CursedObject.CursedTypes.Aura) {
             //ghostRandomizer.overrideEyes = true;
         }
-        else if(goalCurseSpecific == CursedObject.CursedTypes.Thermo) {
+        else if(goalCurseSpecific == (int)CursedObject.CursedTypes.Thermo) {
             //ghostAnimator.transform.parent.gameObject.GetComponent<Enemy>().freezingAura = true;
         }
-        else if(goalCurseSpecific == CursedObject.CursedTypes.Unholy) {
+        else if(goalCurseSpecific == (int)CursedObject.CursedTypes.Unholy) {
             //foreach(GameObject horns in ghostHorns) {
             //    horns.SetActive(true);
             //}
