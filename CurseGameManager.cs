@@ -4,11 +4,11 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using Unity.Netcode;
+using System;
 
 public class CurseGameManager : NetworkBehaviour {
-    
+
     //public NetworkVariable<List<GameObject>> spawnPoints = new NetworkVariable<List<GameObject>>();
-    public List<GameObject> spawnPoints = new List<GameObject>();
     public GameObject[] cursedObjectPrefabs;
     public int oddsSpawnRate = 3, curseSpawnBufferMax = 6, curseSpawnBuffer = 0;
 
@@ -27,6 +27,7 @@ public class CurseGameManager : NetworkBehaviour {
 
     public int timeSpent = 0, livesLeft = 3, timeSpotted = 0, longestChase = 0, purifyState = 0;
 
+    private CurseGameManagerClient curseManagerClientScript;
 
     private void OnClientConnected(ulong clientId) {
         var playerObj = NetworkManager.Singleton.ConnectedClients[clientId].PlayerObject;
@@ -34,17 +35,17 @@ public class CurseGameManager : NetworkBehaviour {
     }
 
     public override void OnNetworkSpawn() {
+        // spawnPoints = GameObject.FindGameObjectsWithTag("CurseSpawn");
+        curseManagerClientScript = GameObject.Find("Client Curse Game Manager").GetComponent<CurseGameManagerClient>();
         if(!IsServer) return;
 
         NetworkManager.OnClientConnectedCallback += OnClientConnected;
 
-        foreach(GameObject obj in GameObject.FindGameObjectsWithTag("CurseSpawn")) {
-            spawnPoints.Add(obj);
-        }
-        goalCurseIndex.Value = Random.Range(0, spawnPoints.Count);
+        
+        goalCurseIndex.Value = UnityEngine.Random.Range(0, curseManagerClientScript.spawnPoints.Count);
 
         // goal curse section. goalCurseIndex used to be 'i'
-        goalCurse = GameObject.Instantiate(cursedObjectPrefabs[Random.Range(0, cursedObjectPrefabs.Length)], spawnPoints[goalCurseIndex.Value].transform);
+        goalCurse = GameObject.Instantiate(cursedObjectPrefabs[UnityEngine.Random.Range(0, cursedObjectPrefabs.Length)], curseManagerClientScript.spawnPoints[goalCurseIndex.Value].transform);
         goalCurse.GetComponent<NetworkObject>().Spawn();
 
         //goalCurse.GetComponentInChildren<CursedObject>().toolControllerScript = GetComponent<ToolController>();
@@ -58,11 +59,11 @@ public class CurseGameManager : NetworkBehaviour {
         ApplyCursedEnvironment(); // Third curse reveal.
 
        // RemovePropItem(goalCurseIndex);
-        for (int i = 0; i < spawnPoints.Count; i++) {
+        for (int i = 0; i < curseManagerClientScript.spawnPoints.Count; i++) {
             if(i != goalCurseIndex.Value) {
                 if(curseSpawnBuffer >= curseSpawnBufferMax) {
-                    if(Random.Range(0, oddsSpawnRate) == 0) {
-                        GameObject newCurse = GameObject.Instantiate(cursedObjectPrefabs[Random.Range(0, cursedObjectPrefabs.Length)], spawnPoints[i].transform);
+                    if(UnityEngine.Random.Range(0, oddsSpawnRate) == 0) {
+                        GameObject newCurse = GameObject.Instantiate(cursedObjectPrefabs[UnityEngine.Random.Range(0, cursedObjectPrefabs.Length)], curseManagerClientScript.spawnPoints[i].transform);
                         Debug.Log("--Spawned in new non-goal curse: " + newCurse.name);
                         newCurse.GetComponent<NetworkObject>().Spawn();
                         Debug.Log("--Spawn in new non-goal curse.");

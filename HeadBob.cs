@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using Unity.Netcode;
 
-public class HeadBob : MonoBehaviour {
+public class HeadBob : NetworkBehaviour {
 
     public float sprintingIntensity = 8.8f, walkingIntensity = 6f, idleIntensity = .6f;
     public float sprintDepth = .4f, walkingDepth = .1f, idleDepth = .025f;
@@ -16,6 +16,7 @@ public class HeadBob : MonoBehaviour {
     private bool stepped = false;
     private bool isIdle = false;
     public bool playSounds = true; // The other player's headbobs are turned off, so this won't work for hearing friends.
+    // To fix, don't turn off object. Recieve input for if(Input.Key) differently in Update().
 
     private Vector3 objectOrigin;
     public Transform objectParent;
@@ -24,14 +25,9 @@ public class HeadBob : MonoBehaviour {
     private Vector3 objectBobPosition;
 
     public bool alwaysBeMine = false; // Should be set to true for the Main Camera's Bob.
-    private NetworkObject playerHandlerScript;
 
-    private void OnEnable() {
-        if(!alwaysBeMine && playerHandlerScript == null) {
-            playerHandlerScript = transform.parent.parent.parent.parent.GetComponent<NetworkObject>();
-        }
-
-        if(!alwaysBeMine && !playerHandlerScript.IsOwner) {
+    public override void OnNetworkSpawn() {
+        if(!alwaysBeMine && !IsOwner) {
             enabled = false;
             return;
         }

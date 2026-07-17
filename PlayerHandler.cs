@@ -24,7 +24,11 @@ public class PlayerHandler : NetworkBehaviour {
     [SerializeField] private MatchRotation rotationMatchingScriptCamhead, rotationMatchingScriptToolbelt;
 
     public override void OnNetworkSpawn() {
-        if(!IsOwner) return;
+        if(!IsOwner) {
+            rotationMatchingScriptCamhead.enabled = false;
+            rotationMatchingScriptToolbelt.enabled = false;
+            return;
+        }
 
         ghostScript = GameObject.FindAnyObjectByType<Enemy>();
 
