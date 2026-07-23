@@ -8,7 +8,7 @@ public class Bell : NetworkBehaviour {
     public AudioSource source;
     public AudioClip ringClip;
 
-    public bool bellOnCooldown = false;
+    private bool bellOnCooldown = false;
 
     public Animator bellAnimator;
 
@@ -16,24 +16,25 @@ public class Bell : NetworkBehaviour {
     public bool ghostSearchWithSound = false;
     public int ghostSoundOdds = 3;
 
-    public NetworkVariable<bool> bellTriggered = new NetworkVariable<bool>();
-
     public override void OnNetworkSpawn() {
-        bellTriggered.OnValueChanged += OnBellTriggered;
+        try {
+            ghostScript = GameObject.Find("Ghost Enemy").GetComponent<Enemy>();
+        }
+        catch(System.Exception e) {
+            // Don't care.
+        }
+        gameObject.SetActive(false);
+
     }
 
-    public override void OnNetworkDespawn() {
-        bellTriggered.OnValueChanged -= OnBellTriggered;
-    }
-
-    void Start() {
-        ghostScript = GameObject.Find("Ghost Enemy").GetComponent<Enemy>();
+    private void OnDisable() {
+        bellOnCooldown = false;
     }
 
     void Update() {
         if(!IsOwner) return;
 
-        if(Input.GetKeyUp(KeyCode.F)) {
+        if(Input.GetKeyDown(KeyCode.F)) {
             RingBellServerRpc();
         }
     }
@@ -41,32 +42,30 @@ public class Bell : NetworkBehaviour {
     [ServerRpc]
     void RingBellServerRpc() {
         if(bellOnCooldown) return;
-        
         bellOnCooldown = true;
-        
-        bellTriggered.Value = !bellTriggered.Value; // Setting RPC value
-        
-        TriggerCurse(true); // state here is not used. This may be wrong, depending on how ghost is synced.
-        
+        StartCoroutine(BellCooldownTimer());
+
+        // Local visual & audio effects
+        RingBellClientRpc();
+
+        // Ghost effects
         if(ghostScript != null && ghostSearchWithSound && !ghostScript.invisible)
             ghostScript.walkPoint = gameObject.transform.parent.parent.parent.transform.GetChild(1).transform.position;
-
-        StartCoroutine(BellCooldownTimer());
     }
 
-    void OnBellTriggered(bool oldValue, bool newValue) {
+    [ClientRpc]
+    void RingBellClientRpc() {
+        // Local visual & audio effects
         bellAnimator.Play("BellRing");
-
         source.pitch = Random.Range(.95f, 1.1f);
         source.PlayOneShot(ringClip);
+
+        // Cursed Object effects
+        TriggerCurse(true); // state here is not used. This may be wrong, depending on how ghost is synced.
     }
 
     private IEnumerator BellCooldownTimer() {
         yield return new WaitForSeconds(2f);
-        bellOnCooldown = false;
-    }
-
-    private void OnDisable() {
         bellOnCooldown = false;
     }
 

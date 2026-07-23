@@ -16,7 +16,7 @@ public class CursedObject : NetworkBehaviour {
     public ParticleSystem geistLightParticles;
     public int emfLevel = 7, temperature = -20;
 
-    public ToolController toolControllerScript;
+   // public ToolController toolControllerScript;
     public List<int> index;
     private Coroutine lightRoutine;
     public float charge = 0f, defaultMinLight = 0f, defaultMaxLight = 0.1f;
@@ -124,19 +124,35 @@ public class CursedObject : NetworkBehaviour {
     // Will this trigger for my tool controller if another player triggers this?
     private void OnTriggerEnter(Collider other) {
         if(other.name.Contains("Player")) {
-            toolControllerScript = other.GetComponent<ToolController>();
+            var toolControllerScript = other.GetComponent<ToolController>();
             toolControllerScript.objectsList.Add(this);
 
-            //if(cursesList.Contains(CursedTypes.Thermo)) {
-            //    toolControllerScript.defaultTemp = temperature;
-            //}
+            if(toolControllerScript.IsServer) {
+                // EMF Section
+                if(cursesList.Contains((int)CursedTypes.EMF)) {
+                    toolControllerScript.defaultEMF.Value = emfLevel;
+                }
+                else if(toolControllerScript.defaultEMF.Value != 7) {
+                    toolControllerScript.defaultEMF.Value = Random.Range(0, 6);
+                }
 
-            if(cursesList.Contains((int)CursedTypes.EMF)) {
-                toolControllerScript.defaultEMF.Value = emfLevel;
+                // Thermometer Section
+                //if(cursesList.Contains(CursedTypes.Thermo)) {
+                //    toolControllerScript.defaultTemp = temperature;
+                //}
+                if(cursesList.Contains((int)CursedTypes.Thermo)) {
+                    toolControllerScript.defaultTemp.Value = temperature;
+                }
+                else if(toolControllerScript.defaultTemp.Value != -20) {
+                    toolControllerScript.defaultTemp.Value = Random.Range(57, 63);
+                }
+
+                if(cursesList.Contains((int)CursedTypes.Unholy)) {
+                    // Wait random amount of time? Then,
+                    toolControllerScript.CheckHolyWater();
+                }
             }
-            else if(toolControllerScript.defaultEMF.Value != 7) {
-                toolControllerScript.defaultEMF.Value = Random.Range(0, 6);
-            }
+            
         }
     }
 
@@ -156,20 +172,46 @@ public class CursedObject : NetworkBehaviour {
     // Will this trigger for my tool controller if another player triggers this?
     private void OnTriggerExit(Collider other) {
         if(other.name.Contains("Player")) {
+            var toolControllerScript = other.GetComponent<ToolController>();
+
             toolControllerScript.objectsList.Remove(this); //flawed. What if another curse removes itself before
                                                            // we have a chance to for this specific one?
-           // if(cursesList.Contains(CursedTypes.Thermo)) {
-           //     toolControllerScript.defaultTemp = 60;
-           // }
+                                                           // if(cursesList.Contains(CursedTypes.Thermo)) {
+                                                           //     toolControllerScript.defaultTemp = 60;
+                                                           // }
 
-            // If leaving an EMF, set value to 0.
-            if(cursesList.Contains((int)CursedTypes.EMF)) {
-                toolControllerScript.defaultEMF.Value = 0;
+            if(toolControllerScript.IsServer) {
+                // If leaving an EMF, set value to 0.
+                if(cursesList.Contains((int)CursedTypes.EMF)) {
+                    toolControllerScript.defaultEMF.Value = 0;
+                }
+                // If this isn't an EMF and they're not currently in a real EMF, set value to 0;
+                else if(toolControllerScript.defaultEMF.Value != 7) {
+                    toolControllerScript.defaultEMF.Value = 0;
+                }
+
+                // If leaving a Thermo, set value to 60.
+                if(cursesList.Contains((int)CursedTypes.Thermo)) {
+                    toolControllerScript.defaultTemp.Value = 60;
+                    Debug.Log("Left and this curse-" + gameObject.name + " does have EMF");
+                }
+                // If this isn't a Thermo and they're not currently in a real Thermo, set value to 60;
+                else if(toolControllerScript.defaultTemp.Value != -20) {
+                    toolControllerScript.defaultTemp.Value = 60;
+                    Debug.Log("Left and this curse-" + gameObject.name + " does NOT have EMF, and the torch is not -20");
+                }
+                else {
+                    Debug.Log("Left and this curse-" + gameObject.name + " does NOT have EMF, and the torch is -20");
+                }
+
+                if(cursesList.Contains((int)CursedTypes.Unholy)) {
+                    // Wait random amount of time? Then,
+                    toolControllerScript.CheckHolyWater();
+                    Debug.Log("Left and this curse-" + gameObject.name + " does have unholy");
+
+                }
             }
-            // If this isn't an EMF and they're not currently in a real EMF, set value to 0;
-            else if(toolControllerScript.defaultEMF.Value != 7) {
-                toolControllerScript.defaultEMF.Value = 0;
-            }
+
         }
     }
 

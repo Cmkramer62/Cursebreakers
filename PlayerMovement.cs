@@ -10,7 +10,7 @@ public class PlayerMovement : NetworkBehaviour {
     
     public GroundChecker groundCheckerScript;
 
-    public float speed = 12f, staminaRecoveryRate = 1f, staminaDuration = 40f, jumpHeight = 1;
+    public float speed = 12f, staminaRecoveryRate = 1f, staminaDuration = 40f, jumpHeight = 1, slideSpeed = 4f;
 
 
 
@@ -94,9 +94,9 @@ public class PlayerMovement : NetworkBehaviour {
         playerAnimator.SetBool("InAirFromJump", false);
     }
 
-    public bool TiredState() {
-        return isTired;
-    }
+    public bool TiredState() { return isTired; }
+
+    public bool SlidingState() { return sliding; }
 
     public float GetRemainingStam() {
         return transform.parent.GetComponent<PlayerHandler>().stamina.Value / staminaDuration;
@@ -120,14 +120,14 @@ public class PlayerMovement : NetworkBehaviour {
         }
 
         playerAnimator.SetBool("Walking", horiz != 0 || vert != 0);
-        if(allowedToMove)
+        if(!sliding && allowedToMove)
             controller.Move(inputVector * sprintActualMultiplier * speed * Time.deltaTime);
 
         // CROUCH Section
         //cachedTransform.localScale = new Vector3(originalScale.x, Mathf.Clamp(currentHeight -= (isCrouched ? 2f : -2f) * Time.deltaTime, crouchHeight, originalScale.y), originalScale.z);
         headTransform.localPosition = new Vector3(originalHeadHeight.x, Mathf.Clamp(currentHeight -= (isCrouched ? 2f : -2f) * Time.deltaTime, crouchHeight, originalHeadHeight.y), originalHeadHeight.z);
 
-        if(allowedToCrouch && allowedToMove && (Input.GetKeyDown(crouchKey) || Input.GetKeyUp(crouchKey)) && !isSprinting) {
+        if(!sliding && allowedToCrouch && allowedToMove && (Input.GetKeyDown(crouchKey) || Input.GetKeyUp(crouchKey)) && !isSprinting) {
             isCrouched = !Input.GetKeyDown(crouchKey);
             Crouch();
         }
@@ -185,7 +185,7 @@ public class PlayerMovement : NetworkBehaviour {
             if(useSprintBar) sprintBar.color = stamBarUIColor;
         }
         */
-        if((Input.GetKey(KeyCode.W)) && groundCheckerScript.isGrounded && Input.GetKey(KeyCode.LeftShift) && !isTired && allowedToMove && !isCrouched) {
+        if((Input.GetKey(KeyCode.W) && groundCheckerScript.isGrounded && Input.GetKey(KeyCode.LeftShift) && !isTired && allowedToMove && !isCrouched) || sliding) {
             isSprinting = true;
             sprintActualMultiplier = sprintMultiplier;
         }
@@ -199,7 +199,7 @@ public class PlayerMovement : NetworkBehaviour {
 
         if(sliding) {
             Vector3 inputVectorSliding = cachedTransform.right * 0 + cachedTransform.forward * 1;
-            controller.Move(inputVectorSliding * 3 * speed * Time.deltaTime);
+            controller.Move(inputVectorSliding * slideSpeed * speed * Time.deltaTime);
         }
      
     }
@@ -210,9 +210,16 @@ public class PlayerMovement : NetworkBehaviour {
 
         allowedToCrouch = false;
         //allowedToMove = false;
-       
-        yield return new WaitForSeconds(4f);
+        //isCrouched = true;
+
+        Crouch();
+
+        yield return new WaitForSeconds(2f);
         sliding = false;
+        //isCrouched = false;
+
+        Crouch();
+
         allowedToCrouch = true;
         //allowedToMove = true;
 

@@ -36,7 +36,7 @@ public class Flashlight : NetworkBehaviour {
 
         if(!IsOwner) return;
         // Pass this self to the client-side UI Manager so it can handle the UI of this.
-        UIManager.Instance.RegisterPlayer(this);
+        UIManager.Instance.RegisterGeistlight(this);
     }
 
 
@@ -84,10 +84,10 @@ public class Flashlight : NetworkBehaviour {
             return;
         }
 
-        if(Input.GetKeyDown(KeyCode.F) && !flashlightEnabled.Value) {
+        if(Input.GetKeyDown(KeyCode.F) && !isTired && !flashlightEnabled.Value) {
             TurnFlashLightOnServerRpc();
         }
-        else if(Input.GetKeyUp(KeyCode.F) && flashlightEnabled.Value) {
+        else if((Input.GetKeyUp(KeyCode.F) && flashlightEnabled.Value) || (isTired && flashlightEnabled.Value)) { // || isTired && flashlightEnabled.Value
             TurnFlashLightOffServerRpc();
         }
     }

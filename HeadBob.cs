@@ -51,7 +51,7 @@ public class HeadBob : NetworkBehaviour {
     }
 
     private void Update() {
-        if(playerMovement!= null) {
+        if(playerMovement!= null && !playerMovement.SlidingState()) {
             objectParent.localPosition = Vector3.Lerp(objectParent.localPosition, objectBobPosition, Time.deltaTime * 8f);
             if(playerMovement.allowedToMove && playerMovement.isSprinting) { //&& playerMovement.allowedToMove) {
                 HeadBobCall(normalCounter, sprintDepth, sprintDepth);

@@ -48,7 +48,7 @@ public class ToolController : NetworkBehaviour {
 
         InvokeRepeating("UpdateTemp", 0, Random.Range(0.5f, 1));
         InvokeRepeating("UpdateEMF", 0, Random.Range(1, 4));
-        InvokeRepeating("CheckHolyWater", 0, Random.Range(2, 4));
+       // InvokeRepeating("CheckHolyWater", 0, Random.Range(2, 4));
     }
 
     // Update is called once per frame
@@ -70,7 +70,7 @@ public class ToolController : NetworkBehaviour {
 
         //geistLightScript.GeistLightUIUpdate();
         cameraScript.CameraUIUpdate();
-        thermometerScript.ThermometerStatusAndUIUpdate();
+        //thermometerScript.ThermometerStatusAndUIUpdate();
     }
 
     #region Hand Toolbelt Functions
@@ -199,16 +199,18 @@ public class ToolController : NetworkBehaviour {
         //playerItemMeshes[3].GetComponent<Scanner>().levelEMF = defaultEMF;
     }
 
-    private void CheckHolyWater() {
+    public void CheckHolyWater() {
+        //if(!IsOwner) return; We are already doing this where we are calling it.
+        Debug.Log("Checking holy.");
         bool anyActive = false;
-        //if(playerItemMeshes[6].activeSelf) {
-        foreach(CursedObject curse in objectsList) {
-            if(curse.cursesList.Contains((int)CursedObject.CursedTypes.Unholy)) {
-                playerItemMeshes[6].GetComponent<HolyWater>().TurnSteam(true);
-                anyActive = true;
+        if(playerItemMeshes[6].activeSelf) {
+            foreach(CursedObject curse in objectsList) {
+                if(curse.cursesList.Contains((int)CursedObject.CursedTypes.Unholy)) {
+                    playerItemMeshes[6].GetComponent<HolyWater>().active.Value = true; //TurnHolyOnServerRpc();
+                    anyActive = true;
+                }
             }
+            if(!anyActive) playerItemMeshes[6].GetComponent<HolyWater>().active.Value = false;//.TurnHolyOffServerRpc();
         }
-        if(!anyActive) playerItemMeshes[6].GetComponent<HolyWater>().TurnSteam(false);
-        //}
     }
 }

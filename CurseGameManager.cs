@@ -68,7 +68,7 @@ public class CurseGameManager : NetworkBehaviour {
                         newCurse.GetComponent<NetworkObject>().Spawn();
                         Debug.Log("--Spawn in new non-goal curse.");
 
-                        newCurse.GetComponentInChildren<CursedObject>().toolControllerScript = GetComponent<ToolController>();
+                        //newCurse.GetComponentInChildren<CursedObject>().toolControllerScript = GetComponent<ToolController>();
                         newCurse.GetComponentInChildren<CursedObject>().curseGameManager = this;
                         newCurse.GetComponentInChildren<CursedObject>().SetRandomCurses();
                         Debug.Log("--Spawn in new non-goal curse.");

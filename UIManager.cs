@@ -34,7 +34,7 @@ public class UIManager : MonoBehaviour {
      * Register Player is called by the flashlight/player manager upon Network Spawn.
      * It simply registers itself to this client-side script.
      */
-    public void RegisterPlayer(Flashlight geistlight) {
+    public void RegisterGeistlight(Flashlight geistlight) {
         Debug.Log("Registered local player to UI");
 
         // Example hookup
@@ -58,8 +58,8 @@ public class UIManager : MonoBehaviour {
 
             if(geistlightReference.raycastScript.curseScript != null && raycastScript.curseScript.charge <= 100f) {
                 raycastScript.curseScript.charge += 40 * Time.deltaTime;
-                gameObject.GetComponent<LookAtWithDelay>().targetObject = raycastScript.curseScript.transform;
-                gameObject.GetComponent<LookAtWithDelay>().working = true;
+                geistlightReference.GetComponent<LookAtWithDelay>().targetObject = raycastScript.curseScript.transform;
+                geistlightReference.GetComponent<LookAtWithDelay>().working = true;
             }
             if(raycastScript.curseScript != null && raycastScript.curseScript.charge >= 100f && raycastScript.curseScript.geistLight.intensity == 0) {
                 raycastScript.curseScript.DisplayCurse(CursedObject.CursedTypes.Glowing, true);
@@ -74,7 +74,7 @@ public class UIManager : MonoBehaviour {
         }
         else {
             geistlightReference.staminaRemaining = Mathf.Clamp(geistlightReference.staminaRemaining += geistlightReference.sprintRecoveryDec * Time.deltaTime, 0, geistlightReference.sprintDuration);
-            //gameObject.GetComponent<LookAtWithDelay>().targetObject = geistlightReference.defaultLookPoint.transform; //.working = false;
+            geistlightReference.GetComponent<LookAtWithDelay>().targetObject = geistlightReference.defaultLookPoint.transform; //.working = false;
         }
 
         float sprintRemainingPercent = geistlightReference.staminaRemaining / geistlightReference.sprintDuration;
