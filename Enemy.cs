@@ -2,14 +2,20 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
+using Unity.Netcode;
 
-public class Enemy : MonoBehaviour {
+public class Enemy : NetworkBehaviour {
 
     public LayerMask groundLayer, playerLayer;
     public float health, walkPointMin, walkPointRange, timeBetweenAttacks, attackRange, walkSpeed, runSpeed, invisSpeed, chaseMeter = 100f, rotationSpeed = 5f;
-    [SerializeField] private int damage, invisibilityOdds = 3, pauseChance = 4, deAggroCooldown = 10, aggressionCharges = 0;
+
+    public NetworkVariable<int> aggressionCharges = new NetworkVariable<int>(0);
+
+    [SerializeField] private int damage, invisibilityOdds = 3, pauseChance = 4, deAggroCooldown = 10;
     public ParticleSystem hitEffect;
-    public bool invisible = false, freezingAura = false, attractedToSound = false, allowedToMove = true, geistAura = false;
+
+    public NetworkVariable<bool> invisible, freezingAura, attractedToSound, allowedToMove, geistAura = new NetworkVariable<bool>(false);
+
     public SkinnedMeshRenderer[] meshRenderers;
     public GameObject[] horns;
     public ParticleSystem geistlightAura;
@@ -22,7 +28,7 @@ public class Enemy : MonoBehaviour {
     public AudioClip attackClip, chaseMusicClip, normalMusicClip;
     public AudioClip[] screamClips;
 
-    public Death deathScript;
+    //public Death deathScript;
     public Vector3 walkPoint;
     public Animator animator, shadowAnimator;
 
@@ -30,50 +36,94 @@ public class Enemy : MonoBehaviour {
 
     #region private vars
     private NavMeshAgent agent;
-    public Transform playerTransform {get; private set;}
+    public List<GameObject> playerTransform {get; private set;}
     private Transform cachedTransform;
     private bool walkPointSet, alreadyAttacked, takeDamage, waitingForScream = false, pausingPatrolState = false;
     public bool normalAggro = true;
     private ConeLOSDetector coneDetector;
-    private ParticleSystem playersBreath;
+    private List<ParticleSystem> playersBreath;
     private float initSpeed, longestChaseDuration = 0, currentChaseDuration = 0, walkSpeedOG = -1;
-    private ConeLOSDetector playerVision;
+    private List<ConeLOSDetector> playerVision;
     #endregion
 
 
-    private void Awake() {
-        //animator = GetComponent<Animator>();
-        playerTransform = GameObject.Find("Player").transform;
-        playersBreath = playerTransform.GetComponentInChildren<ParticleSystem>();
+    public override void OnNetworkSpawn() {
+
         agent = GetComponent<NavMeshAgent>();
         coneDetector = GetComponent<ConeLOSDetector>();
         agent.updateRotation = false;
-        playerVision = playerTransform.GetChild(1).GetChild(0).GetComponent<ConeLOSDetector>();
         cachedTransform = gameObject.transform;
         walkSpeedOG = walkSpeed;
         InvertVisibility();
+
+        playerTransform = new List<GameObject>(GameObject.FindGameObjectsWithTag("Player")); //GameObject.Find("Player").transform;
+
+        playersBreath = new List<ParticleSystem>();
+        foreach(GameObject player in playerTransform) { playersBreath.Add(player.GetComponentInChildren<ParticleSystem>()); }
+        //playersBreath = playerTransform.GetComponentInChildren<ParticleSystem>();
+
+        playerVision = new List<ConeLOSDetector>();
+        foreach(GameObject player in playerTransform) { playerVision.Add(player.transform.GetChild(1).GetChild(0).GetComponent<ConeLOSDetector>()); }
+        //playerTransform.GetChild(1).GetChild(0).GetComponent<ConeLOSDetector>();
+
+    }
+
+    // Returns the closest player out of all the players, visible or not.
+    public GameObject ClosestPlayer() {
+        return ClosestPlayer(playerTransform);
+    }
+
+    // Returns the closest player out of a subset parameter.
+    private GameObject ClosestPlayer(List<GameObject> targetSubset) {
+        float minDist = 99999;
+        GameObject closestPlayer = targetSubset[0];
+        for(int i = 1; i < targetSubset.Count; i++) {
+            float distanceToTest = Vector3.Distance(targetSubset[i].transform.position, closestPlayer.transform.position);
+            if(distanceToTest < minDist) {
+                minDist = distanceToTest;
+                closestPlayer = targetSubset[i];
+            }
+        }
+
+        return closestPlayer;
+    }
+
+    // Returns the closest player only out of the ones the ghost can see.
+    public GameObject SeenAndClosestPlayer() {
+        // These are the players we see:
+        List<GameObject> playersVisible = new List<GameObject>();
+        // coneDetector.TargetTransforms();
+        foreach(GameObject player in playerTransform) {
+            if(coneDetector.SeeParticularTarget(player.transform)) playersVisible.Add(player);
+        }
+
+        // Now this is the closest from among them:
+        return ClosestPlayer(playersVisible);
     }
 
 
     // Update is called once per frame
     private void Update() {
-        if(allowedToMove) {
-            bool playerSeen = coneDetector.aTargetVisible && !playerTransform.GetComponent<PlayerMovement>().isHiding && normalAggro;// && //!player.GetComponent<PlayerMovement>().isHiding;
+        if(!IsServer) return;
+
+        if(allowedToMove.Value) {
+            var myTarget = SeenAndClosestPlayer();
+            bool playerSeen = coneDetector.aTargetVisible && !myTarget.GetComponent<PlayerMovement>().isHiding && normalAggro;// && //!player.GetComponent<PlayerMovement>().isHiding;
             bool playerInAttackRange = Physics.CheckSphere(cachedTransform.position, attackRange, playerLayer) && normalAggro;
             // If I can't see you and you're not in melee range
             if(!playerSeen && !playerInAttackRange) {
-                if(chaseMeter == 100f || invisible || !normalAggro) {
+                if(chaseMeter == 100f || invisible.Value || !normalAggro) {
                     if(currentMode == Mode.chasing) {
                         AudioController.FadeToAnother(this, musicSource, 4, normalMusicClip, .1f);
                         walkPointSet = false;
-                        aggressionCharges--;
-                        if(aggressionCharges < 0) aggressionCharges = 0;
+                        aggressionCharges.Value--;
+                        if(aggressionCharges.Value < 0) aggressionCharges.Value = 0;
                         Debug.Log("Lowering from escaping a chase.");
                     }
                     ModePatrolling();
                     if(currentChaseDuration > longestChaseDuration) {
                         longestChaseDuration = currentChaseDuration;
-                        deathScript.GetComponent<CurseGameManager>().longestChase = (int)longestChaseDuration;
+                        //deathScript.GetComponent<CurseGameManager>().longestChase = (int)longestChaseDuration;
                         currentChaseDuration = 0f;
                     }
                 }
@@ -88,38 +138,38 @@ public class Enemy : MonoBehaviour {
             }
 
             // If I'm not invis and I see you and you're NOT in melee range
-            else if(normalAggro && !invisible && playerSeen && !playerInAttackRange) {
+            else if(normalAggro && !invisible.Value && playerSeen && !playerInAttackRange) {
                 if(currentMode != Mode.chasing && !waitingForScream) {
                     if(GetComponent<ConeLOSDetector>().visibilityOverride) chaseMeter = 30f;
                     else chaseMeter = 80f;
 
                     // if its not the ritual and I see your back, do silent. else:
-                    if(!GetComponent<ConeLOSDetector>().visibilityOverride && !playerVision.aTargetVisible && cachedTransform.parent.GetComponentInChildren<ToolController>().heldIndex.Value != 1) {
-                        ModeChase();
+                    //if(!GetComponent<ConeLOSDetector>().visibilityOverride && !playerVision.aTargetVisible && cachedTransform.parent.GetComponentInChildren<ToolController>().heldIndex.Value != 1) {
+                    //    ModeChase();
                         // We still want to Fade to chase music if player now turns and sees. Or maybe not necessary.
-                        Debug.Log("Saw you with back turned. ");
-                    }
-                    else {
+                    //    Debug.Log("Saw you with back turned. ");
+                    //}
+                    //else {
                         StartCoroutine(ScreamAnimTimer());
                         AudioController.FadeToAnother(this, musicSource, .3f, chaseMusicClip, .1f);//FadeInAudio(this, chaseClip, 3, .1f);
                         Debug.Log("Saw you when you saw me. ");
 
-                    }
-                    deathScript.GetComponent<CurseGameManager>().timeSpotted++;
+                    //}
+                   // deathScript.GetComponent<CurseGameManager>().timeSpotted++;
 
-                    playerLastSeen.position = playerTransform.position;
+                    playerLastSeen.position = myTarget.transform.position;
                 }
                 else if(currentMode == Mode.chasing) {
                     chaseMeter -= 1f * Time.deltaTime;
                     if(chaseMeter < 0f) chaseMeter = 0f;
-                    playerLastSeen.position = playerTransform.position;
+                    playerLastSeen.position = myTarget.transform.position;
                 }
 
                 if(!waitingForScream) ModeChase();
             }
 
             // If I'm not invis and I see you and you're within melee range //OR if I'm not invis and I can't see you but you ARE in melee range AND hiding
-            else if(normalAggro && ((!invisible && playerInAttackRange && chaseMeter != 100f))) {
+            else if(normalAggro && ((!invisible.Value && playerInAttackRange && chaseMeter != 100f))) {
                 AttackPlayer();
                 StartCoroutine(DeAggroTimer());
             }
@@ -130,7 +180,7 @@ public class Enemy : MonoBehaviour {
             //}
 
             if(waitingForScream) {
-                Vector3 direction = playerTransform.position - cachedTransform.position;
+                Vector3 direction = myTarget.transform.position - cachedTransform.position;
                 direction.y = 0f; // ignore vertical difference
 
                 if(direction.sqrMagnitude < 0.0001f)
@@ -242,28 +292,28 @@ public class Enemy : MonoBehaviour {
                     InvertVisibility();
                 }*/
                 // INVIS -> VISI.... If It's not the purification, AND we're invis, AND the eventCharges are greater than 0, AND we're not close to the player
-                if(!GetComponent<ConeLOSDetector>().visibilityOverride && invisible && aggressionCharges > 0 && Vector3.Distance(playerTransform.position, cachedTransform.position) > walkPointRange * 0.5f) {
+                if(!GetComponent<ConeLOSDetector>().visibilityOverride && invisible.Value && aggressionCharges.Value > 0 && Vector3.Distance(ClosestPlayer().transform.position, cachedTransform.position) > walkPointRange * 0.5f) {
                     //eventCharge--;
                     //if(eventCharge < 0) eventCharge = 0;
                     //Debug.Log("lowering from going Visible.");
                     InvertVisibility();
                     // foreach player withing radius walk point range, flicker their lanterns.
-                    if(Vector3.Distance(playerTransform.position, cachedTransform.position) < walkPointRange) {
-                        playerTransform.GetComponent<PlayerMovement>().lanternReference.StartFlickerPeriod(2f);
+                    if(Vector3.Distance(ClosestPlayer().transform.position, cachedTransform.position) < walkPointRange) {
+                        ClosestPlayer().GetComponent<PlayerMovement>().lanternReference.StartFlickerPeriod(2f);
                     }
                 }
                 // VISI -> INVIS
-                else if(!invisible && !GetComponent<ConeLOSDetector>().visibilityOverride && aggressionCharges <= 0) {
+                else if(!invisible.Value && !GetComponent<ConeLOSDetector>().visibilityOverride && aggressionCharges.Value <= 0) {
                     InvertVisibility();
                 }
                 // else only go VISI -> INVIS when hitting a player
                 //else if(!GetComponent<ConeLOSDetector>().visibilityOverride && invisible && eventCharge > 0) {
 
                 //}
-                else if(!invisible && Random.Range(0, pauseChance) == 0) StartCoroutine(PausingPatrol());
+                else if(!invisible.Value && Random.Range(0, pauseChance) == 0) StartCoroutine(PausingPatrol());
 
-                if(freezingAura && Vector3.Distance(playerTransform.position, cachedTransform.position) < walkPointRange * 1.75f && !playersBreath.isPlaying) playersBreath.Play();
-                else if(freezingAura && Vector3.Distance(playerTransform.position, cachedTransform.position) > walkPointRange * 1.75f && playersBreath.isPlaying) playersBreath.Stop();
+                if(freezingAura.Value && Vector3.Distance(ClosestPlayer().transform.position, cachedTransform.position) < walkPointRange * 1.75f && !ClosestPlayer().GetComponentInChildren<ParticleSystem>().isPlaying) ClosestPlayer().GetComponentInChildren<ParticleSystem>().Play();
+                else if(freezingAura.Value && Vector3.Distance(ClosestPlayer().transform.position, cachedTransform.position) > walkPointRange * 1.75f && ClosestPlayer().GetComponentInChildren<ParticleSystem>().isPlaying) ClosestPlayer().GetComponentInChildren<ParticleSystem>().Stop();
             }
         }
         else {
@@ -294,11 +344,13 @@ public class Enemy : MonoBehaviour {
     }
 
     private void ModeChase() {
+        var currentChasee = SeenAndClosestPlayer();
+
         currentMode = Mode.chasing;
-        if(playerTransform.gameObject.GetComponent<PlayerMovement>().isHiding) agent.SetDestination(playerLastSeen.position);
-        else agent.SetDestination(playerTransform.position);
-        if(playerTransform.gameObject.GetComponent<PlayerMovement>().isHiding) walkPoint = playerLastSeen.position;
-        else walkPoint = playerTransform.position;
+        if(currentChasee.GetComponent<PlayerMovement>().isHiding) agent.SetDestination(playerLastSeen.position);
+        else agent.SetDestination(currentChasee.transform.position);
+        if(currentChasee.gameObject.GetComponent<PlayerMovement>().isHiding) walkPoint = playerLastSeen.position;
+        else walkPoint = currentChasee.transform.position;
         walkPointSet = true;
         // animator.SetFloat("Velocity", 11);
         agent.speed = runSpeed;
@@ -307,12 +359,12 @@ public class Enemy : MonoBehaviour {
     }
 
     public void IncreaseCharges() {
-        aggressionCharges++;
+        aggressionCharges.Value++;
     }
 
     public void InvertVisibility() {
-        invisible = !invisible;
-        if(invisible) {
+        invisible.Value = !invisible.Value;
+        if(invisible.Value) {
             foreach(SkinnedMeshRenderer meshRen in meshRenderers) {
                 meshRen.enabled = false;
             }
@@ -326,10 +378,10 @@ public class Enemy : MonoBehaviour {
         }
         
 
-        if(geistAura && !invisible) geistlightAura.Play();
-        else if(geistAura) geistlightAura.Stop();
-        ambientSource.volume = invisible ? 0 : 1;
-        StartCoroutine(ShadowAnimTimer(invisible));
+        if(geistAura.Value && !invisible.Value) geistlightAura.Play();
+        else if(geistAura.Value) geistlightAura.Stop();
+        ambientSource.volume = invisible.Value ? 0 : 1;
+        StartCoroutine(ShadowAnimTimer(invisible.Value));
     }
 
     private IEnumerator ShadowAnimTimer(bool leave) {
@@ -338,7 +390,7 @@ public class Enemy : MonoBehaviour {
         yield return new WaitForSeconds(1f);
         shadow.SetActive(false);
 
-        if(!invisible) {
+        if(!invisible.Value) {
             foreach(SkinnedMeshRenderer meshRen in meshRenderers) {
                 meshRen.enabled = true;
             }
@@ -347,12 +399,12 @@ public class Enemy : MonoBehaviour {
             }
         }
         yield return new WaitForSeconds(2f);
-        paranormalSounds.SetActive(invisible);
+        paranormalSounds.SetActive(invisible.Value);
     }
 
     // Called by jumpscare to instantly make visible.
     public void MakeVisible() {
-        if(invisible) {
+        if(invisible.Value) {
             foreach(SkinnedMeshRenderer meshRen in meshRenderers) {
                 meshRen.enabled = true;
             }
@@ -366,7 +418,7 @@ public class Enemy : MonoBehaviour {
         agent.SetDestination(cachedTransform.position);
 
         if(!alreadyAttacked) {
-            cachedTransform.LookAt(playerTransform.position);
+            cachedTransform.LookAt(SeenAndClosestPlayer().transform.position);
             alreadyAttacked = true;
             //animator.SetBool("Attack", true);
 
@@ -382,11 +434,11 @@ public class Enemy : MonoBehaviour {
                 monsterSource.pitch = 1;
                 monsterSource.PlayOneShot(attackClip, 0.5f);
                 Debug.Log("Hit");
-                deathScript.LoseLife();
+               // deathScript.LoseLife();
             }
             //InvertVisibility();
-            aggressionCharges--;
-            if(aggressionCharges < 0) aggressionCharges = 0;
+            aggressionCharges.Value--;
+            if(aggressionCharges.Value < 0) aggressionCharges.Value = 0;
             Debug.Log("lowering from attacking a player.");
         }
 

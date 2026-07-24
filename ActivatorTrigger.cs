@@ -50,7 +50,7 @@ public class ActivatorTrigger : MonoBehaviour {
 
     private bool AnyPlayerWithinRange() {
         //return Vector3.Distance(playerReference.position, transform.position) < distToPlayer;
-        playerReferences = ghostScript.GetComponent<ConeLOSDetector>().PlayerTranforms().ToArray();
+        playerReferences = ghostScript.GetComponent<ConeLOSDetector>().TargetTransforms().ToArray();
         foreach(Transform playerTransform in playerReferences) {
             if(Vector3.Distance(playerTransform.position, transform.position) < distToPlayer) return true;
         }

@@ -3,10 +3,10 @@ using System.Collections.Generic;
 
 public class ConeLOSDetector : MonoBehaviour {
 
-    private Transform cachedTransform; // Reference to the player GameObject
-    private List<Transform> targetTransforms; // Reference to the monster GameObject
-    public float fieldOfViewAngle = 90f; // The field of view angle of the monster
-    public int viewDistance = 20; // How far away the player can be without being seen.
+    private Transform myTransform; // Reference to my own transform.
+    private List<Transform> targetTransforms; // Reference to the transform of who I'm looking for.
+    public float fieldOfViewAngle = 90f; // The field of view angle of myself.
+    public int viewDistance = 20; // How far away I can see.
 
     public bool aTargetVisible = false, visibilityOverride = false; // Flag to indicate if the player is in sight
     public LayerMask ignoreMeLayer;
@@ -16,7 +16,7 @@ public class ConeLOSDetector : MonoBehaviour {
 
 
     private void OnEnable() {
-        cachedTransform = gameObject.transform;
+        myTransform = gameObject.transform;
         targetTransforms = new List<Transform>();
 
         if(player && targetTransforms.Count < 1) {
@@ -49,8 +49,8 @@ public class ConeLOSDetector : MonoBehaviour {
         targetTransforms.Add(target);
     }
 
-    // This is where references to all the player's transforms are stored.
-    public List<Transform> PlayerTranforms() {
+    // This is where references to all the target transforms are stored.
+    public List<Transform> TargetTransforms() {
         return targetTransforms;
     }
 
@@ -63,8 +63,8 @@ public class ConeLOSDetector : MonoBehaviour {
      * Returns true if this is the case.
      */
     private bool IsTargetInFieldOfView(Transform target) {
-        Vector3 directionToPlayer = cachedTransform.position - target.position;
-        float angle = Vector3.Angle(cachedTransform.forward, directionToPlayer);
+        Vector3 directionToPlayer = myTransform.position - target.position;
+        float angle = Vector3.Angle(myTransform.forward, directionToPlayer);
 
         if(angle >= (360 - fieldOfViewAngle) * 0.5f) {
             return true;
@@ -81,9 +81,9 @@ public class ConeLOSDetector : MonoBehaviour {
     private bool IsTargetInLineOfSight(Transform target) {
         RaycastHit hit;
 
-        Vector3 directionToPlayer = target.position - cachedTransform.position;
+        Vector3 directionToPlayer = target.position - myTransform.position;
 
-        if(Physics.Raycast(cachedTransform.position, directionToPlayer, out hit, Mathf.Infinity, ~ignoreMeLayer)) {
+        if(Physics.Raycast(myTransform.position, directionToPlayer, out hit, Mathf.Infinity, ~ignoreMeLayer)) {
             if(hit.transform.name.Equals(target.name)) {
                 return true;
             }
@@ -97,7 +97,7 @@ public class ConeLOSDetector : MonoBehaviour {
      * Returns true if this is the case.
      */
     private bool IsTargetInViewDistance(Transform target) {
-        if(Vector3.Distance(target.position, cachedTransform.position) < viewDistance) return true;
+        if(Vector3.Distance(target.position, myTransform.position) < viewDistance) return true;
         else return false;
     }
 

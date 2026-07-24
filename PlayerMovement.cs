@@ -46,6 +46,8 @@ public class PlayerMovement : NetworkBehaviour {
     [SerializeField] private Transform headTransform;
     private Coroutine airRoutine;
 
+    [SerializeField] private ParticleSystem feathersVFXA, feathersVFXB;
+
     private void Awake() {
 
         //sprintRemaining = sprintDuration;
@@ -61,6 +63,12 @@ public class PlayerMovement : NetworkBehaviour {
         if(lockCursor) {
             Cursor.lockState = CursorLockMode.Locked;
         }
+    }
+
+    public override void OnNetworkSpawn() {
+        if(!IsOwner) return;
+        // Pass this self to the client-side UI Manager so it can handle the UI of this.
+        UIManager.Instance.RegisterPlayer(this);
     }
 
     public void ResetVarsToDefaults() {
@@ -211,6 +219,8 @@ public class PlayerMovement : NetworkBehaviour {
         allowedToCrouch = false;
         //allowedToMove = false;
         //isCrouched = true;
+        feathersVFXA.Play();
+        feathersVFXB.Play();
 
         Crouch();
 
@@ -219,7 +229,8 @@ public class PlayerMovement : NetworkBehaviour {
         //isCrouched = false;
 
         Crouch();
-
+        feathersVFXA.Stop();
+        feathersVFXB.Stop();
         allowedToCrouch = true;
         //allowedToMove = true;
 

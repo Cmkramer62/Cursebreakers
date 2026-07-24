@@ -9,7 +9,10 @@ using System;
 public class CurseGameManager : NetworkBehaviour {
 
     //public NetworkVariable<List<GameObject>> spawnPoints = new NetworkVariable<List<GameObject>>();
-    public GameObject[] cursedObjectPrefabs;
+    [SerializeField] private GameObject[] cursedObjectPrefabs;
+    [SerializeField] private GameObject ghostPrefab;
+    private GameObject ghostReference;
+
     public int oddsSpawnRate = 3, curseSpawnBufferMax = 6, curseSpawnBuffer = 0;
 
     public NetworkVariable<int> goalCurseIndex, latestFalseCurseIndex = new NetworkVariable<int>(-1);
@@ -31,7 +34,11 @@ public class CurseGameManager : NetworkBehaviour {
 
     private void OnClientConnected(ulong clientId) {
         var playerObj = NetworkManager.Singleton.ConnectedClients[clientId].PlayerObject;
-        // Now you have the player's NetworkObject
+        // Now you have the player's NetworkObject. Needed?
+
+        ghostReference = GameObject.Instantiate(ghostPrefab); // where?
+        ghostReference.GetComponent<NetworkObject>().Spawn();
+
     }
 
     public override void OnNetworkSpawn() {
