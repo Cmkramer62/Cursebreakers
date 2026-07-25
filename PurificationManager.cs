@@ -32,7 +32,7 @@ public class PurificationManager : MonoBehaviour {
         GetComponent<CurseGameManager>().purifyState = potentialCursedItem.name == "Goal Curse" ? -1 : 1;
         purifyRoutine = StartCoroutine(PurificationTimer());
 
-        if(ghostScript.invisible) ghostScript.InvertVisibility();
+        if(ghostScript.invisible.Value) ghostScript.InvertVisibility();
         ghostVisionScript.visibilityOverride = true;
         endPortalScript.activated = true;
         allowedToDisplayQuestion = true;

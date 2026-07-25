@@ -41,9 +41,9 @@ public class Enemy : NetworkBehaviour {
     private bool walkPointSet, alreadyAttacked, takeDamage, waitingForScream = false, pausingPatrolState = false;
     public bool normalAggro = true;
     private ConeLOSDetector coneDetector;
-    private List<ParticleSystem> playersBreath;
+    //private List<ParticleSystem> playersBreath;
     private float initSpeed, longestChaseDuration = 0, currentChaseDuration = 0, walkSpeedOG = -1;
-    private List<ConeLOSDetector> playerVision;
+    //private List<ConeLOSDetector> playerVision;
     #endregion
 
 
@@ -58,13 +58,15 @@ public class Enemy : NetworkBehaviour {
 
         playerTransform = new List<GameObject>(GameObject.FindGameObjectsWithTag("Player")); //GameObject.Find("Player").transform;
 
-        playersBreath = new List<ParticleSystem>();
-        foreach(GameObject player in playerTransform) { playersBreath.Add(player.GetComponentInChildren<ParticleSystem>()); }
-        //playersBreath = playerTransform.GetComponentInChildren<ParticleSystem>();
+        // We're going to get all the below now from simply children of SeenAndClosestPlayer().
 
-        playerVision = new List<ConeLOSDetector>();
-        foreach(GameObject player in playerTransform) { playerVision.Add(player.transform.GetChild(1).GetChild(0).GetComponent<ConeLOSDetector>()); }
-        //playerTransform.GetChild(1).GetChild(0).GetComponent<ConeLOSDetector>();
+        // playersBreath = new List<ParticleSystem>();
+        // foreach(GameObject player in playerTransform) { playersBreath.Add(player.GetComponentInChildren<ParticleSystem>()); }
+        // playersBreath = playerTransform.GetComponentInChildren<ParticleSystem>();
+
+        // playerVision = new List<ConeLOSDetector>();
+        // foreach(GameObject player in playerTransform) { playerVision.Add(player.transform.GetChild(1).GetChild(0).GetComponent<ConeLOSDetector>()); }
+        // playerTransform.GetChild(1).GetChild(0).GetComponent<ConeLOSDetector>();
 
     }
 

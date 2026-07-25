@@ -17,7 +17,7 @@ public class ActivatorTrigger : MonoBehaviour {
 
     private void OnTriggerEnter(Collider other) {
 
-        if(other.name == "Ghost Enemy" && activatorScript != null && activatorScript.state && other.GetComponent<Enemy>().invisible) {
+        if(other.CompareTag("Ghost") && activatorScript != null && activatorScript.state && other.GetComponent<Enemy>().invisible.Value) {
             ghostScript = other.GetComponent<Enemy>();
 
             activatorScript.Activate();
@@ -26,7 +26,7 @@ public class ActivatorTrigger : MonoBehaviour {
                 other.GetComponentInChildren<ParanormalNoises>().StartCooldown();
             }
         }
-        else if(other.name == "Ghost Enemy" && lightScriptDirect != null && lightScriptDirect.alive && other.GetComponent<Enemy>().invisible) {
+        else if(other.CompareTag("Ghost") && lightScriptDirect != null && lightScriptDirect.alive && other.GetComponent<Enemy>().invisible.Value) {
             ghostScript = other.GetComponent<Enemy>();
 
             if(AnyPlayerWithinRange() && !other.GetComponentInChildren<ParanormalNoises>().IsPlayingParanormal()) {

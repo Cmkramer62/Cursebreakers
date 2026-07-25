@@ -20,7 +20,7 @@ public class ConeLOSDetector : MonoBehaviour {
         targetTransforms = new List<Transform>();
 
         if(player && targetTransforms.Count < 1) {
-            targetTransforms.Add(GameObject.Find("Ghost Enemy").transform);
+            targetTransforms.Add(GameObject.FindGameObjectWithTag("Ghost").transform);
         }
         else {
             foreach(GameObject obj in GameObject.FindGameObjectsWithTag("Player")) {

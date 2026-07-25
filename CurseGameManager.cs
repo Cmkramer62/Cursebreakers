@@ -36,8 +36,7 @@ public class CurseGameManager : NetworkBehaviour {
         var playerObj = NetworkManager.Singleton.ConnectedClients[clientId].PlayerObject;
         // Now you have the player's NetworkObject. Needed?
 
-        ghostReference = GameObject.Instantiate(ghostPrefab); // where?
-        ghostReference.GetComponent<NetworkObject>().Spawn();
+        
 
     }
 
@@ -62,6 +61,11 @@ public class CurseGameManager : NetworkBehaviour {
         // Freebie is found and handled on client-side manager script, ONLY after the networked cursedObject is given its curses.
 
         goalCurse.name = "Goal Curse";
+
+        // Spawn in ghost before the curses are revealed.
+        ghostReference = GameObject.Instantiate(ghostPrefab); // where?
+        ghostReference.GetComponent<NetworkObject>().Spawn();
+
         ApplyCursedAura(); // Second curse reveal.
         ApplyCursedEnvironment(); // Third curse reveal.
 
@@ -127,7 +131,8 @@ public class CurseGameManager : NetworkBehaviour {
         else {
             //bellScript.ghostSearchWithSound = true;
         }
-        //ghostRandomizer.RandomizeGhost();
+        // This will need to change. Each client will do it differently.
+        ghostReference.GetComponent<GhostRandomizer>().RandomizeGhost();
     }
 
     

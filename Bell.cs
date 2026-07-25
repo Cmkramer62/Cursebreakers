@@ -17,7 +17,7 @@ public class Bell : NetworkBehaviour {
     public int ghostSoundOdds = 3;
 
     public override void OnNetworkSpawn() {
-        try {
+        try {// instead of doing this, wait to find it in enumerator.
             ghostScript = GameObject.Find("Ghost Enemy").GetComponent<Enemy>();
         }
         catch(System.Exception e) {
@@ -49,7 +49,7 @@ public class Bell : NetworkBehaviour {
         RingBellClientRpc();
 
         // Ghost effects
-        if(ghostScript != null && ghostSearchWithSound && !ghostScript.invisible)
+        if(ghostScript != null && ghostSearchWithSound && !ghostScript.invisible.Value)
             ghostScript.walkPoint = gameObject.transform.parent.parent.parent.transform.GetChild(1).transform.position;
     }
 

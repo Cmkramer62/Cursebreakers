@@ -54,7 +54,7 @@ public class EndPortal : MonoBehaviour {
             portalAnimation.Play("WipeAwayAnim");
             source.PlayOneShot(correctClip);
             yield return new WaitForSeconds(.5f);
-            ghostScript.allowedToMove = false;
+            GameObject.Find("Ghost Enemy").GetComponent<Enemy>().allowedToMove.Value = false;
             for(int i = 0; i < ghostScript.gameObject.transform.childCount; i++) {
                 if(ghostScript.transform.GetChild(i).gameObject.activeSelf) {
                     Debug.Log(ghostScript.transform.GetChild(i).name);
