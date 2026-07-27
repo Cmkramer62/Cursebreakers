@@ -32,11 +32,12 @@ public class Enemy : NetworkBehaviour {
     public Vector3 walkPoint;
     public Animator animator, shadowAnimator;
 
+    [SerializeField] private GameObject playerLastSeenMarkerPrefab;
     public Transform playerLastSeen;
 
     #region private vars
     private NavMeshAgent agent;
-    public List<GameObject> playerTransform {get; private set;}
+    public List<GameObject> listOfPlayers = new List<GameObject>(); //{get; private set;}
     private Transform cachedTransform;
     private bool walkPointSet, alreadyAttacked, takeDamage, waitingForScream = false, pausingPatrolState = false;
     public bool normalAggro = true;
@@ -46,6 +47,28 @@ public class Enemy : NetworkBehaviour {
     //private List<ConeLOSDetector> playerVision;
     #endregion
 
+    void RefreshPlayerList() {
+        listOfPlayers.Clear();
+
+        foreach(var client in NetworkManager.Singleton.ConnectedClientsList) {
+            if(client.PlayerObject != null) {
+                GameObject player = client.PlayerObject.gameObject;
+                if(player != null) listOfPlayers.Add(player);
+            }
+        }
+        NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
+        NetworkManager.Singleton.OnClientDisconnectCallback += OnClientDisconnected;
+    }
+
+    private void OnClientConnected(ulong clientId) {
+        var playerObject = NetworkManager.Singleton.ConnectedClients[clientId].PlayerObject;
+        if(playerObject != null) listOfPlayers.Add(playerObject.gameObject);
+    }
+    
+    private void OnClientDisconnected(ulong clientId) {
+        var playerObject = NetworkManager.Singleton.ConnectedClients[clientId].PlayerObject;
+        if(playerObject != null) listOfPlayers.Remove(playerObject.gameObject); 
+    }
 
     public override void OnNetworkSpawn() {
 
@@ -54,9 +77,16 @@ public class Enemy : NetworkBehaviour {
         agent.updateRotation = false;
         cachedTransform = gameObject.transform;
         walkSpeedOG = walkSpeed;
-        InvertVisibility();
+        RefreshPlayerList();
 
-        playerTransform = new List<GameObject>(GameObject.FindGameObjectsWithTag("Player")); //GameObject.Find("Player").transform;
+        // Is Invisible is a synced variable, so when the server version of the ghost
+        // changes it, the client version's will change too automatically.
+        if(IsServer) {
+            InvertVisibility();
+            GameObject.Instantiate(playerLastSeenMarkerPrefab);
+        }
+        
+        //listOfPlayers = new List<GameObject>(GameObject.FindGameObjectsWithTag("Player")); //GameObject.Find("Player").transform;
 
         // We're going to get all the below now from simply children of SeenAndClosestPlayer().
 
@@ -72,7 +102,7 @@ public class Enemy : NetworkBehaviour {
 
     // Returns the closest player out of all the players, visible or not.
     public GameObject ClosestPlayer() {
-        return ClosestPlayer(playerTransform);
+        return ClosestPlayer(listOfPlayers);
     }
 
     // Returns the closest player out of a subset parameter.
@@ -95,12 +125,19 @@ public class Enemy : NetworkBehaviour {
         // These are the players we see:
         List<GameObject> playersVisible = new List<GameObject>();
         // coneDetector.TargetTransforms();
-        foreach(GameObject player in playerTransform) {
+        foreach(GameObject player in listOfPlayers) {
             if(coneDetector.SeeParticularTarget(player.transform)) playersVisible.Add(player);
         }
 
-        // Now this is the closest from among them:
-        return ClosestPlayer(playersVisible);
+        if(playersVisible.Count > 0) {
+            // Now this is the closest from among them:
+            return ClosestPlayer(playersVisible);
+        }
+        else {
+            // If we can't see anyone, this is simply the player that is closest.
+            return ClosestPlayer(listOfPlayers);
+        }
+        
     }
 
 
@@ -110,7 +147,7 @@ public class Enemy : NetworkBehaviour {
 
         if(allowedToMove.Value) {
             var myTarget = SeenAndClosestPlayer();
-            bool playerSeen = coneDetector.aTargetVisible && !myTarget.GetComponent<PlayerMovement>().isHiding && normalAggro;// && //!player.GetComponent<PlayerMovement>().isHiding;
+            bool playerSeen = coneDetector.aTargetVisible && !myTarget.GetComponentInChildren<PlayerMovement>().isHiding && normalAggro;// && //!player.GetComponent<PlayerMovement>().isHiding;
             bool playerInAttackRange = Physics.CheckSphere(cachedTransform.position, attackRange, playerLayer) && normalAggro;
             // If I can't see you and you're not in melee range
             if(!playerSeen && !playerInAttackRange) {
@@ -301,7 +338,7 @@ public class Enemy : NetworkBehaviour {
                     InvertVisibility();
                     // foreach player withing radius walk point range, flicker their lanterns.
                     if(Vector3.Distance(ClosestPlayer().transform.position, cachedTransform.position) < walkPointRange) {
-                        ClosestPlayer().GetComponent<PlayerMovement>().lanternReference.StartFlickerPeriod(2f);
+                        ClosestPlayer().GetComponentInChildren<PlayerMovement>().lanternReference.StartFlickerPeriod(2f);
                     }
                 }
                 // VISI -> INVIS
@@ -349,9 +386,9 @@ public class Enemy : NetworkBehaviour {
         var currentChasee = SeenAndClosestPlayer();
 
         currentMode = Mode.chasing;
-        if(currentChasee.GetComponent<PlayerMovement>().isHiding) agent.SetDestination(playerLastSeen.position);
+        if(currentChasee.GetComponentInChildren<PlayerMovement>().isHiding) agent.SetDestination(playerLastSeen.position);
         else agent.SetDestination(currentChasee.transform.position);
-        if(currentChasee.gameObject.GetComponent<PlayerMovement>().isHiding) walkPoint = playerLastSeen.position;
+        if(currentChasee.gameObject.GetComponentInChildren<PlayerMovement>().isHiding) walkPoint = playerLastSeen.position;
         else walkPoint = currentChasee.transform.position;
         walkPointSet = true;
         // animator.SetFloat("Velocity", 11);

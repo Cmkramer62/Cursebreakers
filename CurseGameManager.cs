@@ -65,6 +65,8 @@ public class CurseGameManager : NetworkBehaviour {
         // Spawn in ghost before the curses are revealed.
         ghostReference = GameObject.Instantiate(ghostPrefab); // where?
         ghostReference.GetComponent<NetworkObject>().Spawn();
+        ghostReference.GetComponent<Enemy>().musicSource = curseManagerClientScript.musicSource;
+        ghostReference.GetComponent<Enemy>().allowedToMove.Value = true;
 
         ApplyCursedAura(); // Second curse reveal.
         ApplyCursedEnvironment(); // Third curse reveal.
