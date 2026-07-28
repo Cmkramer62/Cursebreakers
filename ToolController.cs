@@ -14,7 +14,7 @@ public class ToolController : NetworkBehaviour {
     public bool cycleCooldown = false, masterAllowed = true;
     public bool allowedToCycle = true;
     public Animator swapperAnimator;
-    public GameObject[] playerItemMeshes, toolbarUI, toolbarMarkerUI;
+    public GameObject[] playerItemMeshes;
 
     public NetworkVariable<int> heldIndex = new NetworkVariable<int>();
 
@@ -38,7 +38,7 @@ public class ToolController : NetworkBehaviour {
         // play animation here instead of ClientRpc
         //swapperAnimator.SetTrigger("SwapTrigger");
         swapperAnimator.GetComponent<ClientNetworkAnimator>().SetTrigger("SwapTrigger");
-        StartCoroutine(AnimationTimer(newValue));
+        StartCoroutine(ToolbeltSwap(newValue));
     }
 
     private void Start() {
@@ -136,7 +136,7 @@ public class ToolController : NetworkBehaviour {
         heldIndex.Value = to;
     }
 
-    private IEnumerator AnimationTimer(int newIndex) {
+    private IEnumerator ToolbeltSwap(int newIndex) {
         StartCoroutine(ToolbeltCooldown());
         yield return new WaitForSeconds(.35f);
         //toolbarUI[from].transform.localScale = new Vector3(.35f, .35f, .35f);

@@ -11,7 +11,7 @@ public class CurseGameManager : NetworkBehaviour {
     //public NetworkVariable<List<GameObject>> spawnPoints = new NetworkVariable<List<GameObject>>();
     [SerializeField] private GameObject[] cursedObjectPrefabs;
     [SerializeField] private GameObject ghostPrefab;
-    private GameObject ghostReference;
+    public GameObject ghostReference;
 
     public int oddsSpawnRate = 3, curseSpawnBufferMax = 6, curseSpawnBuffer = 0;
 
@@ -111,6 +111,7 @@ public class CurseGameManager : NetworkBehaviour {
     }
     
     private void ApplyCursedAura() {
+        Debug.Log("Starting apply aura");
         var goalCurseSpecific = goalCurse.GetComponentInChildren<CursedObject>().cursesList[2];
         if(goalCurseSpecific == (int)CursedObject.CursedTypes.Glowing) {
             //ghostGeistParticles.SetActive(true);
@@ -120,7 +121,7 @@ public class CurseGameManager : NetworkBehaviour {
             //ghostAnimator.runtimeAnimatorController = floatingController;
         }
         else if(goalCurseSpecific == (int)CursedObject.CursedTypes.Aura) {
-            //ghostRandomizer.overrideEyes = true;
+            ghostReference.GetComponent<GhostRandomizer>().overrideEyes.Value = true;
         }
         else if(goalCurseSpecific == (int)CursedObject.CursedTypes.Thermo) {
             //ghostAnimator.transform.parent.gameObject.GetComponent<Enemy>().freezingAura = true;
@@ -133,7 +134,7 @@ public class CurseGameManager : NetworkBehaviour {
         else {
             //bellScript.ghostSearchWithSound = true;
         }
-        // This will need to change. Each client will do it differently.
+        Debug.Log("done apply aura");
         ghostReference.GetComponent<GhostRandomizer>().RandomizeGhost();
     }
 

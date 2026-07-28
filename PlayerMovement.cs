@@ -18,8 +18,8 @@ public class PlayerMovement : NetworkBehaviour {
     public float crouchHeight = -0.696f, currentHeight = 0f;
 
     [SerializeField]
-    private bool shouldBeSlowed = false, isTired = false, sliding = false;
-    public bool allowedToMove = true, allowedToCrouch = true, isSprinting = false, isCrouched = false, isHiding = false;
+    private bool shouldBeSlowed = false, sliding = false;
+    public bool allowedToMove = true, allowedToCrouch = true, isSprinting = false, isCrouched = false, isHiding = false, isTired = false;
 
     [SerializeField]
     public CharacterController controller;
@@ -69,6 +69,7 @@ public class PlayerMovement : NetworkBehaviour {
         if(!IsOwner) return;
         // Pass this self to the client-side UI Manager so it can handle the UI of this.
         UIManager.Instance.RegisterPlayer(this);
+        UIManager.Instance.RegisterToolController(transform.parent.GetComponent<ToolController>());
     }
 
     public void ResetVarsToDefaults() {
@@ -171,28 +172,9 @@ public class PlayerMovement : NetworkBehaviour {
         if(transform.parent.GetComponent<PlayerHandler>().stamina.Value == staminaDuration) {
             isTired = false;
         }
-        /*
-        if(isSprinting && !isTired) {
-            stamina -= 1 * Time.deltaTime;
-            if(hideBarWhenFull && useSprintBar) { sprintBarCG.alpha += 5 * Time.deltaTime; }
-        }
-        else {
-            stamina = Mathf.Clamp(stamina += staminaRecoveryRate * Time.deltaTime, 0, staminaDuration);
-        }
 
-        if(useSprintBar) sprintBar.rectTransform.sizeDelta = new Vector2(stamina / staminaDuration * 175, sprintBar.rectTransform.sizeDelta.y);
+        StaminaUpdate();
 
-        if(stamina <= 0) {
-            isTired = true;
-            sprintBar.color = Color.red;
-            source.PlayOneShot(breathClip);
-        }
-        if(stamina == staminaDuration) {
-            isTired = false;
-            if(hideBarWhenFull && useSprintBar) sprintBarCG.alpha -= 3 * Time.deltaTime;
-            if(useSprintBar) sprintBar.color = stamBarUIColor;
-        }
-        */
         if((Input.GetKey(KeyCode.W) && groundCheckerScript.isGrounded && Input.GetKey(KeyCode.LeftShift) && !isTired && allowedToMove && !isCrouched) || sliding) {
             isSprinting = true;
             sprintActualMultiplier = sprintMultiplier;
@@ -210,6 +192,21 @@ public class PlayerMovement : NetworkBehaviour {
             controller.Move(inputVectorSliding * slideSpeed * speed * Time.deltaTime);
         }
      
+    }
+
+    // Called from inside this.Update();
+    // Any changes here must be mirrored in the UIManager version.
+    private void StaminaUpdate() {
+        if(isSprinting && !isTired) playerHandlerScript.stamina.Value -= 1 * Time.deltaTime;
+        else playerHandlerScript.stamina.Value = Mathf.Clamp(playerHandlerScript.stamina.Value += staminaRecoveryRate * Time.deltaTime, 0, staminaDuration);
+        
+        if(playerHandlerScript.stamina.Value <= 0) {
+            isTired = true;
+            source.PlayOneShot(breathClip);
+        }
+        if(playerHandlerScript.stamina.Value == staminaDuration) {
+            isTired = false;
+        }
     }
 
     private IEnumerator SlideRoutine() {

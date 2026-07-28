@@ -33,7 +33,7 @@ public class Enemy : NetworkBehaviour {
     public Animator animator, shadowAnimator;
 
     [SerializeField] private GameObject playerLastSeenMarkerPrefab;
-    public Transform playerLastSeen;
+    public NetworkVariable<NetworkObjectReference> playerLastSeen = new NetworkVariable<NetworkObjectReference>();
 
     #region private vars
     private NavMeshAgent agent;
@@ -77,13 +77,15 @@ public class Enemy : NetworkBehaviour {
         agent.updateRotation = false;
         cachedTransform = gameObject.transform;
         walkSpeedOG = walkSpeed;
-        RefreshPlayerList();
 
         // Is Invisible is a synced variable, so when the server version of the ghost
         // changes it, the client version's will change too automatically.
         if(IsServer) {
+            RefreshPlayerList();
             InvertVisibility();
-            GameObject.Instantiate(playerLastSeenMarkerPrefab);
+            var temp = GameObject.Instantiate(playerLastSeenMarkerPrefab);
+            playerLastSeen.Value = temp;
+            temp.GetComponent<NetworkObject>().Spawn();
         }
         
         //listOfPlayers = new List<GameObject>(GameObject.FindGameObjectsWithTag("Player")); //GameObject.Find("Player").transform;
@@ -194,14 +196,17 @@ public class Enemy : NetworkBehaviour {
                         Debug.Log("Saw you when you saw me. ");
 
                     //}
-                   // deathScript.GetComponent<CurseGameManager>().timeSpotted++;
-
-                    playerLastSeen.position = myTarget.transform.position;
+                    // deathScript.GetComponent<CurseGameManager>().timeSpotted++;
+                    if(playerLastSeen.Value.TryGet(out NetworkObject networkObject)) {
+                        networkObject.transform.position = myTarget.transform.position;
+                    }
                 }
                 else if(currentMode == Mode.chasing) {
                     chaseMeter -= 1f * Time.deltaTime;
                     if(chaseMeter < 0f) chaseMeter = 0f;
-                    playerLastSeen.position = myTarget.transform.position;
+                    if(playerLastSeen.Value.TryGet(out NetworkObject networkObject)) {
+                        networkObject.transform.position = myTarget.transform.position;
+                    }
                 }
 
                 if(!waitingForScream) ModeChase();
@@ -386,9 +391,17 @@ public class Enemy : NetworkBehaviour {
         var currentChasee = SeenAndClosestPlayer();
 
         currentMode = Mode.chasing;
-        if(currentChasee.GetComponentInChildren<PlayerMovement>().isHiding) agent.SetDestination(playerLastSeen.position);
+        if(currentChasee.GetComponentInChildren<PlayerMovement>().isHiding) {
+            if(playerLastSeen.Value.TryGet(out NetworkObject networkObject)) {
+                agent.SetDestination(networkObject.transform.position);
+            }
+        }
         else agent.SetDestination(currentChasee.transform.position);
-        if(currentChasee.gameObject.GetComponentInChildren<PlayerMovement>().isHiding) walkPoint = playerLastSeen.position;
+        if(currentChasee.gameObject.GetComponentInChildren<PlayerMovement>().isHiding) {
+            if(playerLastSeen.Value.TryGet(out NetworkObject networkObject)) {
+                walkPoint = networkObject.transform.position;
+            }
+        }
         else walkPoint = currentChasee.transform.position;
         walkPointSet = true;
         // animator.SetFloat("Velocity", 11);
@@ -398,11 +411,19 @@ public class Enemy : NetworkBehaviour {
     }
 
     public void IncreaseCharges() {
-        aggressionCharges.Value++;
+        Debug.Log("Increasing Charges. " + aggressionCharges.Value);
+        aggressionCharges.Value += 1;
     }
 
+    // Only called by the server.
     public void InvertVisibility() {
         invisible.Value = !invisible.Value;
+        InvertVisibilityClientRpc();
+    }
+
+    [ClientRpc]
+    public void InvertVisibilityClientRpc() {
+        Debug.Log("Setting ghost invis to: " + invisible.Value);
         if(invisible.Value) {
             foreach(SkinnedMeshRenderer meshRen in meshRenderers) {
                 meshRen.enabled = false;
@@ -415,7 +436,7 @@ public class Enemy : NetworkBehaviour {
         else {
             walkSpeed = walkSpeedOG;
         }
-        
+
 
         if(geistAura.Value && !invisible.Value) geistlightAura.Play();
         else if(geistAura.Value) geistlightAura.Stop();
@@ -459,7 +480,7 @@ public class Enemy : NetworkBehaviour {
         if(!alreadyAttacked) {
             cachedTransform.LookAt(SeenAndClosestPlayer().transform.position);
             alreadyAttacked = true;
-            //animator.SetBool("Attack", true);
+            animator.SetBool("Attack", true);
 
             Invoke(nameof(ResetAttack), timeBetweenAttacks);
 
@@ -473,7 +494,7 @@ public class Enemy : NetworkBehaviour {
                 monsterSource.pitch = 1;
                 monsterSource.PlayOneShot(attackClip, 0.5f);
                 Debug.Log("Hit");
-               // deathScript.LoseLife();
+                //SeenAndClosestPlayer().GetComponent<Death>().LoseLife();
             }
             //InvertVisibility();
             aggressionCharges.Value--;

@@ -16,15 +16,13 @@ public class ParanormalNoises : MonoBehaviour {
     //private LightFlicker lanternScript;
     public bool onCooldown = false;
 
-    private Enemy ghostScript;
     private AudioClip lastPlayedClip;
     private Coroutine noiseRoutine;
 
-    private void Start() {
-        ghostScript = transform.parent.GetComponent<Enemy>();
-    }
-
+    // Does this need to be server only? with client RPC for the effects?
+    // Instead, simply only checking server on 51, where we call enemy.IncreaseCharges();
     private void OnTriggerEnter(Collider other) {
+         
         if(other.CompareTag("Player") && !spatialSource.isPlaying && !onCooldown) {
             PlayRandomNoise(true);
             Debug.Log("Saw you");
@@ -32,6 +30,7 @@ public class ParanormalNoises : MonoBehaviour {
         else {
             Debug.Log("Failed: " + other.name + " " + !spatialSource.isPlaying + " " + !onCooldown);
         }
+        
     }
 
     public bool IsPlayingParanormal() {
@@ -49,7 +48,7 @@ public class ParanormalNoises : MonoBehaviour {
         }
         else {
             PlayNoise(spatial);
-            ghostScript.IncreaseCharges();
+            if(transform.parent.GetComponent<Enemy>().IsServer) transform.parent.GetComponent<Enemy>().IncreaseCharges();
         }
     }
 
