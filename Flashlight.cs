@@ -58,12 +58,16 @@ public class Flashlight : NetworkBehaviour {
         flashlightObject.SetActive(newState);
 
         if(flashlightEnabled.Value) {
-            source.PlayOneShot(turnOnClip);
+            //source.PlayOneShot(turnOnClip);
             geistParticles.Play();
+            playerHandlerScript.GetComponent<ToolController>().GeistlightAnimation(true);
+            // In future, play animation on both the arms and the masked upper body.
         }
         else {
-            source.PlayOneShot(turnOffClip);
+            //source.PlayOneShot(turnOffClip);
             geistParticles.Stop();
+            playerHandlerScript.GetComponent<ToolController>().GeistlightAnimation(false);
+            // In future, play animation on both the arms and the masked upper body.
         }
     }
 

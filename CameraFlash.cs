@@ -15,6 +15,8 @@ public class CameraFlash : NetworkBehaviour {
     public Image sprintBar;
     public GameObject cameraUI;
 
+    [SerializeField] private ParticleSystem auraFlashParticles;
+
     public override void OnNetworkSpawn() {
         gameObject.SetActive(false);
     }
@@ -52,10 +54,12 @@ public class CameraFlash : NetworkBehaviour {
     void TakePictureClientRpc() {
         Debug.Log("client one");
         StartCoroutine(FlashVisualEffects());
+        transform.parent.parent.parent.GetComponent<ToolController>().CameraAnimation();
+        auraFlashParticles.Play();
     }
 
     private IEnumerator FlashVisualEffects() {
-        source.PlayOneShot(flashClip);
+        source.PlayOneShot(flashClip, Random.Range(0.85f, 1f));
         staminaRemaining = 0;
 
         lightFlash.SetActive(true);
@@ -63,21 +67,18 @@ public class CameraFlash : NetworkBehaviour {
         yield return new WaitForSeconds(.05f);
 
         lightFlash.SetActive(false);
-        TriggerCurse(false);
         yield return new WaitForSeconds(.05f);
 
         lightFlash.SetActive(true);
-        TriggerCurse(true);
         yield return new WaitForSeconds(.05f);
 
         lightFlash.SetActive(false);
-        TriggerCurse(false);
     }
 
     private void TriggerCurse(bool state) {
         string temp = "";
         temp += "curse trig ";
-        foreach(CursedObject objectee in gameObject.transform.parent.parent.parent.GetComponent<ToolController>().objectsList) {
+        foreach(CursedObject objectee in gameObject.transform.parent.parent.parent.GetComponent<ToolController>().cursedObjectsWithinRange) {
             temp += (" - ");
             objectee.DisplayCurse(CursedObject.CursedTypes.Aura, state);
         }

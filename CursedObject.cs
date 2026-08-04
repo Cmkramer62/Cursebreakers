@@ -11,9 +11,8 @@ public class CursedObject : NetworkBehaviour {
     public enum CursedTypes { Glowing, EMF, Aura, Thermo, Unholy, Sound}
     public NetworkList<int> cursesList = new NetworkList<int>();
 
-    public GameObject distortion;
     public Light geistLight;
-    public ParticleSystem geistLightParticles;
+    [SerializeField] private ParticleSystem geistLightParticles, distortion;
     public int emfLevel = 7, temperature = -20;
 
    // public ToolController toolControllerScript;
@@ -123,9 +122,9 @@ public class CursedObject : NetworkBehaviour {
 
     // Will this trigger for my tool controller if another player triggers this?
     private void OnTriggerEnter(Collider other) {
-        if(other.name.Contains("Player")) {
+        if(other.CompareTag("Player")) {
             var toolControllerScript = other.GetComponent<ToolController>();
-            toolControllerScript.objectsList.Add(this);
+            toolControllerScript.cursedObjectsWithinRange.Add(this);
 
             if(toolControllerScript.IsServer) {
                 // EMF Section
@@ -141,10 +140,10 @@ public class CursedObject : NetworkBehaviour {
                 //    toolControllerScript.defaultTemp = temperature;
                 //}
                 if(cursesList.Contains((int)CursedTypes.Thermo)) {
-                    toolControllerScript.defaultTemp.Value = temperature;
+                    //toolControllerScript.defaultTemp.Value = temperature;
                 }
                 else if(toolControllerScript.defaultTemp.Value != -20) {
-                    toolControllerScript.defaultTemp.Value = Random.Range(57, 63);
+                    //toolControllerScript.defaultTemp.Value = Random.Range(57, 63);
                 }
 
                 if(cursesList.Contains((int)CursedTypes.Unholy)) {
@@ -171,10 +170,10 @@ public class CursedObject : NetworkBehaviour {
 
     // Will this trigger for my tool controller if another player triggers this?
     private void OnTriggerExit(Collider other) {
-        if(other.name.Contains("Player")) {
+        if(other.CompareTag("Player")) {
             var toolControllerScript = other.GetComponent<ToolController>();
 
-            toolControllerScript.objectsList.Remove(this); //flawed. What if another curse removes itself before
+            toolControllerScript.cursedObjectsWithinRange.Remove(this); //flawed. What if another curse removes itself before
                                                            // we have a chance to for this specific one?
                                                            // if(cursesList.Contains(CursedTypes.Thermo)) {
                                                            //     toolControllerScript.defaultTemp = 60;
@@ -192,12 +191,12 @@ public class CursedObject : NetworkBehaviour {
 
                 // If leaving a Thermo, set value to 60.
                 if(cursesList.Contains((int)CursedTypes.Thermo)) {
-                    toolControllerScript.defaultTemp.Value = 60;
+                    //toolControllerScript.defaultTemp.Value = 60;
                     Debug.Log("Left and this curse-" + gameObject.name + " does have EMF");
                 }
                 // If this isn't a Thermo and they're not currently in a real Thermo, set value to 60;
                 else if(toolControllerScript.defaultTemp.Value != -20) {
-                    toolControllerScript.defaultTemp.Value = 60;
+                    //toolControllerScript.defaultTemp.Value = 60;
                     Debug.Log("Left and this curse-" + gameObject.name + " does NOT have EMF, and the torch is not -20");
                 }
                 else {
@@ -242,7 +241,8 @@ public class CursedObject : NetworkBehaviour {
             //if(state) source.PlayOneShot(geistlightClip);
         }
         if(found && type == CursedTypes.Aura) {
-            distortion.SetActive(state);
+            if(state) distortion.Play();
+            
             if(!source.isPlaying) source.PlayOneShot(cameraWhooshClip, 1);
             // play jumpscare sound? Something very light. Perhaps even from a small random array of them.
             // is this a common thing amongst other curse reveals?..

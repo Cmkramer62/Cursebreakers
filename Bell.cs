@@ -5,12 +5,14 @@ using Unity.Netcode;
 
 public class Bell : NetworkBehaviour {
 
-    public AudioSource source;
-    public AudioClip ringClip;
+    public AudioSource sourceTwoDim;
+    public AudioClip[] evocareClips;
 
     private bool bellOnCooldown = false;
 
-    public Animator bellAnimator;
+    //public Animator bellAnimator;
+    [SerializeField] private ParticleSystem soundParticles;
+    [SerializeField] private float bellCooldownTime = 3.5f;
 
     private Enemy ghostScript;
     public bool ghostSearchWithSound = false;
@@ -56,21 +58,23 @@ public class Bell : NetworkBehaviour {
     [ClientRpc]
     void RingBellClientRpc() {
         // Local visual & audio effects
-        bellAnimator.Play("BellRing");
-        source.pitch = Random.Range(.95f, 1.1f);
-        source.PlayOneShot(ringClip);
+        //bellAnimator.Play("BellRing");
+        soundParticles.Play();
+        sourceTwoDim.PlayOneShot(evocareClips[Random.Range(0, evocareClips.Length)]);
 
         // Cursed Object effects
         TriggerCurse(true); // state here is not used. This may be wrong, depending on how ghost is synced.
+
+        transform.parent.parent.parent.GetComponent<ToolController>().BellAnimation();
     }
 
     private IEnumerator BellCooldownTimer() {
-        yield return new WaitForSeconds(2f);
+        yield return new WaitForSeconds(bellCooldownTime);
         bellOnCooldown = false;
     }
 
     private void TriggerCurse(bool state) {
-        foreach(CursedObject objectee in gameObject.transform.parent.parent.parent.GetComponentInChildren<ToolController>().objectsList) {
+        foreach(CursedObject objectee in gameObject.transform.parent.parent.parent.GetComponentInChildren<ToolController>().cursedObjectsWithinRange) {
             objectee.DisplayCurse(CursedObject.CursedTypes.Sound, state);
         }
     }

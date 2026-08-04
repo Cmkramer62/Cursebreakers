@@ -21,7 +21,10 @@ public class ToolController : NetworkBehaviour {
     public AudioSource source;
     public AudioClip swapClip;
 
-    public List<CursedObject> objectsList = new List<CursedObject>();
+    // cursedObjectsWithinRange are only the CO's that the player has touched their interaction radius.
+    public List<CursedObject> cursedObjectsWithinRange = new List<CursedObject>();
+
+    private CursedObject[] listOfAllCurses;
     public NetworkVariable<int> defaultEMF = new NetworkVariable<int>(0), 
         defaultTemp = new NetworkVariable<int>(60);
 
@@ -30,14 +33,24 @@ public class ToolController : NetworkBehaviour {
     public Thermometer thermometerScript;
     [SerializeField] private PlayerHandler playerHandlerScript;
 
+    // Arm Variables
+    [SerializeField] private SkinnedMeshRenderer[] armMeshRenderers;
+    [SerializeField] private Animator firstPersonArmsAnimator;
+
+
     public override void OnNetworkSpawn() {
         heldIndex.OnValueChanged += OnHeldIndexChanged;
+
+        if(!IsOwner) {
+            foreach(SkinnedMeshRenderer meshRenderObj in armMeshRenderers) {
+                meshRenderObj.enabled = false;
+            }
+        }
     }
 
     void OnHeldIndexChanged(int oldValue, int newValue) {
         // play animation here instead of ClientRpc
-        //swapperAnimator.SetTrigger("SwapTrigger");
-        swapperAnimator.GetComponent<ClientNetworkAnimator>().SetTrigger("SwapTrigger");
+        // WAS REAL ONE // swapperAnimator.GetComponent<ClientNetworkAnimator>().SetTrigger("SwapTrigger");
         StartCoroutine(ToolbeltSwap(newValue));
     }
 
@@ -95,6 +108,7 @@ public class ToolController : NetworkBehaviour {
                 break;
             }
         }
+        ArmsAnimationClientRpc(heldIndex.Value);
     }
 
     [ServerRpc]
@@ -120,6 +134,7 @@ public class ToolController : NetworkBehaviour {
                 break;
             }
         }
+        ArmsAnimationClientRpc(heldIndex.Value);
     }
 
     [ServerRpc]
@@ -134,6 +149,22 @@ public class ToolController : NetworkBehaviour {
 
         //StartCoroutine(AnimationTimer(playerItemMeshes[heldIndex.Value], playerItemMeshes[to], heldIndex.Value, to));
         heldIndex.Value = to;
+        ArmsAnimationClientRpc(to);
+    }
+
+    [ClientRpc]
+    public void ArmsAnimationClientRpc(int index) {
+        firstPersonArmsAnimator.SetInteger("ToolIndex", index);
+    }
+
+    [ClientRpc]
+    public void ArmsAnimationTriggerClientRpc(string triggerName) {
+        firstPersonArmsAnimator.SetTrigger(triggerName);
+    }
+
+    [ClientRpc]
+    public void ArmsAnimationBoolClientRpc(string triggerName, bool state) {
+        firstPersonArmsAnimator.SetTrigger(triggerName);
     }
 
     private IEnumerator ToolbeltSwap(int newIndex) {
@@ -173,30 +204,44 @@ public class ToolController : NetworkBehaviour {
     #endregion
 
     private void UpdateTemp() {
+        Debug.Log("Updating Temp.");
         // check distances of all cursedObjects in our radius that have thermo.
         // find the one that has the shortest distance to us.
         // set the thermometer's goal temp to be that cursedObject's temperature + the distance. ie. if the goalTemp is 0, but we are 10 away, it reads 10.
         float smallestDistance = 100f;
-        int distTemp = -99;
+        CursedObject closestCurse = null;
 
-        foreach(CursedObject curse in objectsList) {
-            //if(curse.cursesList.Contains(CursedObject.CursedTypes.Thermo)) {
-                float curseDistance = Vector3.Distance(playerItemMeshes[5].transform.position, curse.transform.position);
-            //Debug.Log("Distance to " + curse.transform.parent.name + " is " + curseDistance);
-            if(curseDistance < smallestDistance) {
-                distTemp = curse.temperature + (int)curseDistance;
-                smallestDistance = curseDistance;
-            }
-            //}
+        foreach(CursedObject curse in cursedObjectsWithinRange) {
+            if(Vector3.Distance(playerItemMeshes[5].transform.position, curse.transform.position) < smallestDistance) closestCurse = curse;
         }
 
-        // Uncomment this, when reimplementing thermometer!
-        //if(distTemp != -99) playerItemMeshes[5].GetComponent<Thermometer>().goalTemp = distTemp;
-       // else playerItemMeshes[5].GetComponent<Thermometer>().goalTemp = defaultTemp;
+        bool closestIsCold;
+        if(closestCurse == null) closestIsCold = false;
+        else closestIsCold = closestCurse.cursesList.Contains((int)CursedObject.CursedTypes.Thermo);
+
+        if(playerItemMeshes[5].activeInHierarchy) {
+            // if(closest thing is thermo cold curse, random is range between -5 and -1.
+            int fluctuation;
+            if(closestIsCold) fluctuation = Random.Range(-9, 3);
+            // else, random range is between -3 and 3
+            else fluctuation = Random.Range(-2, 10);
+
+            defaultTemp.Value += fluctuation;
+            if(defaultTemp.Value < -20) defaultTemp.Value = -20;
+            else if(defaultTemp.Value > 60) defaultTemp.Value = 60;
+        }
+
     }
 
     private void UpdateEMF() {
         //playerItemMeshes[3].GetComponent<Scanner>().levelEMF = defaultEMF;
+        if(playerItemMeshes[3].activeInHierarchy && defaultEMF.Value != 7) {
+            int fluctuation = Random.Range(-1, 2);
+            defaultEMF.Value += fluctuation;
+            if(defaultEMF.Value == 7) defaultEMF.Value = 6;
+            else if(defaultEMF.Value == -1) defaultEMF.Value = 0;
+
+        }
     }
 
     public void CheckHolyWater() {
@@ -204,7 +249,7 @@ public class ToolController : NetworkBehaviour {
         Debug.Log("Checking holy.");
         bool anyActive = false;
         if(playerItemMeshes[6].activeSelf) {
-            foreach(CursedObject curse in objectsList) {
+            foreach(CursedObject curse in cursedObjectsWithinRange) {
                 if(curse.cursesList.Contains((int)CursedObject.CursedTypes.Unholy)) {
                     playerItemMeshes[6].GetComponent<HolyWater>().active.Value = true; //TurnHolyOnServerRpc();
                     anyActive = true;
@@ -212,5 +257,24 @@ public class ToolController : NetworkBehaviour {
             }
             if(!anyActive) playerItemMeshes[6].GetComponent<HolyWater>().active.Value = false;//.TurnHolyOffServerRpc();
         }
+    }
+
+    // animations
+
+    // In future, play animation on both the arms and the masked upper body.
+    // One will simply be invisible, depending on who's looking.
+    public void GeistlightAnimation(bool active) {
+        ArmsAnimationClientRpc(heldIndex.Value);
+       // firstPersonArmsAnimator.SetBool("Geistlight", active);
+        ArmsAnimationBoolClientRpc("Geistlight", active);
+
+    }
+
+    public void BellAnimation() {
+        ArmsAnimationTriggerClientRpc("BellActivation");
+    }
+    
+    public void CameraAnimation() {
+        ArmsAnimationTriggerClientRpc("CameraActivation");
     }
 }

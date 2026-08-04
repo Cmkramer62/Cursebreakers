@@ -24,6 +24,9 @@ public class UIManager : MonoBehaviour {
     private int storedHeldIndex = -1;
     [SerializeField] private Color stamBarUIColor;
 
+    [SerializeField] private ParticleSystem spellParticleVFX;
+    [SerializeField] private Material[] spellParticleMaterials;
+
     private void Awake() {
         Instance = this;
     }
@@ -60,6 +63,18 @@ public class UIManager : MonoBehaviour {
         toolbarUI[to].transform.localScale = new Vector3(.37f, .37f, .37f);
         toolbarUI[to].GetComponent<CanvasGroup>().alpha = 1f;
         toolbarMarkerUI[to].SetActive(true);
+
+        DisplaySpellParticle(to);
+    }
+
+    private void DisplaySpellParticle(int index) {
+        
+        if(index == 0) return; // Ignore empty hand. This isn't a spell.
+
+        spellParticleVFX.GetComponent<ParticleSystemRenderer>().material = spellParticleMaterials[index];
+        spellParticleVFX.Play();
+        // add cooldown.
+        // play sound effect?
     }
 
     /*
