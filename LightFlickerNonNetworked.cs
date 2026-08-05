@@ -1,24 +1,36 @@
 using System.Collections;
 using UnityEngine;
-using Unity.Netcode;
 
-public class LightFlicker : NetworkBehaviour {
+public class LightFlickerNonNetworked : MonoBehaviour {
 
     public Light source;
-    public bool makesNoise, materialSwap = false, flicker = true, alive = true;
-    public float maximumDim = 0f, maximumBoost = 1f, tickSpeed = 0.04f, strength = 200;
-    public int minSecAwake = 9, maxSecAwake = 30, minSecDead = 3, maxSecDead = 15;
+    public bool makesNoise, materialSwap = false;
+    public bool flicker = true;
 
-    public Material deadBulbMat, originalAliveBulbMat, aliveBulbMat;
+    public float maximumDim = 0f;
+    // maximumBoost currently being overidden to the default intensity.
+    public float maximumBoost = 1f;
+    public float tickSpeed = 0.04f;
+    public float strength = 200;
+    private float defaultIntensity;
+
+    public int minSecAwake = 9;
+    public int maxSecAwake = 30;
+    public int minSecDead = 3;
+    public int maxSecDead = 15;
+    private bool flickeringActive = false, stored = false;
+
+    // Used to forcefully interrupt flickering routines and make light only turn On or Off.
+    private bool forceChange = false;
+
+    public Material deadBulbMat, originalAliveBulbMat;
+    [SerializeField] private Material aliveBulbMat;
     public MeshRenderer bulbRenderer;
     public AudioSource buzzingSource, flickeringSource, interactSource;
     public AudioClip turnOnSound, turnOffSound, blowUpSound;
 
     [SerializeField] ParticleSystem blowUpParticles;
-
-    private float defaultIntensity;
-    // IF YOU SYNC ANY VARS, REMOVE THEIR ASSIGNMENTS OF THE CLIENT RPCs AND PUT THEM IN THE SERVER RPCs!
-    private bool flickeringActive = false, stored = false, forceChange = false;
+    public bool alive = true;
 
     public void OnEnable() {
         if(source == null) source = GetComponent<Light>();
@@ -37,9 +49,13 @@ public class LightFlicker : NetworkBehaviour {
 
     }
 
-    // These should all be called from the server only.
-    // AKA all the serverRPC methods below this region at line 120.
-    // IF YOU SYNC ANY VARS, REMOVE THEIR ASSIGNMENTS OF THE CLIENT RPCs AND PUT THEM IN THE SERVER RPCs!
+
+
+
+    private void Update() {
+        // Debug.Log(source.intensity);
+    }
+
     #region COROUTINE PROCEDURES FOR FLICKER CYCLE
 
     /*
@@ -49,7 +65,7 @@ public class LightFlicker : NetworkBehaviour {
     private IEnumerator StartCycleBuffer() {
         yield return new WaitForSeconds(.3f);
         if(alive && flicker) StartCoroutine(AwakenLight());
-        if(!alive) TurnOffLightServerRpc(false);
+        if(!alive) TurnOffLight(false);
     }
 
     private IEnumerator AwakenLight() {
@@ -122,13 +138,7 @@ public class LightFlicker : NetworkBehaviour {
      * Public method used for remotely turning off the light.
      * Bypasses any protocol for the flicker cycle.
      */
-    [ServerRpc]
-    public void TurnOffLightServerRpc(bool flickerOff) {
-        TurnOffLightClientRpc(flickerOff);
-    }
-
-    [ClientRpc]
-    private void TurnOffLightClientRpc(bool flickerOff) {
+    public void TurnOffLight(bool flickerOff) {
         alive = false;
         forceChange = true;
 
@@ -141,13 +151,7 @@ public class LightFlicker : NetworkBehaviour {
      * Public method used for remotely turning off the light.
      * Bypasses any protocol for the flicker cycle.
      */
-    [ServerRpc]
-    public void BlowUpLightServerRpc() {
-        BlowUpLightClientRpc();
-    }
-
-    [ClientRpc]
-    private void BlowUpLightClientRpc() {
+    public void BlowUpLight() {
         alive = false;
         forceChange = true;
 
@@ -158,20 +162,21 @@ public class LightFlicker : NetworkBehaviour {
         gameObject.tag = "Generic";
     }
 
-    [ServerRpc]
-    public void InvertLightStateServerRpc() {
-        InvertLightStateClientRpc();
+
+    /*
+     * Public method used for remotely turning on the light.
+     * Bypasses any protocol for the flicker cycle.
+     */
+    public void TurnOnLight() {
+        alive = true;
+        forceChange = false;
+        StartCoroutine(AwakenLight());
+        interactSource.PlayOneShot(turnOnSound);
     }
 
-    [ClientRpc]
-    private void InvertLightStateClientRpc() {
-        if(alive) TurnOffLightServerRpc(false);
-        else {
-            alive = true;
-            forceChange = false;
-            StartCoroutine(AwakenLight());
-            interactSource.PlayOneShot(turnOnSound);
-        }
+    public void InvertLightState() {
+        if(alive) TurnOffLight(false);
+        else TurnOnLight();
     }
 
 }

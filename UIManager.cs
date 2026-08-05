@@ -93,6 +93,7 @@ public class UIManager : MonoBehaviour {
 
     public void RegisterPlayer(PlayerMovement movementScript) {
         this.movementScript = movementScript;
+        GetComponent<PauseGame>().playerMovement = movementScript;
     }
 
     public void RegisterToolController(ToolController toolbeltScript) {

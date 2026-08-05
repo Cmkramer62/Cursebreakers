@@ -4,11 +4,12 @@ using UnityEngine;
 using UnityEngine.UI;
 using Unity.Netcode;
 
-public class CameraFlash : NetworkBehaviour {
+public class SpellFulgor : NetworkBehaviour {
 
     public GameObject lightFlash;
     public AudioSource source;
     public AudioClip flashClip;
+    public AudioClip[] airWhooshClips;
 
     private bool flashOnCooldown = false;
     public float staminaRemaining = 5f, sprintDuration = 5f;
@@ -56,6 +57,7 @@ public class CameraFlash : NetworkBehaviour {
         StartCoroutine(FlashVisualEffects());
         transform.parent.parent.parent.GetComponent<ToolController>().CameraAnimation();
         auraFlashParticles.Play();
+        source.PlayOneShot(airWhooshClips[Random.Range(0, airWhooshClips.Length)]);
     }
 
     private IEnumerator FlashVisualEffects() {

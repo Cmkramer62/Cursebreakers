@@ -8,7 +8,7 @@ public class ObjectivesUI : MonoBehaviour {
     public GameObject[] traitsColumnB, traitsColumnC;
     public TextMeshProUGUI traitTitleA, traitTitleB, traitTitleC;
 
-    private string[] storedTitles = { "Glowing", "Radioactive", "Vision", "Freezing", "Unholy", "Whispering" };
+    private string[] storedTitles = { "Glowing", "Radioactive", "Flashing", "Freezing", "Unholy", "Whispering" };
 
     public void ButtonPressedB(int index) {
         CycleButton(index, true);

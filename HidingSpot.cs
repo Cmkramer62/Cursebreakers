@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using Unity.Netcode;
 
-public class HidingSpot : MonoBehaviour {
+public class HidingSpot : NetworkBehaviour {
 
     public Transform positionHide;
     public bool hidingHere = false, scareOnExit = false;
@@ -28,23 +28,25 @@ public class HidingSpot : MonoBehaviour {
     }
 
     #region Hiding methods
+
+    // Will only be called by the owner, since the camera is client's only.?
     public void Hide(GameObject thisPlayer) {
         hidingAnimOnCooldown = true;
         if(fadeAnimator == null) fadeAnimator = GameObject.Find("Fade Animation").GetComponent<Animator>();
         fadeAnimator.Play("Fade to Black");
         GetComponent<AudioSource>().PlayOneShot(enterClip);
         player = thisPlayer;
-        player.GetComponent<PlayerMovement>().allowedToMove = false;
+        player.GetComponentInChildren<PlayerMovement>().allowedToMove = false;
         player.GetComponent<CharacterController>().enabled = false;
-        player.transform.GetChild(1).GetChild(0).GetComponent<InteractRaycast>().allowedToRaycast = false;
-        player.GetComponent<PlayerMovement>().isHiding = true;
-        if(player.GetComponent<PlayerMovement>().enemyVisionScript.SeeParticularTarget(player.transform)) {
-            if(player.GetComponent<PlayerMovement>().enemyVisionScript.GetComponent<Enemy>().playerLastSeen.Value.TryGet(out NetworkObject networkObject)) {
+        //player.transform.GetChild(1).GetChild(0).GetComponent<InteractRaycast>().allowedToRaycast = false;
+        player.GetComponentInChildren<PlayerMovement>().isHiding = true;
+        if(player.GetComponentInChildren<PlayerMovement>().enemyVisionScript.SeeParticularTarget(player.transform)) {
+            if(player.GetComponentInChildren<PlayerMovement>().enemyVisionScript.GetComponent<Enemy>().playerLastSeen.Value.TryGet(out NetworkObject networkObject)) {
                 networkObject.transform.position = transform.position;
             }
         }
-        storedItem = player.transform.parent.GetComponentInChildren<ToolController>().heldIndex.Value;
-        player.transform.parent.GetComponentInChildren<ToolController>().ForceToBarehand();
+        storedItem = player.GetComponent<ToolController>().heldIndex.Value;
+        player.GetComponent<ToolController>().ForceToBarehand();
         StartCoroutine(HideTimer());
 
         if(GetComponent<Animator>()) GetComponent<Animator>().Play("LockerOpen");
@@ -82,9 +84,9 @@ public class HidingSpot : MonoBehaviour {
         player.transform.position = initialPosVec;
         player.transform.rotation = initRot;
         player.GetComponent<CharacterController>().enabled = true;
-        player.GetComponent<PlayerMovement>().allowedToMove = true;
-        player.GetComponent<PlayerMovement>().isHiding = false;
-        player.transform.parent.GetComponentInChildren<ToolController>().ForceToPrevhand(storedItem);
+        player.GetComponentInChildren<PlayerMovement>().allowedToMove = true;
+        player.GetComponentInChildren<PlayerMovement>().isHiding = false;
+        player.GetComponent<ToolController>().ForceToPrevhand(storedItem);
 
         if(tutorialHidingSpot) GameObject.Find("TutorialManager").GetComponent<Tutorial>().usedHidingSpot = true;
         if(GetComponent<Animator>()) GetComponent<Animator>().Play("LockerClose");

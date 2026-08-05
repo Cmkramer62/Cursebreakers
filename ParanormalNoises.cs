@@ -47,8 +47,8 @@ public class ParanormalNoises : MonoBehaviour {
             noiseRoutine = StartCoroutine(NoiseDelay(Random.Range(minRandomDelay, maxRandomDelay), spatial));
         }
         else {
-            PlayNoise(spatial);
             if(transform.parent.GetComponent<Enemy>().IsServer) transform.parent.GetComponent<Enemy>().IncreaseCharges();
+            PlayNoise(spatial);
         }
     }
 
@@ -71,7 +71,9 @@ public class ParanormalNoises : MonoBehaviour {
 
 
         foreach(GameObject player in lsit) {
-            player.transform.GetChild(4).GetChild(0).GetComponentInChildren<LightFlicker>().StartFlickerPeriod(lastPlayedClip.length);
+            if(player.transform.GetChild(12).GetChild(0).GetChild(2).gameObject.activeInHierarchy) 
+                player.transform.GetChild(12).GetChild(0).GetChild(2).GetComponent<LightFlicker>().StartFlickerPeriod(lastPlayedClip.length);
+            // if light is turned off, problem.
         }
     }
 

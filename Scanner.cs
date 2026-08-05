@@ -111,11 +111,11 @@ public class Scanner : NetworkBehaviour  {
             for(int i = 0; i < magicCanvasGlyphs.Length; i++) {
                 magicCanvasGlyphs[i].SetActive(i < newAmount);
             }
-           // if(newValue != 0) {
-           //     source.pitch = .8f;
-           //     source.pitch += newValue / 10f;
-           //     source.PlayOneShot(beep);
-           // }
+            if(newValue != 0) {
+                source.pitch = .8f;
+                source.pitch += newValue / 10f;
+                source.PlayOneShot(beep);
+            }
         }
     }
 

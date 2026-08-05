@@ -28,7 +28,7 @@ public class ActivatorSwitch : MonoBehaviour {
         foreach(GameObject obj in objectsToAffect) {
             if(obj.GetComponent<LightFlicker>()) {
                 // It's a light, inverse its state.
-                obj.GetComponent<LightFlicker>().InvertLightState();
+                obj.GetComponent<LightFlicker>().InvertLightStateServerRpc();
             }
             else {
                 // If it wasn't any of the types, it's a generic GameObject. Inverse its state.

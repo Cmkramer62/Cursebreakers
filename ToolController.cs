@@ -29,7 +29,7 @@ public class ToolController : NetworkBehaviour {
         defaultTemp = new NetworkVariable<int>(60);
 
     public Flashlight geistLightScript;
-    public CameraFlash cameraScript;
+    public SpellFulgor cameraScript;
     public Thermometer thermometerScript;
     [SerializeField] private PlayerHandler playerHandlerScript;
 
@@ -204,22 +204,23 @@ public class ToolController : NetworkBehaviour {
     #endregion
 
     private void UpdateTemp() {
-        Debug.Log("Updating Temp.");
-        // check distances of all cursedObjects in our radius that have thermo.
-        // find the one that has the shortest distance to us.
-        // set the thermometer's goal temp to be that cursedObject's temperature + the distance. ie. if the goalTemp is 0, but we are 10 away, it reads 10.
-        float smallestDistance = 100f;
-        CursedObject closestCurse = null;
-
-        foreach(CursedObject curse in cursedObjectsWithinRange) {
-            if(Vector3.Distance(playerItemMeshes[5].transform.position, curse.transform.position) < smallestDistance) closestCurse = curse;
-        }
-
-        bool closestIsCold;
-        if(closestCurse == null) closestIsCold = false;
-        else closestIsCold = closestCurse.cursesList.Contains((int)CursedObject.CursedTypes.Thermo);
-
+       
         if(playerItemMeshes[5].activeInHierarchy) {
+            //Debug.Log("Updating Temp.");
+            // check distances of all cursedObjects in our radius that have thermo.
+            // find the one that has the shortest distance to us.
+            // set the thermometer's goal temp to be that cursedObject's temperature + the distance. ie. if the goalTemp is 0, but we are 10 away, it reads 10.
+            float smallestDistance = 100f;
+            CursedObject closestCurse = null;
+
+            foreach(CursedObject curse in cursedObjectsWithinRange) {
+                if(Vector3.Distance(playerItemMeshes[5].transform.position, curse.transform.position) < smallestDistance) closestCurse = curse;
+            }
+
+            bool closestIsCold;
+            if(closestCurse == null) closestIsCold = false;
+            else closestIsCold = closestCurse.cursesList.Contains((int)CursedObject.CursedTypes.Thermo);
+
             // if(closest thing is thermo cold curse, random is range between -5 and -1.
             int fluctuation;
             if(closestIsCold) fluctuation = Random.Range(-9, 3);

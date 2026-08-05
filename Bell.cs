@@ -6,7 +6,7 @@ using Unity.Netcode;
 public class Bell : NetworkBehaviour {
 
     public AudioSource sourceTwoDim;
-    public AudioClip[] evocareClips;
+    public AudioClip[] evocareClips, airWhooshClips;
 
     private bool bellOnCooldown = false;
 
@@ -61,6 +61,7 @@ public class Bell : NetworkBehaviour {
         //bellAnimator.Play("BellRing");
         soundParticles.Play();
         sourceTwoDim.PlayOneShot(evocareClips[Random.Range(0, evocareClips.Length)]);
+        sourceTwoDim.PlayOneShot(airWhooshClips[Random.Range(0, airWhooshClips.Length)]);
 
         // Cursed Object effects
         TriggerCurse(true); // state here is not used. This may be wrong, depending on how ghost is synced.

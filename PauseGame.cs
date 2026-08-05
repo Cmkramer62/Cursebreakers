@@ -7,7 +7,8 @@ public class PauseGame : MonoBehaviour {
     public GameObject normalUI, pausedUI, objectivesUI, questionUI;//, question, title, mapUI;
     public bool paused = false, questionPaused = false;
     public MouseLook mouseLook;
-    public PlayerMovement playerMovement;
+    // Assigned by UI Manager.
+    [HideInInspector] public PlayerMovement playerMovement;
 
     public AudioSource source;
     public AudioClip openClip, closeClip;

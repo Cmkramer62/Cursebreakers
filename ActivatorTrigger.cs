@@ -33,14 +33,14 @@ public class ActivatorTrigger : MonoBehaviour {
                 other.GetComponent<Enemy>().IncreaseCharges();
                 other.GetComponentInChildren<ParanormalNoises>().StartCooldown();
                 if(other.GetComponent<Enemy>().invisSpeed >= 7) {
-                    lightScriptDirect.BlowUpLight();
+                    lightScriptDirect.BlowUpLightServerRpc();
                 }
                 else {
-                    lightScriptDirect.TurnOffLight(false);
+                    lightScriptDirect.TurnOffLightServerRpc(false);
                 }
             }
             else {
-                lightScriptDirect.TurnOffLight(false);
+                lightScriptDirect.TurnOffLightServerRpc(false);
             }
         }
 
