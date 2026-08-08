@@ -34,18 +34,25 @@ public class Enemy : NetworkBehaviour {
 
     [SerializeField] private GameObject playerLastSeenMarkerPrefab;
     public NetworkVariable<NetworkObjectReference> playerLastSeen = new NetworkVariable<NetworkObjectReference>();
+    public NetworkVariable<float> veloNetwork = new NetworkVariable<float>(0f);
 
     #region private vars
     private NavMeshAgent agent;
     public List<GameObject> listOfPlayers = new List<GameObject>(); //{get; private set;}
     private Transform cachedTransform;
     private bool walkPointSet, alreadyAttacked, takeDamage, waitingForScream = false, pausingPatrolState = false;
-    public bool normalAggro = true;
+    public NetworkVariable<bool> normalAggro = new NetworkVariable<bool>(true);
     private ConeLOSDetector coneDetector;
     //private List<ParticleSystem> playersBreath;
     private float initSpeed, longestChaseDuration = 0, currentChaseDuration = 0, walkSpeedOG = -1;
     //private List<ConeLOSDetector> playerVision;
+
+    public List<GameObject> playersVisible = new List<GameObject>();
     #endregion
+
+
+
+
 
     void RefreshPlayerList() {
         listOfPlayers.Clear();
@@ -56,18 +63,20 @@ public class Enemy : NetworkBehaviour {
                 if(player != null) listOfPlayers.Add(player);
             }
         }
-        NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
-        NetworkManager.Singleton.OnClientDisconnectCallback += OnClientDisconnected;
+
     }
 
     private void OnClientConnected(ulong clientId) {
         var playerObject = NetworkManager.Singleton.ConnectedClients[clientId].PlayerObject;
-        if(playerObject != null) listOfPlayers.Add(playerObject.gameObject);
+        if(playerObject != null && !listOfPlayers.Contains(playerObject.gameObject)) listOfPlayers.Add(playerObject.gameObject);
+        GetComponent<ConeLOSDetector>().SetMyList();
+
     }
-    
+
     private void OnClientDisconnected(ulong clientId) {
-        var playerObject = NetworkManager.Singleton.ConnectedClients[clientId].PlayerObject;
-        if(playerObject != null) listOfPlayers.Remove(playerObject.gameObject); 
+        listOfPlayers.RemoveAll(player => player == null);
+        GetComponent<ConeLOSDetector>().SetMyList();
+
     }
 
     public override void OnNetworkSpawn() {
@@ -80,14 +89,25 @@ public class Enemy : NetworkBehaviour {
 
         // Is Invisible is a synced variable, so when the server version of the ghost
         // changes it, the client version's will change too automatically.
+
         if(IsServer) {
             RefreshPlayerList();
-            InvertVisibility();
-            var temp = GameObject.Instantiate(playerLastSeenMarkerPrefab);
-            playerLastSeen.Value = temp;
-            temp.GetComponent<NetworkObject>().Spawn();
+            GetComponent<ConeLOSDetector>().SetMyList();
+            // InvertVisibilityServerRpc();
+            var playerLastSeemMarker = GameObject.Instantiate(playerLastSeenMarkerPrefab);
+            playerLastSeemMarker.GetComponent<NetworkObject>().Spawn();
+            NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
+            NetworkManager.Singleton.OnClientDisconnectCallback += OnClientDisconnected;
+            playerLastSeen.Value = playerLastSeemMarker;
         }
-        
+        invisible.OnValueChanged += (_, newState) =>
+        {
+            InvertVisibility(newState);
+        };
+        //InvertVisibility(true);
+        if(IsServer) invisible.Value = true;
+        InvertVisibility(invisible.Value);
+
         //listOfPlayers = new List<GameObject>(GameObject.FindGameObjectsWithTag("Player")); //GameObject.Find("Player").transform;
 
         // We're going to get all the below now from simply children of SeenAndClosestPlayer().
@@ -125,12 +145,14 @@ public class Enemy : NetworkBehaviour {
     // Returns the closest player only out of the ones the ghost can see.
     public GameObject SeenAndClosestPlayer() {
         // These are the players we see:
-        List<GameObject> playersVisible = new List<GameObject>();
+        playersVisible = new List<GameObject>();
         // coneDetector.TargetTransforms();
+        //string results = "visiplayers: ";
         foreach(GameObject player in listOfPlayers) {
+            //results = results + player.transform.position.ToString() + "-" + coneDetector.SeeParticularTarget(player.transform) + "...";
             if(coneDetector.SeeParticularTarget(player.transform)) playersVisible.Add(player);
         }
-
+        //Debug.Log(results);
         if(playersVisible.Count > 0) {
             // Now this is the closest from among them:
             return ClosestPlayer(playersVisible);
@@ -145,15 +167,24 @@ public class Enemy : NetworkBehaviour {
 
     // Update is called once per frame
     private void Update() {
+        if(allowedToMove.Value) {
+            if(animator.gameObject.activeInHierarchy) animator.SetFloat("Velocity", veloNetwork.Value);
+            if(shadowAnimator.gameObject.activeInHierarchy) shadowAnimator.SetFloat("Velocity", veloNetwork.Value);
+        }
+
         if(!IsServer) return;
 
         if(allowedToMove.Value) {
             var myTarget = SeenAndClosestPlayer();
-            bool playerSeen = coneDetector.aTargetVisible && !myTarget.GetComponentInChildren<PlayerMovement>().isHiding && normalAggro;// && //!player.GetComponent<PlayerMovement>().isHiding;
-            bool playerInAttackRange = Physics.CheckSphere(cachedTransform.position, attackRange, playerLayer) && normalAggro;
+            bool playerSeen = coneDetector.aTargetVisible && !myTarget.GetComponentInChildren<PlayerMovement>().isHiding && normalAggro.Value;// && //!player.GetComponent<PlayerMovement>().isHiding;
+            bool playerInAttackRange = Physics.CheckSphere(cachedTransform.position, attackRange, playerLayer) && normalAggro.Value;
+
+            Debug.Log("GHOST= Player:" + myTarget.name + myTarget.transform.position.x + " LOS:" + coneDetector.aTargetVisible + " NOTHIDE:" +
+                !myTarget.GetComponentInChildren<PlayerMovement>().isHiding + " AGGRO: " + normalAggro.Value + " RANGE:" + playerInAttackRange);
+
             // If I can't see you and you're not in melee range
             if(!playerSeen && !playerInAttackRange) {
-                if(chaseMeter == 100f || invisible.Value || !normalAggro) {
+                if(chaseMeter == 100f || invisible.Value || !normalAggro.Value) {
                     if(currentMode == Mode.chasing) {
                         AudioController.FadeToAnother(this, musicSource, 4, normalMusicClip, .1f);
                         walkPointSet = false;
@@ -179,7 +210,7 @@ public class Enemy : NetworkBehaviour {
             }
 
             // If I'm not invis and I see you and you're NOT in melee range
-            else if(normalAggro && !invisible.Value && playerSeen && !playerInAttackRange) {
+            else if(normalAggro.Value && !invisible.Value && playerSeen && !playerInAttackRange) {
                 if(currentMode != Mode.chasing && !waitingForScream) {
                     if(GetComponent<ConeLOSDetector>().visibilityOverride) chaseMeter = 30f;
                     else chaseMeter = 80f;
@@ -213,7 +244,7 @@ public class Enemy : NetworkBehaviour {
             }
 
             // If I'm not invis and I see you and you're within melee range //OR if I'm not invis and I can't see you but you ARE in melee range AND hiding
-            else if(normalAggro && ((!invisible.Value && playerInAttackRange && chaseMeter != 100f))) {
+            else if(normalAggro.Value && ((!invisible.Value && playerInAttackRange && chaseMeter != 100f))) {
                 AttackPlayer();
                 StartCoroutine(DeAggroTimer());
             }
@@ -238,8 +269,7 @@ public class Enemy : NetworkBehaviour {
                 );
             }
 
-            if(animator.gameObject.activeInHierarchy) animator.SetFloat("Velocity", agent.velocity.magnitude);
-            if(shadowAnimator.gameObject.activeInHierarchy) shadowAnimator.SetFloat("Velocity", agent.velocity.magnitude);
+
             #region Angular Rotation
             Vector3 desired = agent.desiredVelocity;
 
@@ -275,6 +305,8 @@ public class Enemy : NetworkBehaviour {
                     Time.deltaTime * 6f
                 );
             }
+
+            veloNetwork.Value = agent.velocity.magnitude;
             #endregion
 
         }
@@ -282,12 +314,12 @@ public class Enemy : NetworkBehaviour {
     }
 
     private IEnumerator DeAggroTimer() {
-        normalAggro = false;
+        normalAggro.Value = false;
         float prevWalkSpeed = walkSpeed;
         walkSpeed = 5f;
         yield return new WaitForSeconds(deAggroCooldown);
         walkSpeed = prevWalkSpeed;
-        normalAggro = true;
+        normalAggro.Value = true;
     }
 
     private IEnumerator ScreamAnimTimer() {
@@ -340,7 +372,7 @@ public class Enemy : NetworkBehaviour {
                     //eventCharge--;
                     //if(eventCharge < 0) eventCharge = 0;
                     //Debug.Log("lowering from going Visible.");
-                    InvertVisibility();
+                    InvertVisibilityServerRpc();
                     // foreach player withing radius walk point range, flicker their lanterns.
                     if(Vector3.Distance(ClosestPlayer().transform.position, cachedTransform.position) < walkPointRange) {
                         ClosestPlayer().GetComponentInChildren<PlayerMovement>().lanternReference.StartFlickerPeriod(2f);
@@ -348,7 +380,7 @@ public class Enemy : NetworkBehaviour {
                 }
                 // VISI -> INVIS
                 else if(!invisible.Value && !GetComponent<ConeLOSDetector>().visibilityOverride && aggressionCharges.Value <= 0) {
-                    InvertVisibility();
+                    InvertVisibilityServerRpc();
                 }
                 // else only go VISI -> INVIS when hitting a player
                 //else if(!GetComponent<ConeLOSDetector>().visibilityOverride && invisible && eventCharge > 0) {
@@ -411,20 +443,19 @@ public class Enemy : NetworkBehaviour {
     }
 
     public void IncreaseCharges() {
-        Debug.Log("Increasing Charges. " + aggressionCharges.Value);
+        //Debug.Log("Increasing Charges. " + aggressionCharges.Value);
         aggressionCharges.Value += 1;
     }
 
-    // Only called by the server.
-    public void InvertVisibility() {
+    // Only called by the server. Should not need to be a server RPC.
+    [ServerRpc]
+    public void InvertVisibilityServerRpc() {
         invisible.Value = !invisible.Value;
-        InvertVisibilityClientRpc();
     }
 
-    [ClientRpc]
-    public void InvertVisibilityClientRpc() {
-        Debug.Log("Setting ghost invis to: " + invisible.Value);
-        if(invisible.Value) {
+    public void InvertVisibility(bool invisState) {
+        Debug.Log("GHOST=Setting ghost invis to: " + invisState);
+        if(invisState) {
             foreach(SkinnedMeshRenderer meshRen in meshRenderers) {
                 meshRen.enabled = false;
             }
@@ -438,19 +469,20 @@ public class Enemy : NetworkBehaviour {
         }
 
 
-        if(geistAura.Value && !invisible.Value) geistlightAura.Play();
+        if(geistAura.Value && !invisState) geistlightAura.Play();
         else if(geistAura.Value) geistlightAura.Stop();
-        ambientSource.volume = invisible.Value ? 0 : 1;
-        StartCoroutine(ShadowAnimTimer(invisible.Value));
+        ambientSource.volume = invisState ? 0 : 1;
+        StartCoroutine(ShadowAnimTimer(invisState));
     }
 
-    private IEnumerator ShadowAnimTimer(bool leave) {
+    private IEnumerator ShadowAnimTimer(bool invisState) {
         shadow.SetActive(true);
-        if(!leave) shadow.GetComponent<Animator>().Play("ShadowAnim 0");
+        if(!invisState) shadow.GetComponent<Animator>().Play("ShadowAnim 0");
         yield return new WaitForSeconds(1f);
         shadow.SetActive(false);
 
-        if(!invisible.Value) {
+        // If we are NOT invisible:
+        if(!invisState) {
             foreach(SkinnedMeshRenderer meshRen in meshRenderers) {
                 meshRen.enabled = true;
             }
@@ -459,7 +491,7 @@ public class Enemy : NetworkBehaviour {
             }
         }
         yield return new WaitForSeconds(2f);
-        paranormalSounds.SetActive(invisible.Value);
+        paranormalSounds.SetActive(invisState);
     }
 
     // Called by jumpscare to instantly make visible.

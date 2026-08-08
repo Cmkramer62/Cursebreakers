@@ -4,7 +4,7 @@ using System.Collections.Generic;
 public class ConeLOSDetector : MonoBehaviour {
 
     private Transform myTransform; // Reference to my own transform.
-    private List<Transform> targetTransforms; // Reference to the transform of who I'm looking for.
+    public List<Transform> targetTransforms; // Reference to the transform of who I'm looking for.
     public float fieldOfViewAngle = 90f; // The field of view angle of myself.
     public int viewDistance = 20; // How far away I can see.
 
@@ -16,6 +16,10 @@ public class ConeLOSDetector : MonoBehaviour {
 
 
     private void OnEnable() {
+        SetMyList();
+    }
+
+    public void SetMyList() {
         myTransform = gameObject.transform;
         targetTransforms = new List<Transform>();
 
@@ -28,7 +32,6 @@ public class ConeLOSDetector : MonoBehaviour {
             }
         }
     }
-
 
     /*
      * Update() checks once a frame if the player meets all the requirements to be considered within line of sight.
@@ -58,6 +61,11 @@ public class ConeLOSDetector : MonoBehaviour {
        return IsTargetInViewDistance(target) && IsTargetInFieldOfView(target) && IsTargetInLineOfSight(target);
     }
 
+    public bool SeeParticularTargetDebug(Transform target) {
+        //Debug.Log("LOS= DIST:" + IsTargetInViewDistance(target) + " FOV:" + IsTargetInFieldOfView(target) + " LOS:" + IsTargetInLineOfSight(target));
+        return IsTargetInViewDistance(target) && IsTargetInFieldOfView(target) && IsTargetInLineOfSightDebug(target);
+    }
+
     /*
      * IsPlayerInFieldOfView() uses the angle of the Vector3 to the player to see if he is within the field of view angle.
      * Returns true if this is the case.
@@ -84,11 +92,26 @@ public class ConeLOSDetector : MonoBehaviour {
         Vector3 directionToPlayer = target.position - myTransform.position;
 
         if(Physics.Raycast(myTransform.position, directionToPlayer, out hit, Mathf.Infinity, ~ignoreMeLayer)) {
-            if(hit.transform.name.Equals(target.name)) {
+            if(hit.transform.name.Equals(target.name) || (!player && hit.transform.CompareTag("Player"))) {
                 return true;
             }
         }
         
+        return false;
+    }
+
+    private bool IsTargetInLineOfSightDebug(Transform target) {
+        RaycastHit hit;
+
+        Vector3 directionToPlayer = target.position - myTransform.position;
+
+        if(Physics.Raycast(myTransform.position, directionToPlayer, out hit, Mathf.Infinity, ~ignoreMeLayer)) {
+            if(hit.transform.name.Equals(target.name) || (!player && hit.transform.CompareTag("Player"))) {
+                return true;
+            }
+            // Debug.Log(hit.transform.name);
+        }
+
         return false;
     }
 

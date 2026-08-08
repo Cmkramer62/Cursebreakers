@@ -122,7 +122,7 @@ public class LightFlicker : NetworkBehaviour {
      * Public method used for remotely turning off the light.
      * Bypasses any protocol for the flicker cycle.
      */
-    [ServerRpc]
+    [ServerRpc(RequireOwnership = false)]
     public void TurnOffLightServerRpc(bool flickerOff) {
         TurnOffLightClientRpc(flickerOff);
     }
@@ -158,7 +158,7 @@ public class LightFlicker : NetworkBehaviour {
         gameObject.tag = "Generic";
     }
 
-    [ServerRpc]
+    [ServerRpc(RequireOwnership = false)]
     public void InvertLightStateServerRpc() {
         InvertLightStateClientRpc();
     }

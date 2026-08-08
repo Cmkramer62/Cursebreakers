@@ -16,7 +16,6 @@ public class CursedObject : NetworkBehaviour {
     public int emfLevel = 7, temperature = -20;
 
    // public ToolController toolControllerScript;
-    public List<int> index;
     private Coroutine lightRoutine;
     public float charge = 0f, defaultMinLight = 0f, defaultMaxLight = 0.1f;
 
@@ -79,7 +78,7 @@ public class CursedObject : NetworkBehaviour {
             if(!cursesList.Contains((int)curseToAdd)) {
                 cursesList.Add((int)curseToAdd);
                 //Debug.Log("Goal Curse: " + curseToAdd.ToString());
-                index.Add(rand);
+                //index.Add(rand);
             }
             SetRandomGoal();
             
@@ -89,7 +88,13 @@ public class CursedObject : NetworkBehaviour {
     public void SetRandomCurses() {
         if(cursesList.Count == 3) return;
         else {
-            int antiInt = curseGameManager.goalCurse.GetComponentInChildren<CursedObject>().goalCurseThirdAspectIndex;
+            GameObject potentialGoalCurse = null;
+            if(curseGameManager.goalCurse.Value.TryGet(out NetworkObject networkObject)) {
+                potentialGoalCurse = networkObject.gameObject;
+            }
+            int antiInt = -1;
+            if(potentialGoalCurse != null) antiInt = potentialGoalCurse.GetComponentInChildren<CursedObject>().goalCurseThirdAspectIndex;
+            else Debug.Log("ERROR IN CURSED OBJECT, COULD NOT GET GOALCURSE.");
 
             CursedTypes curseToAdd;
             int rand = Random.Range(0, 6);

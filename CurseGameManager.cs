@@ -16,8 +16,10 @@ public class CurseGameManager : NetworkBehaviour {
     public int oddsSpawnRate = 3, curseSpawnBufferMax = 6, curseSpawnBuffer = 0;
 
     public NetworkVariable<int> goalCurseIndex, latestFalseCurseIndex = new NetworkVariable<int>(-1);
-    public NetworkVariable<ulong> goalCurseTrackedID = new NetworkVariable<ulong>();
-    public GameObject goalCurse;
+    //public NetworkVariable<ulong> goalCurseTrackedID = new NetworkVariable<ulong>();
+    public NetworkVariable<NetworkObjectReference> goalCurse =
+        new NetworkVariable<NetworkObjectReference>();
+
 
     //public Animator ghostAnimator;
     public RuntimeAnimatorController floatingController;
@@ -51,27 +53,40 @@ public class CurseGameManager : NetworkBehaviour {
         goalCurseIndex.Value = UnityEngine.Random.Range(0, curseManagerClientScript.spawnPoints.Count);
 
         // goal curse section. goalCurseIndex used to be 'i'
-        goalCurse = GameObject.Instantiate(cursedObjectPrefabs[UnityEngine.Random.Range(0, cursedObjectPrefabs.Length)], curseManagerClientScript.spawnPoints[goalCurseIndex.Value].transform);
-        goalCurse.GetComponent<NetworkObject>().Spawn();
+        //old goalCurse = GameObject.Instantiate(cursedObjectPrefabs[UnityEngine.Random.Range(0, cursedObjectPrefabs.Length)], curseManagerClientScript.spawnPoints[goalCurseIndex.Value].transform);
+        //old goalCurse.GetComponent<NetworkObject>().Spawn();
+        //  THE 2 ABOVE HAS BEEN CONVERTED TO THE 4 BELOW  \/
+        GameObject curse = GameObject.Instantiate(cursedObjectPrefabs[UnityEngine.Random.Range(0, cursedObjectPrefabs.Length)],
+            curseManagerClientScript.spawnPoints[goalCurseIndex.Value].transform);
+        
+        curse.name = "Goal Curse";
+        NetworkObject networkObject = curse.GetComponent<NetworkObject>();
+        networkObject.Spawn();
+        goalCurse.Value = networkObject;
+
 
         //goalCurse.GetComponentInChildren<CursedObject>().toolControllerScript = GetComponent<ToolController>();
-        goalCurse.GetComponentInChildren<CursedObject>().SetRandomGoal(); // set the curses to be a random 3.
+        curse.GetComponentInChildren<CursedObject>().SetRandomGoal(); // set the curses to be a random 3.
 
-        goalCurseTrackedID.Value = goalCurse.GetComponent<NetworkObject>().NetworkObjectId;
+
+        // We don't also have a goalCurseTrackedID anymore. goalCurseTrackedID.Value = goalCurse.GetComponent<NetworkObject>().NetworkObjectId;
         // Freebie is found and handled on client-side manager script, ONLY after the networked cursedObject is given its curses.
 
-        goalCurse.name = "Goal Curse";
 
         // Spawn in ghost before the curses are revealed.
         ghostReference = GameObject.Instantiate(ghostPrefab); // where?
+        ghostReference.GetComponent<GhostRandomizer>().serverGameManagerScript = this;
+
         ghostReference.GetComponent<NetworkObject>().Spawn();
+        //ghostReference.GetComponent<GhostRandomizer>().GetComponent<NetworkObject>().Spawn();
         ghostReference.GetComponent<Enemy>().musicSource = curseManagerClientScript.musicSource;
         ghostReference.GetComponent<Enemy>().allowedToMove.Value = true;
 
-        ApplyCursedAura(); // Second curse reveal.
-        ApplyCursedEnvironment(); // Third curse reveal.
+        // Now called by the ghost, only when it has finished spawning.
+        //ApplyCursedAura(); // Second curse reveal.
+        //ApplyCursedEnvironment(); // Third curse reveal.
 
-       // RemovePropItem(goalCurseIndex);
+        // RemovePropItem(goalCurseIndex);
         for (int i = 0; i < curseManagerClientScript.spawnPoints.Count; i++) {
             if(i != goalCurseIndex.Value) {
                 if(curseSpawnBuffer >= curseSpawnBufferMax) {
@@ -98,46 +113,4 @@ public class CurseGameManager : NetworkBehaviour {
         }
     }
 
-    private void ApplyCursedEnvironment() {
-        var goalCurseSpecific = goalCurse.GetComponentInChildren<CursedObject>().cursesList[1];
-        
-        //enviroParticles[0].SetActive(goalCurseSpecific == CursedObject.CursedTypes.Glowing);
-        //enviroParticles[1].SetActive(goalCurseSpecific == CursedObject.CursedTypes.EMF);
-        //enviroParticles[2].SetActive(goalCurseSpecific == CursedObject.CursedTypes.Aura);
-        //enviroParticles[3].SetActive(goalCurseSpecific == CursedObject.CursedTypes.Thermo);
-        //enviroParticles[4].SetActive(goalCurseSpecific == CursedObject.CursedTypes.Unholy);
-
-        //if(goalCurseSpecific == CursedObject.CursedTypes.Sound) bellScript.ghostSearchWithSound = true;
-    }
-    
-    private void ApplyCursedAura() {
-        Debug.Log("Starting apply aura");
-        var goalCurseSpecific = goalCurse.GetComponentInChildren<CursedObject>().cursesList[2];
-        if(goalCurseSpecific == (int)CursedObject.CursedTypes.Glowing) {
-            //ghostGeistParticles.SetActive(true);
-            //ghostAnimator.transform.parent.gameObject.GetComponent<Enemy>().geistAura = true;
-        }
-        else if(goalCurseSpecific == (int)CursedObject.CursedTypes.EMF) {
-            //ghostAnimator.runtimeAnimatorController = floatingController;
-        }
-        else if(goalCurseSpecific == (int)CursedObject.CursedTypes.Aura) {
-            ghostReference.GetComponent<GhostRandomizer>().overrideEyes.Value = true;
-        }
-        else if(goalCurseSpecific == (int)CursedObject.CursedTypes.Thermo) {
-            //ghostAnimator.transform.parent.gameObject.GetComponent<Enemy>().freezingAura = true;
-        }
-        else if(goalCurseSpecific == (int)CursedObject.CursedTypes.Unholy) {
-            //foreach(GameObject horns in ghostHorns) {
-            //    horns.SetActive(true);
-            //}
-        }
-        else {
-            //bellScript.ghostSearchWithSound = true;
-        }
-        Debug.Log("done apply aura");
-        ghostReference.GetComponent<GhostRandomizer>().RandomizeGhost();
-    }
-
-    
-    
 }

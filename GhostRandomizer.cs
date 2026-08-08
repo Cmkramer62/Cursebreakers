@@ -3,7 +3,42 @@ using System.Collections.Generic;
 using UnityEngine;
 using Unity.Netcode;
 
+public struct GhostAppearance : INetworkSerializable {
+    public int body;
+    public int skin;
+    public int eyes;
+    public int teeth;
+    public int hair;
+    public int gown;
+    public int robe;
+    public int hood;
+    public int shoulder;
+    public int veil;
+    public int headcloth;
+    public int dress;
+
+    public void NetworkSerialize<T>(BufferSerializer<T> serializer)
+        where T : IReaderWriter {
+        serializer.SerializeValue(ref body);
+        serializer.SerializeValue(ref skin);
+        serializer.SerializeValue(ref eyes);
+        serializer.SerializeValue(ref teeth);
+        serializer.SerializeValue(ref hair);
+        serializer.SerializeValue(ref gown);
+        serializer.SerializeValue(ref robe);
+        serializer.SerializeValue(ref hood);
+        serializer.SerializeValue(ref shoulder);
+        serializer.SerializeValue(ref veil);
+        serializer.SerializeValue(ref headcloth);
+        serializer.SerializeValue(ref dress);
+    }
+}
+
 public class GhostRandomizer : NetworkBehaviour {
+
+    public NetworkVariable<GhostAppearance> generatedRanString = new NetworkVariable<GhostAppearance>();
+    [SerializeField]
+    private GhostAppearance debugAppearance;
 
     public GameObject[] ghostBodies;
     public int mainBodyRandom;
@@ -23,12 +58,25 @@ public class GhostRandomizer : NetworkBehaviour {
 
     public Enemy ghostScript;
     public NetworkVariable<bool> overrideEyes = new NetworkVariable<bool>(false);
+    public CurseGameManager serverGameManagerScript;
     //public NetworkVariable<string> generatedCode = new NetworkVariable<string>();
 
-    // This needs to be called by the server only.
-    // It then runs randomization, a code of which is stored in a synced int.
-    // Then it runs a client rpc, and using that synced int it sets the body.
-    public void RandomizeGhost() {
+    public override void OnNetworkSpawn() {
+        generatedRanString.OnValueChanged += (_, newCode) =>
+        {
+            ApplyRandomization(newCode);
+        };
+
+
+        if(IsServer) GenerateCode();
+        else ApplyRandomization(generatedRanString.Value);
+
+    }
+
+
+
+    // Called by SERVER. Generates code for visual randomization.
+    public void GenerateCode() {
         
         Debug.Log("Randomizing ghost");
         mainBodyRandom = Random.Range(0, ghostBodies.Length);
@@ -46,169 +94,204 @@ public class GhostRandomizer : NetworkBehaviour {
         int headclothRandom = Random.Range(0, headclothMats.Length);
         int dressRandom = Random.Range(0, dressMats.Length);
 
-        string generatedCode = mainBodyRandom + " " + skinRandom + " " + eyesRandom + " " + teethRandom +
-            " " + hairRandom + " " + gownRandom + " " + robeRandom + " " + hoodRandom + " " + shoulderRandom +
-            " " + veilRandom + " " + headclothRandom + " " + dressRandom;
+        GhostAppearance newAppearance = new GhostAppearance();
+        newAppearance.skin = skinRandom;
+        newAppearance.eyes = eyesRandom;
+        newAppearance.teeth = teethRandom;
+        newAppearance.hair = hairRandom;
+        newAppearance.gown = gownRandom;
+        newAppearance.robe = robeRandom;
+        newAppearance.hood = hoodRandom;
+        newAppearance.shoulder = shoulderRandom;
+        newAppearance.veil = veilRandom;
+        newAppearance.headcloth = headclothRandom;
+        newAppearance.dress = dressRandom;
+        newAppearance.body = mainBodyRandom;
 
-        Debug.Log("Random code: " + generatedCode);
-        SetRandomizationOffCodeClientRpc(generatedCode);
+        generatedRanString.Value = newAppearance;
+        //SetRandomizationOffCodeClientRpc(generatedCode);
         
     }
 
-    [ClientRpc]
-    public void SetRandomizationOffCodeClientRpc(string generatedCode) {
-        Debug.Log("Random code received: " + generatedCode);
-
-        string[] codeDecon = generatedCode.Split(' ');
-        Debug.Log("ghost body: " + int.Parse(codeDecon[0]));
-        ghostBodies[int.Parse(codeDecon[0])].SetActive(true);
+    // Called by EITHER. Runs when code changes, or on network spawn.
+    public void ApplyRandomization(GhostAppearance generatedCode) {
+        Debug.Log("Applying randomization: " + generatedCode.body + " " + generatedCode.eyes);
+        debugAppearance = generatedCode;
+        ghostBodies[generatedCode.body].SetActive(true);
         //deathScript.realGhostChild = ghostBodies[index];
-        ghostScript.animator = ghostBodies[int.Parse(codeDecon[0])].GetComponent<Animator>();
+        ghostScript.animator = ghostBodies[generatedCode.body].GetComponent<Animator>();
 
-        if(int.Parse(codeDecon[0]) == 0) SetGownLongHair(generatedCode);
-        else if(int.Parse(codeDecon[0]) == 1) SetGownShortHair(generatedCode);
-        else if(int.Parse(codeDecon[0]) == 2) SetNakedLongHair(generatedCode);
-        else if(int.Parse(codeDecon[0]) == 3) SetNakedShortHair(generatedCode);
-        else if(int.Parse(codeDecon[0]) == 4) SetNakedBald(generatedCode);
-        else if(int.Parse(codeDecon[0]) == 5) SetRobe(generatedCode);
-        else if(int.Parse(codeDecon[0]) == 6) SetVeil(generatedCode);
+        if(generatedCode.body == 0) SetGownLongHair(generatedCode);
+        else if(generatedCode.body == 1) SetGownShortHair(generatedCode);
+        else if(generatedCode.body == 2) SetNakedLongHair(generatedCode);
+        else if(generatedCode.body == 3) SetNakedShortHair(generatedCode);
+        else if(generatedCode.body == 4) SetNakedBald(generatedCode);
+        else if(generatedCode.body == 5) SetRobe(generatedCode);
+        else if(generatedCode.body == 6) SetVeil(generatedCode);
         else SetVictorian(generatedCode);
     }
 
-    private void SetGownLongHair(string generatedCode) {
-        string[] codeDecon = generatedCode.Split(' ');
+    public void ApplyCursedEnvironment() {
+        //var goalCurseSpecific = goalCurse.GetComponentInChildren<CursedObject>().cursesList[1];
 
+        //enviroParticles[0].SetActive(goalCurseSpecific == CursedObject.CursedTypes.Glowing);
+        //enviroParticles[1].SetActive(goalCurseSpecific == CursedObject.CursedTypes.EMF);
+        //enviroParticles[2].SetActive(goalCurseSpecific == CursedObject.CursedTypes.Aura);
+        //enviroParticles[3].SetActive(goalCurseSpecific == CursedObject.CursedTypes.Thermo);
+        //enviroParticles[4].SetActive(goalCurseSpecific == CursedObject.CursedTypes.Unholy);
+
+        //if(goalCurseSpecific == CursedObject.CursedTypes.Sound) bellScript.ghostSearchWithSound = true;
+    }
+
+    public void ApplyCursedAura() {
+        Debug.Log("Starting apply aura");
+        /*
+        var goalCurseSpecific = goalCurse.GetComponentInChildren<CursedObject>().cursesList[2];
+        if(goalCurseSpecific == (int)CursedObject.CursedTypes.Glowing) {
+            //ghostGeistParticles.SetActive(true);
+            //ghostAnimator.transform.parent.gameObject.GetComponent<Enemy>().geistAura = true;
+        }
+        else if(goalCurseSpecific == (int)CursedObject.CursedTypes.EMF) {
+            //ghostAnimator.runtimeAnimatorController = floatingController;
+        }
+        else if(goalCurseSpecific == (int)CursedObject.CursedTypes.Aura) {
+            ghostReference.GetComponent<GhostRandomizer>().overrideEyes.Value = true;
+        }
+        else if(goalCurseSpecific == (int)CursedObject.CursedTypes.Thermo) {
+            //ghostAnimator.transform.parent.gameObject.GetComponent<Enemy>().freezingAura = true;
+        }
+        else if(goalCurseSpecific == (int)CursedObject.CursedTypes.Unholy) {
+            //foreach(GameObject horns in ghostHorns) {
+            //    horns.SetActive(true);
+            //}
+        }
+        else {
+            //bellScript.ghostSearchWithSound = true;
+        }
+        */
+        Debug.Log("done apply aura");
+    }
+
+
+    #region Setting Body Parts
+    private void SetGownLongHair(GhostAppearance generatedCode) {
         var bodyMats = gownLongHair[0].materials;
-        bodyMats[0] = skinMats[int.Parse(codeDecon[1])];
-        bodyMats[1] = eyeMats[int.Parse(codeDecon[2])];
+        bodyMats[0] = skinMats[generatedCode.skin];
+        bodyMats[1] = eyeMats[generatedCode.eyes];
         if(overrideEyes.Value) bodyMats[1] = glowingEyesMat;
-        bodyMats[2] = teethMats[int.Parse(codeDecon[3])];
+        bodyMats[2] = teethMats[generatedCode.teeth];
         gownLongHair[0].materials = bodyMats;
 
         var hairMats = gownLongHair[1].materials;
-        hairMats[0] = this.hairMats[int.Parse(codeDecon[4])];
+        hairMats[0] = this.hairMats[generatedCode.hair];
         gownLongHair[1].materials = hairMats;
 
         var gownMats = gownLongHair[2].materials;
-        gownMats[0] = gownMats[int.Parse(codeDecon[5])];
+        gownMats[0] = gownMats[generatedCode.gown];
         gownLongHair[2].materials = gownMats;
     }
     
-    private void SetGownShortHair(string generatedCode) {
-        string[] codeDecon = generatedCode.Split(' ');
-
+    private void SetGownShortHair(GhostAppearance generatedCode) {
         var mats = gownShortHair[0].materials;
-        mats[0] = skinMats[int.Parse(codeDecon[1])];
-        mats[1] = eyeMats[int.Parse(codeDecon[2])];
+        mats[0] = skinMats[generatedCode.skin];
+        mats[1] = eyeMats[generatedCode.eyes];
         if(overrideEyes.Value) mats[1] = glowingEyesMat;
-        mats[2] = teethMats[int.Parse(codeDecon[3])];
+        mats[2] = teethMats[generatedCode.teeth];
         gownShortHair[0].materials = mats;
 
         var mats2 = gownShortHair[1].materials;
-        mats2[0] = gownMats[int.Parse(codeDecon[5])];
+        mats2[0] = gownMats[generatedCode.gown];
         gownShortHair[1].materials = mats2;
 
         var mats3 = gownShortHair[2].materials;
-        mats3[0] = hairMats[int.Parse(codeDecon[4])];
+        mats3[0] = hairMats[generatedCode.hair];
         gownShortHair[2].materials = mats3;
     }
 
-    private void SetNakedLongHair(string generatedCode) {
-        string[] codeDecon = generatedCode.Split(' ');
-
+    private void SetNakedLongHair(GhostAppearance generatedCode) {
         var mats = nakedLongHair[0].materials;
-        mats[0] = skinMats[int.Parse(codeDecon[1])];
-        mats[1] = eyeMats[int.Parse(codeDecon[2])];
+        mats[0] = skinMats[generatedCode.skin];
+        mats[1] = eyeMats[generatedCode.eyes];
         if(overrideEyes.Value) mats[1] = glowingEyesMat;
-        mats[2] = teethMats[int.Parse(codeDecon[3])];
+        mats[2] = teethMats[generatedCode.teeth];
         nakedLongHair[0].materials = mats;
 
         var mats2 = nakedLongHair[1].materials;
-        mats2[0] = hairMats[int.Parse(codeDecon[4])];
+        mats2[0] = hairMats[generatedCode.hair];
         nakedLongHair[1].materials = mats2;
     }
 
-    private void SetNakedShortHair(string generatedCode) {
-        string[] codeDecon = generatedCode.Split(' ');
-
+    private void SetNakedShortHair(GhostAppearance generatedCode) {
         var mats = nakedShortHair[0].materials;
-        mats[0] = skinMats[int.Parse(codeDecon[1])];
-        mats[1] = eyeMats[int.Parse(codeDecon[2])];
+        mats[0] = skinMats[generatedCode.skin];
+        mats[1] = eyeMats[generatedCode.eyes];
         if(overrideEyes.Value) mats[1] = glowingEyesMat;
-        mats[2] = teethMats[int.Parse(codeDecon[3])];
+        mats[2] = teethMats[generatedCode.teeth];
         nakedShortHair[0].materials = mats;
 
         var mats2 = nakedShortHair[1].materials;
-        mats2[0] = hairMats[int.Parse(codeDecon[4])];
+        mats2[0] = hairMats[generatedCode.hair];
         nakedShortHair[1].materials = mats2;
     }
 
-    private void SetNakedBald(string generatedCode) {
-        string[] codeDecon = generatedCode.Split(' ');
-
+    private void SetNakedBald(GhostAppearance generatedCode) {
         var mats = nakedBald[0].materials;
-        mats[0] = skinMats[int.Parse(codeDecon[1])];
-        mats[1] = eyeMats[int.Parse(codeDecon[2])];
+        mats[0] = skinMats[generatedCode.skin];
+        mats[1] = eyeMats[generatedCode.eyes];
         if(overrideEyes.Value) mats[1] = glowingEyesMat;
-        mats[2] = teethMats[int.Parse(codeDecon[3])];
+        mats[2] = teethMats[generatedCode.teeth];
         nakedBald[0].materials = mats;
     }
 
-    private void SetRobe(string generatedCode) {
-        string[] codeDecon = generatedCode.Split(' ');
-        
+    private void SetRobe(GhostAppearance generatedCode) {        
         var mats = robe[0].materials;
-        mats[0] = skinMats[int.Parse(codeDecon[1])];
-        mats[1] = eyeMats[int.Parse(codeDecon[2])];
+        mats[0] = skinMats[generatedCode.skin];
+        mats[1] = eyeMats[generatedCode.eyes];
         if(overrideEyes.Value) mats[1] = glowingEyesMat;
-        mats[2] = teethMats[int.Parse(codeDecon[3])];
+        mats[2] = teethMats[generatedCode.teeth];
         robe[0].materials = mats;
 
         var mats2 = robe[1].materials;
-        mats2[0] = hoodMats[int.Parse(codeDecon[7])];
+        mats2[0] = hoodMats[generatedCode.hood];
         robe[1].materials = mats2;
 
         var mats3 = robe[2].materials;
-        mats3[0] = robeMats[int.Parse(codeDecon[6])];
+        mats3[0] = robeMats[generatedCode.robe];
         robe[2].materials = mats3;
 
         var mats4 = robe[3].materials;
-        mats4[0] = shoulderclothMats[int.Parse(codeDecon[8])];
+        mats4[0] = shoulderclothMats[generatedCode.shoulder];
         robe[3].materials = mats4;
     }
 
-    private void SetVeil(string generatedCode) {
-        string[] codeDecon = generatedCode.Split(' ');
-
+    private void SetVeil(GhostAppearance generatedCode) {
         var mats = veil[0].materials;
-        mats[0] = skinMats[int.Parse(codeDecon[1])];
-        mats[1] = eyeMats[int.Parse(codeDecon[2])];
+        mats[0] = skinMats[generatedCode.skin];
+        mats[1] = eyeMats[generatedCode.eyes];
         if(overrideEyes.Value) mats[1] = glowingEyesMat;
-        mats[2] = teethMats[int.Parse(codeDecon[3])];
+        mats[2] = teethMats[generatedCode.teeth];
         veil[0].materials = mats;
 
         var mats2 = veil[1].materials;
-        mats2[0] = veilMats[int.Parse(codeDecon[9])];
+        mats2[0] = veilMats[generatedCode.veil];
         veil[1].materials = mats2;
     }
 
-    private void SetVictorian(string generatedCode) {
-        string[] codeDecon = generatedCode.Split(' ');
-        
+    private void SetVictorian(GhostAppearance generatedCode) {
         var mats = victorian[0].materials;
-        mats[0] = skinMats[int.Parse(codeDecon[1])];
-        mats[1] = eyeMats[int.Parse(codeDecon[2])];
+        mats[0] = skinMats[generatedCode.skin];
+        mats[1] = eyeMats[generatedCode.eyes];
         if(overrideEyes.Value) mats[1] = glowingEyesMat;
-        mats[2] = teethMats[int.Parse(codeDecon[3])];
+        mats[2] = teethMats[generatedCode.teeth];
         victorian[0].materials = mats;
 
         var mats2 = victorian[1].materials;
-        mats2[0] = headclothMats[int.Parse(codeDecon[10])];
+        mats2[0] = headclothMats[generatedCode.headcloth];
         victorian[1].materials = mats2;
 
         var mats3 = victorian[2].materials;
-        mats3[0] = dressMats[int.Parse(codeDecon[11])];
+        mats3[0] = dressMats[generatedCode.dress];
         victorian[2].materials = mats3;
     }
-
+    #endregion
 }

@@ -53,6 +53,7 @@ public class SaveDataHandler : MonoBehaviour {
 
             // Audio Section
             masterVolume = saveData.masterVolume;
+            masterMixer.SetFloat("MasterVolumeParam", saveData.masterVolume);
             masterVolumeSlider.SetValueWithoutNotify(masterVolume);
             masterVolumeText.text = (((int)masterVolume) + 80).ToString() + "%";
             sfxVolume = saveData.sfxVolume;

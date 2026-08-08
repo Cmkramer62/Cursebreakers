@@ -25,10 +25,10 @@ public class ParanormalNoises : MonoBehaviour {
          
         if(other.CompareTag("Player") && !spatialSource.isPlaying && !onCooldown) {
             PlayRandomNoise(true);
-            Debug.Log("Saw you");
+            Debug.Log("GHOST=touched player.");
         }
         else {
-            Debug.Log("Failed: " + other.name + " " + !spatialSource.isPlaying + " " + !onCooldown);
+            Debug.Log("GHOST=touch player failed: " + other.name + " " + !spatialSource.isPlaying + " " + !onCooldown);
         }
         
     }
