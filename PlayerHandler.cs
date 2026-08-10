@@ -9,7 +9,6 @@ public class PlayerHandler : NetworkBehaviour {
     private ToolController toolControllerScript;
     private Enemy ghostScript;
 
-    public NetworkVariable<int> lives = new NetworkVariable<int>(3);
     public NetworkVariable<float> stamina = new NetworkVariable<float>(40, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
 
     public Transform cameraHolder;

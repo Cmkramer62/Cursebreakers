@@ -20,7 +20,7 @@ public class LightFlicker : NetworkBehaviour {
     // IF YOU SYNC ANY VARS, REMOVE THEIR ASSIGNMENTS OF THE CLIENT RPCs AND PUT THEM IN THE SERVER RPCs!
     private bool flickeringActive = false, stored = false, forceChange = false;
 
-    public void OnEnable() {
+    public override void OnNetworkSpawn() {
         if(source == null) source = GetComponent<Light>();
 
         if(!stored) {

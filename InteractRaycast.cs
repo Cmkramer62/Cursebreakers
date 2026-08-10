@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Unity.Netcode;
 
 public class InteractRaycast : MonoBehaviour {
 
@@ -57,7 +58,10 @@ public class InteractRaycast : MonoBehaviour {
                         hit.transform.GetComponent<TakebleObject>().Take();
                         break;
                     case "HidingSpot":
-                        if(!hit.transform.GetComponent<HidingSpot>().hidingAnimOnCooldown) hit.transform.GetComponent<HidingSpot>().Hide(GetComponent<MouseLook>().playerBody.gameObject);
+                        if(!hit.transform.GetComponent<HidingSpot>().hidingAnimOnCooldown) {
+                            hit.transform.GetComponent<HidingSpot>().HideServerRpc(NetworkManager.Singleton.LocalClientId);
+                            hit.transform.GetComponent<HidingSpot>().Hide(GetComponent<MouseLook>().playerBody.gameObject);
+                        }
                         break;
                     case "Candle":
                         hit.transform.GetComponent<Candle>().InteractWithCandle();

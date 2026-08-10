@@ -38,7 +38,7 @@ public class PlayerMovement : NetworkBehaviour {
         public AudioClip[] jumpClip;
     #endregion
 
-    public LightFlicker lanternReference;
+    public LightFlickerNonNetworked lanternReference;
 
     private Vector3 fallingVelocity, originalScale, originalHeadHeight;
     private Transform cachedTransform;
@@ -116,6 +116,9 @@ public class PlayerMovement : NetworkBehaviour {
             enabled = false;
             return;
         }
+
+        if(transform.parent.GetComponent<Death>().lives.Value == 0) return;
+
         // MOVEMENT Section
         var horiz = Input.GetAxis("Horizontal");
         var vert = Input.GetAxis("Vertical");

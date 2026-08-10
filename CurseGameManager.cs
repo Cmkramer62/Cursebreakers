@@ -30,7 +30,7 @@ public class CurseGameManager : NetworkBehaviour {
     //public GameObject[] enviroParticles;
     //public GhostRandomizer ghostRandomizer;
 
-    public int timeSpent = 0, livesLeft = 3, timeSpotted = 0, longestChase = 0, purifyState = 0;
+    public int timeSpent = 0, timeSpotted = 0, longestChase = 0, purifyState = 0;
 
     private CurseGameManagerClient curseManagerClientScript;
 

@@ -48,7 +48,7 @@ public class EndPortal : MonoBehaviour {
 
         if(purificationScript.potentialCursedItem.name == "Goal Curse") {
             //saveSystem.SetLevel(1);
-            saveSystem.SetMissionData(1, purificationScript.GetComponent<CurseGameManager>().timeSpent, purificationScript.GetComponent<CurseGameManager>().livesLeft,
+            saveSystem.SetMissionData(1, purificationScript.GetComponent<CurseGameManager>().timeSpent, purificationScript.GetComponent<Death>().lives.Value,
                 purificationScript.GetComponent<CurseGameManager>().timeSpotted, purificationScript.GetComponent<CurseGameManager>().longestChase, purificationScript.GetComponent<CurseGameManager>().purifyState);
 
             portalAnimation.Play("WipeAwayAnim");

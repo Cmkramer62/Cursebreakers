@@ -14,6 +14,7 @@ public class UIManager : MonoBehaviour {
     private Flashlight geistlightScript;
     private PlayerMovement movementScript;
     private ToolController toolbeltScript;
+    private Death deathScript;
 
     public CanvasGroup geistlightUICanvasGroup, sprintBarCG;
     public Image geistlightUIMeterBar, slidingImage, sprintBar;
@@ -26,9 +27,30 @@ public class UIManager : MonoBehaviour {
 
     [SerializeField] private ParticleSystem spellParticleVFX;
     [SerializeField] private Material[] spellParticleMaterials;
+    [SerializeField] private GameObject[] bloodUI, heartsUI;
 
     private void Awake() {
         Instance = this;
+    }
+
+    IEnumerator Start() {
+
+        // Wait until the timer exists on this client
+        while(deathScript == null) {
+            yield return null;
+        }
+
+        // Subscribe to changes
+        //serverCurseManager.goalCurseIndex.OnValueChanged += OnNewCurseSpawn;
+        deathScript.lives.OnValueChanged += OnLivesChange;
+
+        //OnNewCurseSpawn(0, serverCurseManager.goalCurseIndex.Value);
+
+    }
+
+    private void OnLivesChange(int oldAmount, int newAmount) {
+        bloodUI[newAmount].SetActive(true);
+        heartsUI[newAmount].GetComponent<Animator>().Play("HeartIconLoss");
     }
 
     private void Update() {
@@ -94,6 +116,7 @@ public class UIManager : MonoBehaviour {
     public void RegisterPlayer(PlayerMovement movementScript) {
         this.movementScript = movementScript;
         GetComponent<PauseGame>().playerMovement = movementScript;
+        deathScript = movementScript.transform.parent.GetComponent<Death>();
     }
 
     public void RegisterToolController(ToolController toolbeltScript) {

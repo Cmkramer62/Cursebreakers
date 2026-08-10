@@ -72,7 +72,7 @@ public class ParanormalNoises : MonoBehaviour {
 
         foreach(GameObject player in lsit) {
             if(player.transform.GetChild(12).GetChild(0).GetChild(2).gameObject.activeInHierarchy) 
-                player.transform.GetChild(12).GetChild(0).GetChild(2).GetComponent<LightFlicker>().StartFlickerPeriod(lastPlayedClip.length);
+                player.transform.GetChild(12).GetChild(0).GetChild(2).GetComponent<LightFlickerNonNetworked>().StartFlickerPeriod(lastPlayedClip.length);
             // if light is turned off, problem.
         }
     }

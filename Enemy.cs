@@ -179,8 +179,8 @@ public class Enemy : NetworkBehaviour {
             bool playerSeen = coneDetector.aTargetVisible && !myTarget.GetComponentInChildren<PlayerMovement>().isHiding && normalAggro.Value;// && //!player.GetComponent<PlayerMovement>().isHiding;
             bool playerInAttackRange = Physics.CheckSphere(cachedTransform.position, attackRange, playerLayer) && normalAggro.Value;
 
-            Debug.Log("GHOST= Player:" + myTarget.name + myTarget.transform.position.x + " LOS:" + coneDetector.aTargetVisible + " NOTHIDE:" +
-                !myTarget.GetComponentInChildren<PlayerMovement>().isHiding + " AGGRO: " + normalAggro.Value + " RANGE:" + playerInAttackRange);
+            //Debug.Log("GHOST= Player:" + myTarget.name + myTarget.transform.position.x + " LOS:" + coneDetector.aTargetVisible + " NOTHIDE:" +
+                //!myTarget.GetComponentInChildren<PlayerMovement>().isHiding + " AGGRO: " + normalAggro.Value + " RANGE:" + playerInAttackRange);
 
             // If I can't see you and you're not in melee range
             if(!playerSeen && !playerInAttackRange) {
@@ -245,7 +245,7 @@ public class Enemy : NetworkBehaviour {
 
             // If I'm not invis and I see you and you're within melee range //OR if I'm not invis and I can't see you but you ARE in melee range AND hiding
             else if(normalAggro.Value && ((!invisible.Value && playerInAttackRange && chaseMeter != 100f))) {
-                AttackPlayer();
+                AttackPlayer(myTarget);
                 StartCoroutine(DeAggroTimer());
             }
 
@@ -506,11 +506,15 @@ public class Enemy : NetworkBehaviour {
         }
     }
 
-    private void AttackPlayer() {
+    private void AttackPlayer(GameObject playerAttacked) {
         agent.SetDestination(cachedTransform.position);
+        GameObject targetPlayerAttacked = playerAttacked;
+        if(!playerAttacked.GetComponent<Death>()) {
+            targetPlayerAttacked = playerAttacked.transform.parent.gameObject;
+        }
 
         if(!alreadyAttacked) {
-            cachedTransform.LookAt(SeenAndClosestPlayer().transform.position);
+            cachedTransform.LookAt(targetPlayerAttacked.transform.position);
             alreadyAttacked = true;
             animator.SetBool("Attack", true);
 
@@ -526,7 +530,7 @@ public class Enemy : NetworkBehaviour {
                 monsterSource.pitch = 1;
                 monsterSource.PlayOneShot(attackClip, 0.5f);
                 Debug.Log("Hit");
-                //SeenAndClosestPlayer().GetComponent<Death>().LoseLife();
+                targetPlayerAttacked.GetComponent<Death>().LoseLife();
             }
             //InvertVisibility();
             aggressionCharges.Value--;

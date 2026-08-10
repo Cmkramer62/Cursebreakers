@@ -11,7 +11,7 @@ public class EnemyIdleTrigger : MonoBehaviour {
     [HideInInspector] public Enemy enemyScript;
 
     private void OnTriggerEnter(Collider other) {
-        if(other.CompareTag("Ghost") && enemyScript.SeenAndClosestPlayer().GetComponent<PlayerMovement>().isHiding) {
+        if(other.CompareTag("Ghost") && enemyScript.SeenAndClosestPlayer().GetComponentInChildren<PlayerMovement>().isHiding) {
             enemyScript.chaseMeter = 100f;
         }
 
