@@ -59,7 +59,12 @@ public class GhostRandomizer : NetworkBehaviour {
     public Enemy ghostScript;
     public NetworkVariable<bool> overrideEyes = new NetworkVariable<bool>(false);
     public CurseGameManager serverGameManagerScript;
-    //public NetworkVariable<string> generatedCode = new NetworkVariable<string>();
+    
+    public GameObject ghostGeistParticles;
+    public Bell bellScript;
+    public GameObject[] enviroParticles, horns;
+    public RuntimeAnimatorController floatingController;
+    public bool searchWithSound = false;
 
     public override void OnNetworkSpawn() {
         generatedRanString.OnValueChanged += (_, newCode) =>
@@ -129,46 +134,68 @@ public class GhostRandomizer : NetworkBehaviour {
         else if(generatedCode.body == 5) SetRobe(generatedCode);
         else if(generatedCode.body == 6) SetVeil(generatedCode);
         else SetVictorian(generatedCode);
+
+        ApplyClues();
+    }
+
+   // [ClientRpc]
+    private void ApplyClues() {
+        ApplyCursedAura();
+        ApplyCursedEnvironment();
     }
 
     public void ApplyCursedEnvironment() {
-        //var goalCurseSpecific = goalCurse.GetComponentInChildren<CursedObject>().cursesList[1];
+        GameObject potentialGoalCurse = null;
+        if(serverGameManagerScript.goalCurse.Value.TryGet(out NetworkObject networkObject)) {
+            potentialGoalCurse = networkObject.gameObject;
+        }
+        if(potentialGoalCurse == null) Debug.Log("ERROR IN CURSED OBJECT, COULD NOT GET GOALCURSE.");
 
-        //enviroParticles[0].SetActive(goalCurseSpecific == CursedObject.CursedTypes.Glowing);
-        //enviroParticles[1].SetActive(goalCurseSpecific == CursedObject.CursedTypes.EMF);
-        //enviroParticles[2].SetActive(goalCurseSpecific == CursedObject.CursedTypes.Aura);
-        //enviroParticles[3].SetActive(goalCurseSpecific == CursedObject.CursedTypes.Thermo);
-        //enviroParticles[4].SetActive(goalCurseSpecific == CursedObject.CursedTypes.Unholy);
+        var goalCurseSpecific = potentialGoalCurse.GetComponentInChildren<CursedObject>().cursesList[1];
 
-        //if(goalCurseSpecific == CursedObject.CursedTypes.Sound) bellScript.ghostSearchWithSound = true;
+        enviroParticles[0].SetActive(goalCurseSpecific == (int)CursedObject.CursedTypes.Glowing);
+        enviroParticles[1].SetActive(goalCurseSpecific == (int)CursedObject.CursedTypes.EMF);
+        enviroParticles[2].SetActive(goalCurseSpecific == (int)CursedObject.CursedTypes.Aura);
+        enviroParticles[3].SetActive(goalCurseSpecific == (int)CursedObject.CursedTypes.Thermo);
+        enviroParticles[4].SetActive(goalCurseSpecific == (int)CursedObject.CursedTypes.Unholy);
+
+        searchWithSound = goalCurseSpecific == (int)CursedObject.CursedTypes.Sound;
+        //if(goalCurseSpecific == (int)CursedObject.CursedTypes.Sound) bellScript.ghostSearchWithSound = true;
+        // this needs to be moved somewhere else. /\
     }
 
     public void ApplyCursedAura() {
         Debug.Log("Starting apply aura");
-        /*
-        var goalCurseSpecific = goalCurse.GetComponentInChildren<CursedObject>().cursesList[2];
+
+        GameObject potentialGoalCurse = null;
+        if(serverGameManagerScript.goalCurse.Value.TryGet(out NetworkObject networkObject)) {
+            potentialGoalCurse = networkObject.gameObject;
+        }
+        if(potentialGoalCurse == null) Debug.Log("ERROR IN CURSED OBJECT, COULD NOT GET GOALCURSE.");
+        var goalCurseSpecific = potentialGoalCurse.GetComponentInChildren<CursedObject>().cursesList[2];
+
         if(goalCurseSpecific == (int)CursedObject.CursedTypes.Glowing) {
-            //ghostGeistParticles.SetActive(true);
-            //ghostAnimator.transform.parent.gameObject.GetComponent<Enemy>().geistAura = true;
+            ghostGeistParticles.SetActive(true);
+            GetComponent<Enemy>().animator.transform.parent.gameObject.GetComponent<Enemy>().geistAura.Value = true;
         }
         else if(goalCurseSpecific == (int)CursedObject.CursedTypes.EMF) {
-            //ghostAnimator.runtimeAnimatorController = floatingController;
+            GetComponent<Enemy>().animator.runtimeAnimatorController = floatingController;
         }
         else if(goalCurseSpecific == (int)CursedObject.CursedTypes.Aura) {
-            ghostReference.GetComponent<GhostRandomizer>().overrideEyes.Value = true;
+            overrideEyes.Value = true; // Does this happen too late?
         }
         else if(goalCurseSpecific == (int)CursedObject.CursedTypes.Thermo) {
-            //ghostAnimator.transform.parent.gameObject.GetComponent<Enemy>().freezingAura = true;
+            GetComponent<Enemy>().freezingAura.Value = true;
         }
         else if(goalCurseSpecific == (int)CursedObject.CursedTypes.Unholy) {
-            //foreach(GameObject horns in ghostHorns) {
-            //    horns.SetActive(true);
-            //}
+            foreach(GameObject horns in horns) {
+                horns.SetActive(true);
+            }
         }
         else {
-            //bellScript.ghostSearchWithSound = true;
+            bellScript.ghostSearchWithSound = true;
         }
-        */
+        
         Debug.Log("done apply aura");
     }
 
