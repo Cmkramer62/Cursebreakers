@@ -79,6 +79,9 @@ public class Scanner : NetworkBehaviour  {
             //start/resume playING passive thrumming sound.
             chainsGlowing.SetActive(true);
             chainsNormal.SetActive(false);
+
+            OnScannerChanged(0, toolController.defaultEMF.Value);
+
         }
         // play expand anim
     }

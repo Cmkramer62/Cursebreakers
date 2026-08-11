@@ -219,6 +219,7 @@ public class PlayerMovement : NetworkBehaviour {
         allowedToCrouch = false;
         //allowedToMove = false;
         //isCrouched = true;
+        Debug.Log("PLAYING DAMN FEATHERS.");
         feathersVFXA.Play();
         feathersVFXB.Play();
 
