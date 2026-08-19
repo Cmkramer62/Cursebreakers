@@ -59,7 +59,7 @@ public class Tutorial : MonoBehaviour {
         }
         else if(currentState == TutorialState.TabTools) {
             tabInitial = true;
-            toolScript.masterAllowed = true;
+            toolScript.playerAlive = true;
         }
         else if(currentState == TutorialState.TabTraitsAndClues) {
             finishedPings = true;

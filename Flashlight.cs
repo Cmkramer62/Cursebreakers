@@ -8,9 +8,10 @@ using Unity.Netcode;
 public class Flashlight : NetworkBehaviour {
 
     public NetworkVariable<bool> flashlightEnabled = new NetworkVariable<bool>(false);
-    public GameObject flashlightObject, flashlightUI, defaultLookPoint;
+    public GameObject flashlightUI, defaultLookPoint;
     public AudioSource source;//, glowingSource;
-    public AudioClip turnOnClip, turnOffClip;
+    public AudioClip magicSoundClip;
+    public Light lightsource;
 
     public float sprintDuration, staminaRemaining, sprintRecoveryDec;//, lightBlastVolume = 0.7f;
     public bool isTired, isFlashing = false;
@@ -55,18 +56,21 @@ public class Flashlight : NetworkBehaviour {
     public void ApplyFlashlightState(bool newState) {
         flashlightEnabled.Value = newState;
         isFlashing = flashlightEnabled.Value;
-        flashlightObject.SetActive(newState);
+        //flashlightObject.SetActive(newState);
+        StartCoroutine(LightHelper.LerpLight(newState, lightsource, .5f, .3f));
 
         if(flashlightEnabled.Value) {
             //source.PlayOneShot(turnOnClip);
             geistParticles.Play();
             playerHandlerScript.GetComponent<ToolController>().GeistlightAnimation(true);
+            AudioController.FadeInAudio(this, source, .5f, .35f);
             // In future, play animation on both the arms and the masked upper body.
         }
         else {
             //source.PlayOneShot(turnOffClip);
             geistParticles.Stop();
             playerHandlerScript.GetComponent<ToolController>().GeistlightAnimation(false);
+            AudioController.FadeOutAudio(this, source, .5f);
             // In future, play animation on both the arms and the masked upper body.
         }
     }

@@ -10,7 +10,7 @@ public class PlayerMovement : NetworkBehaviour {
     
     public GroundChecker groundCheckerScript;
 
-    public float speed = 12f, staminaRecoveryRate = 1f, staminaDuration = 40f, jumpHeight = 1, slideSpeed = 4f;
+    public float speed = 12f, staminaRecoveryRate = 1f, staminaDuration = 40f, jumpHeight = 1, slideSpeed = 4f, slideCooldown = 100f;
 
 
 
@@ -19,7 +19,8 @@ public class PlayerMovement : NetworkBehaviour {
 
     [SerializeField]
     private bool shouldBeSlowed = false, sliding = false;
-    public bool allowedToMove = true, allowedToCrouch = true, isSprinting = false, isCrouched = false, isHiding = false, isTired = false;
+    public bool allowedToMove = true, allowedToCrouch = true, isSprinting = false,
+        isCrouched = false, isHiding = false, isTired = false, slideOnCooldown = false;
 
     [SerializeField]
     public CharacterController controller;
@@ -70,6 +71,9 @@ public class PlayerMovement : NetworkBehaviour {
         // Pass this self to the client-side UI Manager so it can handle the UI of this.
         UIManager.Instance.RegisterPlayer(this);
         UIManager.Instance.RegisterToolController(transform.parent.GetComponent<ToolController>());
+
+        feathersVFXA.Stop();
+        feathersVFXB.Stop();
     }
 
     public void ResetVarsToDefaults() {
@@ -144,7 +148,7 @@ public class PlayerMovement : NetworkBehaviour {
             Crouch();
         }
         else if(!sliding && allowedToCrouch && allowedToMove && (Input.GetKeyDown(crouchKey) || Input.GetKeyUp(crouchKey)) 
-            && isSprinting && groundCheckerScript.isGrounded) {
+            && isSprinting && groundCheckerScript.isGrounded && !slideOnCooldown) {
             StartCoroutine(SlideRoutine());
         }
 
@@ -213,6 +217,7 @@ public class PlayerMovement : NetworkBehaviour {
     }
 
     private IEnumerator SlideRoutine() {
+        //StartCoroutine(SlideCooldown());
         playerAnimator.SetTrigger("Slide");
         sliding = true;
 
@@ -234,7 +239,13 @@ public class PlayerMovement : NetworkBehaviour {
         feathersVFXB.Stop();
         allowedToCrouch = true;
         //allowedToMove = true;
+        transform.parent.GetComponent<PlayerHandler>().stamina.Value = 0;
+    }
 
+    private IEnumerator SlideCooldown() {
+        slideOnCooldown = true;
+        yield return new WaitForSeconds(slideCooldown);
+        slideOnCooldown = false;
     }
 
 }

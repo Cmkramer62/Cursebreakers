@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Unity.Netcode;
 
 public class JumpscareTrigger : MonoBehaviour {
 
@@ -24,7 +25,7 @@ public class JumpscareTrigger : MonoBehaviour {
     public string triggerName;
 
     private void OnTriggerEnter(Collider other) {
-        if(currentTrigger == TriggerType.Touch && other.name.Equals("Player")) {
+        if(currentTrigger == TriggerType.Touch && other.CompareTag("Player") && other.GetComponent<NetworkObject>().OwnerClientId == NetworkManager.Singleton.LocalClientId) {
             Jumpscare();
         }   
     }

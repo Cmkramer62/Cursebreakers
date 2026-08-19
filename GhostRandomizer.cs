@@ -151,15 +151,15 @@ public class GhostRandomizer : NetworkBehaviour {
         }
         if(potentialGoalCurse == null) Debug.Log("ERROR IN CURSED OBJECT, COULD NOT GET GOALCURSE.");
 
-        var goalCurseSpecific = potentialGoalCurse.GetComponentInChildren<CursedObject>().cursesList[1];
+        var goalCurseEnviroSlot = potentialGoalCurse.GetComponentInChildren<CursedObject>().cursesList[1];
 
-        enviroParticles[0].SetActive(goalCurseSpecific == (int)CursedObject.CursedTypes.Glowing);
-        enviroParticles[1].SetActive(goalCurseSpecific == (int)CursedObject.CursedTypes.EMF);
-        enviroParticles[2].SetActive(goalCurseSpecific == (int)CursedObject.CursedTypes.Aura);
-        enviroParticles[3].SetActive(goalCurseSpecific == (int)CursedObject.CursedTypes.Thermo);
-        enviroParticles[4].SetActive(goalCurseSpecific == (int)CursedObject.CursedTypes.Unholy);
+        enviroParticles[0].SetActive(goalCurseEnviroSlot == (int)CursedObject.CursedTypes.Glowing);
+        enviroParticles[1].SetActive(goalCurseEnviroSlot == (int)CursedObject.CursedTypes.EMF);
+        enviroParticles[2].SetActive(goalCurseEnviroSlot == (int)CursedObject.CursedTypes.Aura);
+        enviroParticles[3].SetActive(goalCurseEnviroSlot == (int)CursedObject.CursedTypes.Thermo);
+        enviroParticles[4].SetActive(goalCurseEnviroSlot == (int)CursedObject.CursedTypes.Unholy);
 
-        searchWithSound = goalCurseSpecific == (int)CursedObject.CursedTypes.Sound;
+        searchWithSound = goalCurseEnviroSlot == (int)CursedObject.CursedTypes.Sound;
         //if(goalCurseSpecific == (int)CursedObject.CursedTypes.Sound) bellScript.ghostSearchWithSound = true;
         // this needs to be moved somewhere else. /\
     }
@@ -172,22 +172,23 @@ public class GhostRandomizer : NetworkBehaviour {
             potentialGoalCurse = networkObject.gameObject;
         }
         if(potentialGoalCurse == null) Debug.Log("ERROR IN CURSED OBJECT, COULD NOT GET GOALCURSE.");
-        var goalCurseSpecific = potentialGoalCurse.GetComponentInChildren<CursedObject>().cursesList[2];
+        int goalCurseAuraSlot = potentialGoalCurse.GetComponentInChildren<CursedObject>().cursesList[2];
 
-        if(goalCurseSpecific == (int)CursedObject.CursedTypes.Glowing) {
+        if(goalCurseAuraSlot == (int)CursedObject.CursedTypes.Glowing) {
             ghostGeistParticles.SetActive(true);
             GetComponent<Enemy>().animator.transform.parent.gameObject.GetComponent<Enemy>().geistAura.Value = true;
         }
-        else if(goalCurseSpecific == (int)CursedObject.CursedTypes.EMF) {
+        else if(goalCurseAuraSlot == (int)CursedObject.CursedTypes.EMF) {
             GetComponent<Enemy>().animator.runtimeAnimatorController = floatingController;
         }
-        else if(goalCurseSpecific == (int)CursedObject.CursedTypes.Aura) {
+        else if(goalCurseAuraSlot == (int)CursedObject.CursedTypes.Aura) {
             overrideEyes.Value = true; // Does this happen too late?
         }
-        else if(goalCurseSpecific == (int)CursedObject.CursedTypes.Thermo) {
+        else if(goalCurseAuraSlot == (int)CursedObject.CursedTypes.Thermo) {
+            // debug
             GetComponent<Enemy>().freezingAura.Value = true;
         }
-        else if(goalCurseSpecific == (int)CursedObject.CursedTypes.Unholy) {
+        else if(goalCurseAuraSlot == (int)CursedObject.CursedTypes.Unholy) {
             foreach(GameObject horns in horns) {
                 horns.SetActive(true);
             }
@@ -214,7 +215,7 @@ public class GhostRandomizer : NetworkBehaviour {
         gownLongHair[1].materials = hairMats;
 
         var gownMats = gownLongHair[2].materials;
-        gownMats[0] = gownMats[generatedCode.gown];
+        gownMats[0] = gownMats[0]; // generatedcode.gown seems to keep throwing out of bounds.
         gownLongHair[2].materials = gownMats;
     }
     

@@ -1,8 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Unity.Netcode;
 
-public class ParanormalNoises : MonoBehaviour {
+public class ParanormalNoises : NetworkBehaviour {
 
     [SerializeField] private AudioSource spatialSource, twoDimSource;
     [SerializeField] private AudioClip[] stingerClips, diageticClips;
@@ -14,7 +15,8 @@ public class ParanormalNoises : MonoBehaviour {
     [SerializeField] private float minRandomDelay = 0f, maxRandomDelay = 8f;
     [SerializeField, Range(1, 5), Tooltip("Random(0, lateOdds): 1=alwaysLate, 2=1/2, 3=1/3")] private int lateOdds = 3;
     //private LightFlicker lanternScript;
-    public bool onCooldown = false;
+    public bool onCooldown = false; // Cooldown is client-side because we want the ghost to collect 2 charges
+    // from touching 2 close players, for example.
 
     private AudioClip lastPlayedClip;
     private Coroutine noiseRoutine;
@@ -22,15 +24,18 @@ public class ParanormalNoises : MonoBehaviour {
     // Does this need to be server only? with client RPC for the effects?
     // Instead, simply only checking server on 51, where we call enemy.IncreaseCharges();
     private void OnTriggerEnter(Collider other) {
-         
-        if(other.CompareTag("Player") && !spatialSource.isPlaying && !onCooldown) {
-            PlayRandomNoise(true);
-            Debug.Log("GHOST=touched player.");
-        }
-        else {
-            Debug.Log("GHOST=touch player failed: " + other.name + " " + !spatialSource.isPlaying + " " + !onCooldown);
-        }
-        
+        if(!IsServer || !other.CompareTag("Player"))
+            return;
+
+        NetworkObject player = other.GetComponentInParent<NetworkObject>();
+
+        if(player != null && !spatialSource.isPlaying && !onCooldown)
+            PlaySoundRpc(RpcTarget.Single(player.OwnerClientId, RpcTargetUse.Temp));
+    }
+
+    [Rpc(SendTo.SpecifiedInParams)]
+    private void PlaySoundRpc(RpcParams rpcParams = default) {
+        PlayRandomNoise(true);
     }
 
     public bool IsPlayingParanormal() {

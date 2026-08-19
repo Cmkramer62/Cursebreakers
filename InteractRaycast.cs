@@ -14,7 +14,7 @@ public class InteractRaycast : MonoBehaviour {
     public string hitLayerName = "";
 
     public GameObject crosshairUI;
-    public bool allowedToRaycast = true;
+    public bool allowedToRaycast = true, playerAlive = true;
     public AudioSource source;
     public AudioClip clip;
     public float volumeOfClick = 0.2f;
@@ -33,7 +33,7 @@ public class InteractRaycast : MonoBehaviour {
         int excludeMask = 1 << LayerMask.NameToLayer(excludeLayerName);
         int mask = layerMaskInteract.value & ~excludeMask;
         //int mask = 1 << LayerMask.NameToLayer(excludeLayerName) | layerMaskInteract.value;
-        if(allowedToRaycast && Physics.Raycast(transform.position, fwd, out hit, rayLength, mask) && LayerMask.LayerToName(hit.transform.gameObject.layer) == hitLayerName) {
+        if(playerAlive && allowedToRaycast && Physics.Raycast(transform.position, fwd, out hit, rayLength, mask) && LayerMask.LayerToName(hit.transform.gameObject.layer) == hitLayerName) {
             crosshairUI.SetActive(true);
             if(hit.transform.CompareTag("CursedObject")) curseScript = hit.transform.GetComponentInChildren<CursedObject>();
 

@@ -11,7 +11,7 @@ using Unity.Netcode.Components;
  */
 public class ToolController : NetworkBehaviour {
 
-    public bool cycleCooldown = false, masterAllowed = true;
+    public bool cycleCooldown = false, playerAlive = true;
     public bool allowedToCycle = true;
     public Animator swapperAnimator;
     public GameObject[] playerItemMeshes;
@@ -70,16 +70,16 @@ public class ToolController : NetworkBehaviour {
             return;
         }
 
-        if(!cycleCooldown && masterAllowed && allowedToCycle && Input.GetAxis("Mouse ScrollWheel") > 0f) CycleDownServerRpc();
-        else if(!cycleCooldown && masterAllowed && allowedToCycle && Input.GetAxis("Mouse ScrollWheel") < 0f) CycleUpServerRpc();
-        else if(!cycleCooldown && masterAllowed && allowedToCycle && Input.GetKeyDown(KeyCode.Alpha1)) CycleToServerRpc(0);
-        else if(!cycleCooldown && masterAllowed && allowedToCycle && Input.GetKeyDown(KeyCode.Alpha2)) CycleToServerRpc(1);
-        else if(!cycleCooldown && masterAllowed && allowedToCycle && Input.GetKeyDown(KeyCode.Alpha3)) CycleToServerRpc(2);
-        else if(!cycleCooldown && masterAllowed && allowedToCycle && Input.GetKeyDown(KeyCode.Alpha4)) CycleToServerRpc(3);
-        else if(!cycleCooldown && masterAllowed && allowedToCycle && Input.GetKeyDown(KeyCode.Alpha5)) CycleToServerRpc(4);
-        else if(!cycleCooldown && masterAllowed && allowedToCycle && Input.GetKeyDown(KeyCode.Alpha6)) CycleToServerRpc(5);
-        else if(!cycleCooldown && masterAllowed && allowedToCycle && Input.GetKeyDown(KeyCode.Alpha7)) CycleToServerRpc(6);
-        else if(!cycleCooldown && masterAllowed && allowedToCycle && Input.GetKeyDown(KeyCode.Alpha8)) CycleToServerRpc(7);
+        if(!cycleCooldown && playerAlive && allowedToCycle && Input.GetAxis("Mouse ScrollWheel") > 0f) CycleDownServerRpc();
+        else if(!cycleCooldown && playerAlive && allowedToCycle && Input.GetAxis("Mouse ScrollWheel") < 0f) CycleUpServerRpc();
+        else if(!cycleCooldown && playerAlive && allowedToCycle && Input.GetKeyDown(KeyCode.Alpha1)) CycleToServerRpc(0);
+        else if(!cycleCooldown && playerAlive && allowedToCycle && Input.GetKeyDown(KeyCode.Alpha2)) CycleToServerRpc(1);
+        else if(!cycleCooldown && playerAlive && allowedToCycle && Input.GetKeyDown(KeyCode.Alpha3)) CycleToServerRpc(2);
+        else if(!cycleCooldown && playerAlive && allowedToCycle && Input.GetKeyDown(KeyCode.Alpha4)) CycleToServerRpc(3);
+        else if(!cycleCooldown && playerAlive && allowedToCycle && Input.GetKeyDown(KeyCode.Alpha5)) CycleToServerRpc(4);
+        else if(!cycleCooldown && playerAlive && allowedToCycle && Input.GetKeyDown(KeyCode.Alpha6)) CycleToServerRpc(5);
+        else if(!cycleCooldown && playerAlive && allowedToCycle && Input.GetKeyDown(KeyCode.Alpha7)) CycleToServerRpc(6);
+        else if(!cycleCooldown && playerAlive && allowedToCycle && Input.GetKeyDown(KeyCode.Alpha8)) CycleToServerRpc(7);
 
         //geistLightScript.GeistLightUIUpdate();
         cameraScript.CameraUIUpdate();
@@ -214,7 +214,11 @@ public class ToolController : NetworkBehaviour {
             CursedObject closestCurse = null;
 
             foreach(CursedObject curse in cursedObjectsWithinRange) {
-                if(Vector3.Distance(playerItemMeshes[5].transform.position, curse.transform.position) < smallestDistance) closestCurse = curse;
+                var testingDistance = Vector3.Distance(playerItemMeshes[5].transform.position, curse.transform.position);
+                if(testingDistance < smallestDistance) {
+                    closestCurse = curse;
+                    smallestDistance = testingDistance;
+                }
             }
 
             bool closestIsCold;

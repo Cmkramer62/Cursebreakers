@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Unity.Netcode;
 
 public class InteractPrompt : MonoBehaviour {
 
@@ -17,7 +18,11 @@ public class InteractPrompt : MonoBehaviour {
     private bool done = false;
 
     private void OnTriggerEnter(Collider other) {
-        if(touchTrigger && other.name.Equals("Player") && ((oneTime && !done) || !oneTime)) {
+        // is the person who touched thiss client id the same as mine?
+        
+        if(touchTrigger && other.CompareTag("Player") && ((oneTime && !done) || !oneTime)
+            && other.GetComponent<NetworkObject>().OwnerClientId == NetworkManager.Singleton.LocalClientId) {
+
             InteractWithObject();
             if(textPromptScript == null) textPromptScript = GameObject.Find("Game Manager").GetComponent<TextPrompter>();
             textPromptScript.source.PlayOneShot(interactWithSound, volumeOfPopup);
@@ -50,7 +55,7 @@ public class InteractPrompt : MonoBehaviour {
     }
 
     private void DisplayIt() {
-        if(textPromptScript == null) textPromptScript = GameObject.Find("Game Manager").GetComponent<TextPrompter>();
+        if(textPromptScript == null) textPromptScript = GameObject.Find("Client Curse Game Manager").GetComponent<TextPrompter>();
 
         if(!curseObjectInteract) {
             if(!list) textPromptScript.QueueTextPrompt(displayText, textSound, this);

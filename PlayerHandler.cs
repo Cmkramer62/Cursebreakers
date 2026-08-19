@@ -21,6 +21,7 @@ public class PlayerHandler : NetworkBehaviour {
     // Both the toolbelt and the main camera script need to match the camera's rotation. Tools for the obv.
     // Camera for the reason of mimicing the position of the cam's sphere child.
     [SerializeField] private MatchRotation rotationMatchingScriptCamhead, rotationMatchingScriptToolbelt;
+    [HideInInspector] public CameraFollow cameraReference;
 
     public override void OnNetworkSpawn() {
         if(!IsOwner) {
@@ -31,15 +32,15 @@ public class PlayerHandler : NetworkBehaviour {
 
         ghostScript = GameObject.FindAnyObjectByType<Enemy>();
 
-        var cam = FindObjectOfType<CameraFollow>();
-        cam.SetTarget(cameraHolder);
-        cam.GetComponent<PingCreator>().playerScript = playerMovementScript;
-        cam.transform.GetChild(3).GetComponent<HeadBob>().playerMovement = playerMovementScript;
-        cam.GetComponent<MouseLook>().playerBody = playerMovementScript.transform.parent;
-        cam.GetComponent<MouseLook>().cameraAnimator = animatorRef;
+        cameraReference = FindObjectOfType<CameraFollow>();
+        cameraReference.SetTarget(cameraHolder);
+        cameraReference.GetComponent<PingCreator>().playerScript = playerMovementScript;
+        cameraReference.transform.GetChild(3).GetComponent<HeadBob>().playerMovement = playerMovementScript;
+        cameraReference.GetComponent<MouseLook>().playerBody = playerMovementScript.transform.parent;
+        cameraReference.GetComponent<MouseLook>().cameraAnimator = animatorRef;
 
-        rotationMatchingScriptCamhead.goFollow = cam.gameObject;
-        rotationMatchingScriptToolbelt.goFollow = cam.gameObject;
+        rotationMatchingScriptCamhead.goFollow = cameraReference.gameObject;
+        rotationMatchingScriptToolbelt.goFollow = cameraReference.gameObject;
 
         if(ghostScript != null) {
             playerMovementScript.enemyVisionScript = ghostScript.GetComponent<ConeLOSDetector>();
@@ -55,6 +56,6 @@ public class PlayerHandler : NetworkBehaviour {
             meshRenderObj.enabled = false;
         }
 
-        flashlightScript.raycastScript = cam.GetComponent<InteractRaycast>();
+        flashlightScript.raycastScript = cameraReference.GetComponent<InteractRaycast>();
     }
 }

@@ -33,6 +33,7 @@ public class CurseGameManager : NetworkBehaviour {
     public int timeSpent = 0, timeSpotted = 0, longestChase = 0, purifyState = 0;
 
     private CurseGameManagerClient curseManagerClientScript;
+    public bool spawnGhost = true;
 
     private void OnClientConnected(ulong clientId) {
         var playerObj = NetworkManager.Singleton.ConnectedClients[clientId].PlayerObject;
@@ -74,17 +75,14 @@ public class CurseGameManager : NetworkBehaviour {
 
 
         // Spawn in ghost before the curses are revealed.
-        ghostReference = GameObject.Instantiate(ghostPrefab); // where?
-        ghostReference.GetComponent<GhostRandomizer>().serverGameManagerScript = this;
+        if(spawnGhost) {
+            ghostReference = GameObject.Instantiate(ghostPrefab); // where?
+            ghostReference.GetComponent<GhostRandomizer>().serverGameManagerScript = this;
 
-        ghostReference.GetComponent<NetworkObject>().Spawn();
-        //ghostReference.GetComponent<GhostRandomizer>().GetComponent<NetworkObject>().Spawn();
-        ghostReference.GetComponent<Enemy>().musicSource = curseManagerClientScript.musicSource;
-        ghostReference.GetComponent<Enemy>().allowedToMove.Value = true;
-
-        // Now called by the ghost, only when it has finished spawning.
-        //ApplyCursedAura(); // Second curse reveal.
-        //ApplyCursedEnvironment(); // Third curse reveal.
+            ghostReference.GetComponent<NetworkObject>().Spawn();
+            ghostReference.GetComponent<Enemy>().musicSource = curseManagerClientScript.musicSource;
+            ghostReference.GetComponent<Enemy>().allowedToMove.Value = true;
+        }
 
         // RemovePropItem(goalCurseIndex);
         for (int i = 0; i < curseManagerClientScript.spawnPoints.Count; i++) {

@@ -19,7 +19,7 @@ public class Enemy : NetworkBehaviour {
     public SkinnedMeshRenderer[] meshRenderers;
     public GameObject[] horns;
     public ParticleSystem geistlightAura;
-    public GameObject shadow, paranormalSounds;
+    public GameObject shadow, paranormalSounds, ghostEffects;
 
     public enum Mode { chasing, patrolling }
     public Mode currentMode;
@@ -127,6 +127,11 @@ public class Enemy : NetworkBehaviour {
         return ClosestPlayer(listOfPlayers);
     }
 
+    // Will return null if no Camera's with the Main Camera tag are enabled.
+    public GameObject ClosestCamera() {
+        return GameObject.FindGameObjectWithTag("MainCamera");
+    }
+
     // Returns the closest player out of a subset parameter.
     private GameObject ClosestPlayer(List<GameObject> targetSubset) {
         float minDist = 99999;
@@ -218,11 +223,11 @@ public class Enemy : NetworkBehaviour {
                     // if its not the ritual and I see your back, do silent. else:
                     //if(!GetComponent<ConeLOSDetector>().visibilityOverride && !playerVision.aTargetVisible && cachedTransform.parent.GetComponentInChildren<ToolController>().heldIndex.Value != 1) {
                     //    ModeChase();
-                        // We still want to Fade to chase music if player now turns and sees. Or maybe not necessary.
+                    // We still want to Fade to chase music if player now turns and sees. Or maybe not necessary.
                     //    Debug.Log("Saw you with back turned. ");
                     //}
                     //else {
-                        StartCoroutine(ScreamAnimTimer());
+                        Scream();
                         AudioController.FadeToAnother(this, musicSource, .3f, chaseMusicClip, .1f);//FadeInAudio(this, chaseClip, 3, .1f);
                         Debug.Log("Saw you when you saw me. ");
 
@@ -313,6 +318,7 @@ public class Enemy : NetworkBehaviour {
 
     }
 
+    // A cooldown that occurs after attacking a player.
     private IEnumerator DeAggroTimer() {
         normalAggro.Value = false;
         float prevWalkSpeed = walkSpeed;
@@ -322,13 +328,23 @@ public class Enemy : NetworkBehaviour {
         normalAggro.Value = true;
     }
 
-    private IEnumerator ScreamAnimTimer() {
+    private void Scream() {
+        // Effects for the everyone to see.
+        ScreamClientRpc();
+        // Server values only for the server to worry about.
+        StartCoroutine(ScreamAnimTimer());
+    }
+
+    [ClientRpc]
+    private void ScreamClientRpc() {
         monsterSource.pitch = Random.Range(.85f, 1.2f);
         monsterSource.PlayOneShot(screamClips[Random.Range(0, screamClips.Length)]);
         waitingForScream = true;
         animator.Play("Scream");
         shadowAnimator.Play("Scream");
+    }
 
+    private IEnumerator ScreamAnimTimer() {
         float priorSpeed = agent.speed;
         agent.speed = 0;
         yield return new WaitForSeconds(1.533f);
@@ -388,8 +404,12 @@ public class Enemy : NetworkBehaviour {
                 //}
                 else if(!invisible.Value && Random.Range(0, pauseChance) == 0) StartCoroutine(PausingPatrol());
 
-                if(freezingAura.Value && Vector3.Distance(ClosestPlayer().transform.position, cachedTransform.position) < walkPointRange * 1.75f && !ClosestPlayer().GetComponentInChildren<ParticleSystem>().isPlaying) ClosestPlayer().GetComponentInChildren<ParticleSystem>().Play();
-                else if(freezingAura.Value && Vector3.Distance(ClosestPlayer().transform.position, cachedTransform.position) > walkPointRange * 1.75f && ClosestPlayer().GetComponentInChildren<ParticleSystem>().isPlaying) ClosestPlayer().GetComponentInChildren<ParticleSystem>().Stop();
+                Transform mainCameraTransform = ClosestCamera().transform;
+
+                if(freezingAura.Value && Vector3.Distance(mainCameraTransform.position, cachedTransform.position) < walkPointRange * 1.75f && !mainCameraTransform.GetChild(0).GetComponent<ParticleSystem>().isPlaying)
+                    mainCameraTransform.GetChild(0).GetComponent<ParticleSystem>().Play();
+                else if(freezingAura.Value && Vector3.Distance(mainCameraTransform.position, cachedTransform.position) > walkPointRange * 1.75f && mainCameraTransform.GetChild(0).GetComponent<ParticleSystem>().isPlaying)
+                    mainCameraTransform.GetChild(0).GetComponent<ParticleSystem>().Stop();
             }
         }
         else {
@@ -462,6 +482,7 @@ public class Enemy : NetworkBehaviour {
             foreach(GameObject horn in horns) {
                 horn.SetActive(false);
             }
+            ghostEffects.SetActive(true);
             walkSpeed = invisSpeed;
         }
         else {
@@ -489,8 +510,11 @@ public class Enemy : NetworkBehaviour {
             foreach(GameObject horn in horns) {
                 horn.SetActive(true);
             }
+            ghostEffects.SetActive(false);
         }
-        yield return new WaitForSeconds(2f);
+        // THIS IS THE DELAY BEFORE REACTIVATING PARANORMAL SOUNDS.
+        if(invisState) yield return new WaitForSeconds(15f);
+        else yield return new WaitForSeconds(2f);
         paranormalSounds.SetActive(invisState);
     }
 
@@ -503,6 +527,7 @@ public class Enemy : NetworkBehaviour {
             foreach(GameObject horn in horns) {
                 horn.SetActive(true);
             }
+            ghostEffects.SetActive(false);
         }
     }
 
@@ -530,7 +555,7 @@ public class Enemy : NetworkBehaviour {
                 monsterSource.pitch = 1;
                 monsterSource.PlayOneShot(attackClip, 0.5f);
                 Debug.Log("Hit");
-                targetPlayerAttacked.GetComponent<Death>().LoseLife();
+                targetPlayerAttacked.GetComponent<Death>().LoseLife(true);
             }
             //InvertVisibility();
             aggressionCharges.Value--;

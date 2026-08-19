@@ -10,27 +10,25 @@ public class Death : NetworkBehaviour {
     // Listen for lives on the CurseGameManagerClient.cs or UIManager.cs. Act accordingly upon life loss or gain for UI.
     public NetworkVariable<int> lives = new NetworkVariable<int>(3);
 
-    public GameObject player, jumpscareObject, cameraParent, realGhost, jumpscareChildObject, jumpscareAngel, deathUI, handObjectParent;
+    public GameObject playerController, jumpscareObject, cameraParent, jumpscareGhost, jumpscareAngel, handObjectParent, ghostShadow;
     public AudioSource source;
     public AudioClip jumpscareClip, hitDamageClip;
     public AudioClip[] stingerClips;
     public float scareVolume = 1.0f;
 
-    //public int lives = 3;
-    public GameObject[] bloodUI, heartsUI;
     public bool allowDeath = true;
 
-    [HideInInspector]
-    public GameObject realGhostChild;
+    //[HideInInspector]
+    //public GameObject realGhostChild, realGhost, jumpscareChildObject, deathUI;
 
     public SaveDataHandler saveSystem;
     public AudioMixer masterMixer;
 
     // Ghost calls this. Always server.
-    public void LoseLife() {
-        //StartCoroutine(BloodTimer());
+    // Client side UIManager.cs handles local visuals.
+    public void LoseLife(bool ghostAttack) {
         source.PlayOneShot(hitDamageClip);
-        if(player.GetComponent<PlayerMovement>().isHiding) {
+        if(playerController.GetComponent<PlayerMovement>().isHiding) {
             foreach(HidingSpot spot in GameObject.FindObjectsByType<HidingSpot>(FindObjectsSortMode.None)) {
                 if(spot.hidingHere.Value && spot.MatchesPlayer(NetworkManager.Singleton.LocalClientId)) {
                     spot.Unhide();
@@ -41,15 +39,20 @@ public class Death : NetworkBehaviour {
         source.PlayOneShot(stingerClips[lives.Value]); // I inverted this, invert the sound list.
 
         if(lives.Value == 0) {
-
-            // Jumpscare visuals.
+            GetComponent<Animator>().SetBool("Dead", true); // Synced?
+            SetPlayerPerms(false);
+            // Jumpscare visuals IF ghostAttack. ISOLATE JUMPSCARE CODE TO ONLY BE WHAT'S NEEDED FOR ANIMATIONS.
             // Then set animator of player to dead bool.
-            // Player cannot move.
-            transform.parent.GetComponent<Animator>().SetBool("Dead", true);
-            GetComponent<ToolController>().masterAllowed = false;
-            //GetComponentInChildren<PlayerMovement>().allowedToCrouch = false;
-            //GetComponentInChildren<PlayerMovement>().allowedToMove = false;
-            // Dont need to do above, since it checks on its own if this script's lives==0.
+            // Player cannot move temporarily. This and the 2 above happen simultaneously.
+            
+            Jumpscare(!ghostAttack);
+            // Animation plays of player falling down from first person point of view... Camera effects...Darkness.
+            // More camera effects..glowing green flame spiritual energy. You now are ghost above your body.
+            // UI looks different. Toolbar only has Nihil. Stamina is green hued.
+
+            // fade to black, and then to a new pale greenish bluish color. (this is a new overlay. Both the fade and this are
+            // new gameobject to make. Worry about animations later.
+            // Update player perms.
         }
 
 
@@ -63,10 +66,13 @@ public class Death : NetworkBehaviour {
         else StartCoroutine(JumpscareAngelTimer());
     }
 
+    // This needs to occur ONLY on client side, to the client that's being jumpscared.
     private IEnumerator JumpscareTimer() {
-        masterMixer.SetFloat("MainVolumeParam", -80);
+        //masterMixer.SetFloat("MainVolumeParam", -80);
 
         #region Ghost Teleportation
+        // Simply make the ghost go invisible and uninteractable for a bit..?
+        /*
         realGhost.SetActive(false);
         realGhostChild.SetActive(false);
         handObjectParent.SetActive(false);
@@ -77,27 +83,33 @@ public class Death : NetworkBehaviour {
         realGhostChild.GetComponent<Animator>().runtimeAnimatorController = jumpscareChildObject.GetComponent<Animator>().runtimeAnimatorController;
         realGhost.GetComponent<Enemy>().MakeVisible();
         realGhostChild.SetActive(true);
+        */
         #endregion
 
-        jumpscareChildObject.SetActive(false);
-        player.SetActive(false);
-        jumpscareObject.SetActive(true);
-        realGhostChild.transform.GetChild(1).GetComponent<Animator>().Play("JumpscareFaceAnimator");
-
         source.PlayOneShot(jumpscareClip, 0.4f);
-        Cursor.lockState = CursorLockMode.None;
-        GetComponent<PauseGame>().normalUI.SetActive(false);
-        GetComponent<PauseGame>().pausedUI.SetActive(false);
+        ghostShadow.transform.GetChild(0).GetChild(0).GetComponent<ParticleSystem>().Stop();
+        ghostShadow.transform.GetChild(0).GetChild(1).GetComponent<SkinnedMeshRenderer>().enabled = false;
+        jumpscareObject.SetActive(true);
+        jumpscareGhost.SetActive(true);
+        ghostShadow.SetActive(true); // animator on shadow not enabled.
+        ghostShadow.transform.GetChild(0).GetComponent<Animator>().Play("Scream 0"); // done to only mimic the position.
+        //Cursor.lockState = CursorLockMode.None;
+        //GetComponent<PauseGame>().normalUI.SetActive(false);
+        //GetComponent<PauseGame>().pausedUI.SetActive(false);
         //GetComponent<GameTimer>().KillTimer();
-        GetComponent<PurificationManager>().KillTimer();
-        GetComponent<ToolController>().masterAllowed = false;
-        GetComponent<PauseGame>().allowedToPause = false;
+        //GetComponent<PurificationManager>().KillTimer();
+        //GetComponent<ToolController>().playerAlive = false;
+        //GetComponent<PauseGame>().allowedToPause = false;
         //wait for 1 (?) seconds, then pause the game. Load a menu that's animated without using timescale. What to do about the pause menu functionality?
         yield return new WaitForSeconds(1.13333f);
-        realGhostChild.GetComponent<Animator>().speed = 0;
-
-        if(GetComponent<PurificationManager>().cursedObjectScript != null) AudioController.FadeOutAudio(this, GetComponent<PurificationManager>().cursedObjectScript.pSourceB, .5f);
-        yield return new WaitForSeconds(1.5f);
+        //realGhostChild.GetComponent<Animator>().speed = 0;
+        //jumpscareGhost.GetComponent<Animator>().speed = 0;
+        ghostShadow.GetComponent<Animator>().enabled = true;
+        ghostShadow.transform.GetChild(0).GetChild(0).GetComponent<ParticleSystem>().Play();
+        ghostShadow.transform.GetChild(0).GetChild(1).GetComponent<SkinnedMeshRenderer>().enabled = true;
+        jumpscareGhost.SetActive(false);
+        //if(GetComponent<PurificationManager>().cursedObjectScript != null) AudioController.FadeOutAudio(this, GetComponent<PurificationManager>().cursedObjectScript.pSourceB, .5f);
+        //yield return new WaitForSeconds(1.5f);
         //  deathUI.SetActive(true);
 
     }
@@ -105,10 +117,10 @@ public class Death : NetworkBehaviour {
     private IEnumerator JumpscareAngelTimer() {
         masterMixer.SetFloat("MainVolumeParam", -80);
 
-        realGhost.SetActive(false);
+       // realGhost.SetActive(false);
 
-        jumpscareChildObject.SetActive(false);
-        player.SetActive(false);
+       // jumpscareChildObject.SetActive(false);
+        //playerController.SetActive(false);
         jumpscareAngel.SetActive(true);
         jumpscareObject.SetActive(true);
 
@@ -119,11 +131,11 @@ public class Death : NetworkBehaviour {
         GetComponent<PauseGame>().pausedUI.SetActive(false);
         //GetComponent<GameTimer>().KillTimer();
         GetComponent<PurificationManager>().KillTimer();
-        GetComponent<ToolController>().masterAllowed = false;
+        GetComponent<ToolController>().playerAlive = false;
         GetComponent<PauseGame>().allowedToPause = false;
         //wait for 1 (?) seconds, then pause the game. Load a menu that's animated without using timescale. What to do about the pause menu functionality?
         yield return new WaitForSeconds(1.13333f);
-        realGhostChild.GetComponent<Animator>().speed = 0;
+       // realGhostChild.GetComponent<Animator>().speed = 0;
 
         if(GetComponent<PurificationManager>().cursedObjectScript != null) AudioController.FadeOutAudio(this, GetComponent<PurificationManager>().cursedObjectScript.pSourceB, .5f);
         yield return new WaitForSeconds(2.5f);
@@ -131,36 +143,27 @@ public class Death : NetworkBehaviour {
 
     }
 
-    private IEnumerator BloodTimer() {
-        source.PlayOneShot(hitDamageClip);
-        if(player.GetComponent<PlayerMovement>().isHiding) {
-            foreach(HidingSpot spot in GameObject.FindObjectsByType<HidingSpot>(FindObjectsSortMode.None)) {
-                if(spot.hidingHere.Value) spot.Unhide();
-            }
-        }
+    private void SetPlayerPerms(bool state) {
+        // No movement input. 1*
+        // No camera movement input. 2*
+        // No tool/ability input. 3*
+        // Disable hand visuals. 4*
+        // No allowing input (F/LMB) for Interact Raycast. 5*
+        // No crosshair allowed.
+        // Turn off Normal UI, and Pause UI if it was on. (players can still pause though?)
 
-        if(lives.Value - 1 == 0) { // player is dead.
+        //GetComponentInChildren<PlayerMovement>().allowedToCrouch = false;
+        //GetComponentInChildren<PlayerMovement>().allowedToMove = false;
+        // Dont need to do above, since it checks on its own if this script's lives==0. 1
+        CameraFollow cameraReference = GetComponent<PlayerHandler>().cameraReference;
+        cameraReference.GetComponent<MouseLook>().playerAlive = state; // 2
+        GetComponent<ToolController>().playerAlive = state; // 3
 
-            //bloodUI[3 - GetComponent<PlayerHandler>().lives.Value].SetActive(true);
-            //heartsUI[GetComponent<PlayerHandler>().lives.Value - 1].GetComponent<Animator>().Play("HeartIconLoss");
-           // GetComponent<CurseGameManager>().livesLeft = 0;
-            source.PlayOneShot(stingerClips[3 - lives.Value]);
-            if(allowDeath) Jumpscare(false);
-            else {
-                yield return new WaitForSeconds(1f);
-                //bloodUI[3 - GetComponent<PlayerHandler>().lives.Value].SetActive(false);
-                //heartsUI[GetComponent<PlayerHandler>().lives.Value - 1].transform.GetChild(1).gameObject.SetActive(false);
-            }
-        }
-        else {
-           // bloodUI[3 - GetComponent<PlayerHandler>().lives.Value].SetActive(true);
-           // heartsUI[GetComponent<PlayerHandler>().lives.Value - 1].GetComponent<Animator>().Play("HeartIconLoss");
-            source.PlayOneShot(stingerClips[3 - lives.Value]);
-            yield return new WaitForSeconds(1f);
-           // bloodUI[3 - GetComponent<PlayerHandler>().lives.Value].SetActive(false);
-            //heartsUI[GetComponent<PlayerHandler>().lives.Value - 1].transform.GetChild(1).gameObject.SetActive(false);
-            lives.Value--;
-        }
+        cameraReference.GetComponent<InteractRaycast>().playerAlive = state; // 5
+        playerController.GetComponent<PlayerMovement>().enabled = state;
+        //Cursor.lockState = CursorLockMode.None;
+        //GetComponent<PauseGame>().normalUI.SetActive(false);
+        //GetComponent<PauseGame>().pausedUI.SetActive(false);
     }
 
 }

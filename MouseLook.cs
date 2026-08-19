@@ -7,7 +7,7 @@ public class MouseLook : MonoBehaviour {
     public float mouseSensitivity = 100f;
     public Transform playerBody, cameraParent;
     public float xRotation = 0f;
-    public bool allowedToLook = true;
+    public bool allowedToLook = true, playerAlive = true;
     [HideInInspector] public Animator cameraAnimator;
 
     // Start is called before the first frame update
@@ -17,7 +17,7 @@ public class MouseLook : MonoBehaviour {
 
     // Update is called once per frame
     void Update() {
-        if(playerBody != null && allowedToLook) {
+        if(playerBody != null && allowedToLook && playerAlive) {
             float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
             float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity * Time.deltaTime;
 

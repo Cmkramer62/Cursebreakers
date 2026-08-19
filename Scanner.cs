@@ -58,6 +58,17 @@ public class Scanner : NetworkBehaviour  {
             constraint.enabled = true;
             constraint.constraintActive = true;
 
+            LookAtConstraint constraint2 = particles.GetComponent<LookAtConstraint>();
+            List<ConstraintSource> sources2 = new List<ConstraintSource>();
+            constraint2.GetSources(sources2);
+            ConstraintSource newSource2 = new ConstraintSource();
+            newSource2.sourceTransform = headTransformLookAt;
+            newSource2.weight = 1.0f;
+            sources2.Add(newSource2);
+            constraint2.SetSources(sources2);
+            constraint2.enabled = true;
+            constraint2.constraintActive = true;
+
             // this will not work. you need to have them on a layer that's invisble to the camera, and then put back on.
             //particles.SetActive(false);
             //canvas.SetActive(false);
@@ -73,7 +84,8 @@ public class Scanner : NetworkBehaviour  {
 
     private void OnEnable() {
         if(particles != null) {
-            particles.GetComponentInChildren<ParticleSystem>().Play();
+            particles.transform.GetChild(0).GetComponent<ParticleSystem>().Play();
+            particles.transform.GetChild(1).GetComponent<ParticleSystem>().Play();
             canvas.SetActive(true);
             //play sound effect too?
             //start/resume playING passive thrumming sound.
@@ -88,7 +100,8 @@ public class Scanner : NetworkBehaviour  {
 
     private void OnDisable() {
         if(particles != null) {
-            particles.GetComponentInChildren<ParticleSystem>().Stop();
+            particles.transform.GetChild(0).GetComponent<ParticleSystem>().Stop();
+            particles.transform.GetChild(1).GetComponent<ParticleSystem>().Stop();
             canvas.SetActive(false);
             chainsGlowing.SetActive(false);
             chainsNormal.SetActive(true);

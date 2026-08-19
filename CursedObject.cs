@@ -21,7 +21,7 @@ public class CursedObject : NetworkBehaviour {
 
     private bool lowering = false;
 
-    public AudioSource source, geistAudioA, geistAudioB;
+    public AudioSource source, geistAudioA;
     public AudioClip geistlightClip, cameraWhooshClip;
     public AudioClip[] cursedAudioClips;
 
@@ -140,17 +140,6 @@ public class CursedObject : NetworkBehaviour {
                     toolControllerScript.defaultEMF.Value = Random.Range(0, 6);
                 }
 
-                // Thermometer Section
-                //if(cursesList.Contains(CursedTypes.Thermo)) {
-                //    toolControllerScript.defaultTemp = temperature;
-                //}
-                if(cursesList.Contains((int)CursedTypes.Thermo)) {
-                    //toolControllerScript.defaultTemp.Value = temperature;
-                }
-                else if(toolControllerScript.defaultTemp.Value != -20) {
-                    //toolControllerScript.defaultTemp.Value = Random.Range(57, 63);
-                }
-
                 if(cursesList.Contains((int)CursedTypes.Unholy)) {
                     // Wait random amount of time? Then,
                     toolControllerScript.CheckHolyWater();
@@ -179,10 +168,6 @@ public class CursedObject : NetworkBehaviour {
             var toolControllerScript = other.GetComponent<ToolController>();
 
             toolControllerScript.cursedObjectsWithinRange.Remove(this); //flawed. What if another curse removes itself before
-                                                           // we have a chance to for this specific one?
-                                                           // if(cursesList.Contains(CursedTypes.Thermo)) {
-                                                           //     toolControllerScript.defaultTemp = 60;
-                                                           // }
 
             if(toolControllerScript.IsServer) {
                 // If leaving an EMF, set value to 0.
@@ -192,20 +177,6 @@ public class CursedObject : NetworkBehaviour {
                 // If this isn't an EMF and they're not currently in a real EMF, set value to 0;
                 else if(toolControllerScript.defaultEMF.Value != 7) {
                     toolControllerScript.defaultEMF.Value = 0;
-                }
-
-                // If leaving a Thermo, set value to 60.
-                if(cursesList.Contains((int)CursedTypes.Thermo)) {
-                    //toolControllerScript.defaultTemp.Value = 60;
-                    Debug.Log("Left and this curse-" + gameObject.name + " does have EMF");
-                }
-                // If this isn't a Thermo and they're not currently in a real Thermo, set value to 60;
-                else if(toolControllerScript.defaultTemp.Value != -20) {
-                    //toolControllerScript.defaultTemp.Value = 60;
-                    Debug.Log("Left and this curse-" + gameObject.name + " does NOT have EMF, and the torch is not -20");
-                }
-                else {
-                    Debug.Log("Left and this curse-" + gameObject.name + " does NOT have EMF, and the torch is -20");
                 }
 
                 if(cursesList.Contains((int)CursedTypes.Unholy)) {
@@ -230,20 +201,17 @@ public class CursedObject : NetworkBehaviour {
             //geistLight.gameObject.SetActive(state);
             //Debug.Log("starting routine");
             if(lightRoutine != null) StopCoroutine(lightRoutine);
-            lightRoutine = StartCoroutine(LerpLight(state));
+            lightRoutine = StartCoroutine(LightHelper.LerpLight(state, geistLight, 3, .1f)); //StartCoroutine(LerpLight(state));
             if(state) {
-                geistAudioA.volume = 0.773f;
+                geistAudioA.volume = 1f;
                 geistAudioA.Play();
-                geistAudioB.volume = 1f;
-                geistAudioB.Play();
+
                 geistLightParticles.Play();
             }
             else {
-                AudioController.FadeOutAudio(this, geistAudioA, .1f);
-                AudioController.FadeOutAudio(this, geistAudioB, .1f);
+                AudioController.FadeOutAudio(this, geistAudioA, 2f);
                 geistLightParticles.Stop();
             }
-            //if(state) source.PlayOneShot(geistlightClip);
         }
         if(found && type == CursedTypes.Aura) {
             if(state) distortion.Play();
@@ -260,29 +228,4 @@ public class CursedObject : NetworkBehaviour {
         if(tutorialCurse) GameObject.Find("TutorialManager").GetComponent<Tutorial>().toolDone = true;
     }
 
-    private IEnumerator LerpLight(bool state) {
-        float start, end;
-        
-        if(state) {
-            start = geistLight.intensity;
-            end = 0.1f;
-        }
-        else {
-            start = geistLight.intensity;
-            end = 0f;
-        }
-
-        float time = 0f;
-        // geistLight.intensity = start;
-
-        while(time < 3) {
-            time += Time.deltaTime;
-            float t = time / 1;
-
-            geistLight.intensity = Mathf.Lerp(start, end, t);
-            yield return null;
-        }
-
-        geistLight.intensity = end; // ensure final value hits exactly 1
-    }
 }
