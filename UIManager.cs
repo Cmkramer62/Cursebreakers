@@ -28,6 +28,7 @@ public class UIManager : MonoBehaviour {
     [SerializeField] private ParticleSystem spellParticleVFX;
     [SerializeField] private Material[] spellParticleMaterials;
     [SerializeField] private GameObject[] bloodUI, heartsUI;
+    [SerializeField] private Animator afterlifeTransitionAnimator;
 
     private void Awake() {
         Instance = this;
@@ -43,7 +44,7 @@ public class UIManager : MonoBehaviour {
         // Subscribe to changes
         //serverCurseManager.goalCurseIndex.OnValueChanged += OnNewCurseSpawn;
         deathScript.lives.OnValueChanged += OnLivesChange;
-
+        deathScript.afterlifePlayer.OnValueChanged += OnAfterlifeChange;
         //OnNewCurseSpawn(0, serverCurseManager.goalCurseIndex.Value);
 
     }
@@ -51,6 +52,18 @@ public class UIManager : MonoBehaviour {
     private void OnLivesChange(int oldAmount, int newAmount) {
         bloodUI[newAmount].SetActive(true);
         heartsUI[newAmount].GetComponent<Animator>().Play("HeartIconLoss");
+    }
+
+    private void OnAfterlifeChange(bool oldValue, bool newValue) {
+        StartCoroutine(AfterlifeFadeTimer(newValue));
+    }
+
+    private IEnumerator AfterlifeFadeTimer(bool enteringGhost) {
+        yield return new WaitForSeconds(1.13333f);
+
+        // Are there any ways they could enter 0 and not want this?
+        if(enteringGhost) afterlifeTransitionAnimator.Play("AfterlifeFade");
+        else afterlifeTransitionAnimator.Play("AfterlifeFadeFrom");
     }
 
     private void Update() {

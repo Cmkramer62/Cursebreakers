@@ -20,7 +20,7 @@ public class PlayerMovement : NetworkBehaviour {
     [SerializeField]
     private bool shouldBeSlowed = false, sliding = false;
     public bool allowedToMove = true, allowedToCrouch = true, isSprinting = false,
-        isCrouched = false, isHiding = false, isTired = false, slideOnCooldown = false;
+        isCrouched = false, isHiding = false, isTired = false, slideOnCooldown = false, playerAlive = true;
 
     [SerializeField]
     public CharacterController controller;
@@ -49,6 +49,8 @@ public class PlayerMovement : NetworkBehaviour {
 
     [SerializeField] private ParticleSystem feathersVFXA, feathersVFXB;
 
+    private float afterlifeFallAugment = 1f, afterlifeSpeedAugment = 1f, afterlifeJumpAugment = 1f;
+
     private void Awake() {
 
         //sprintRemaining = sprintDuration;
@@ -74,6 +76,21 @@ public class PlayerMovement : NetworkBehaviour {
 
         feathersVFXA.Stop();
         feathersVFXB.Stop();
+
+        GetComponentInParent<Death>().afterlifePlayer.OnValueChanged += OnAfterlifeChanged;
+    }
+
+    private void OnAfterlifeChanged(bool oldState, bool newState) {
+        // Accordingly (as onafterlife may trigger to enter but also to leave).
+        // increase speed.
+        // increase hop dist.
+        // lower gravity rate.
+        // disable slide ability.
+        // disable crouch ability?
+
+        afterlifeFallAugment = newState ? .5f : 1f;
+        afterlifeSpeedAugment = newState ? 1.5f : 1f;
+        afterlifeJumpAugment = newState ? 1.4f : 1f;
     }
 
     public void ResetVarsToDefaults() {
@@ -93,7 +110,7 @@ public class PlayerMovement : NetworkBehaviour {
     }
 
     private void Jump() {
-        fallingVelocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+        fallingVelocity.y = Mathf.Sqrt(jumpHeight * -2f * afterlifeJumpAugment * gravity);
         source.PlayOneShot(jumpClip[Random.Range(0, jumpClip.Length)]);
 
         playerAnimator.SetTrigger("Jump");
@@ -121,7 +138,7 @@ public class PlayerMovement : NetworkBehaviour {
             return;
         }
 
-        if(transform.parent.GetComponent<Death>().lives.Value == 0) return;
+        if(!playerAlive) return;
 
         // MOVEMENT Section
         var horiz = Input.GetAxis("Horizontal");
@@ -137,7 +154,7 @@ public class PlayerMovement : NetworkBehaviour {
 
         playerAnimator.SetBool("Walking", horiz != 0 || vert != 0);
         if(!sliding && allowedToMove)
-            controller.Move(inputVector * sprintActualMultiplier * speed * Time.deltaTime);
+            controller.Move(inputVector * sprintActualMultiplier * speed * afterlifeSpeedAugment * Time.deltaTime);
 
         // CROUCH Section
         //cachedTransform.localScale = new Vector3(originalScale.x, Mathf.Clamp(currentHeight -= (isCrouched ? 2f : -2f) * Time.deltaTime, crouchHeight, originalScale.y), originalScale.z);
@@ -159,7 +176,7 @@ public class PlayerMovement : NetworkBehaviour {
         if(Input.GetButtonDown("Jump") && allowedToMove && groundCheckerScript.isGrounded)
             Jump();
 
-        fallingVelocity.y += gravity * Time.deltaTime;
+        fallingVelocity.y += gravity * afterlifeFallAugment * Time.deltaTime;
 
         if(allowedToMove)
             controller.Move(fallingVelocity * Time.deltaTime);
