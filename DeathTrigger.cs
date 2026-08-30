@@ -13,6 +13,7 @@ public class DeathTrigger : MonoBehaviour {
 
     private void OnTriggerEnter(Collider other) {
         if(other.CompareTag("Player") && touchTrigger && other.GetComponent<NetworkObject>().OwnerClientId == NetworkManager.Singleton.LocalClientId && (!triggered || repeatable)) {
+            
             //deathScript.Jumpscare(angelDeath);
             triggered = true;
             other.GetComponent<Death>().LoseLife(!angelDeath);

@@ -24,7 +24,7 @@ public class ParanormalNoises : NetworkBehaviour {
     // Does this need to be server only? with client RPC for the effects?
     // Instead, simply only checking server on 51, where we call enemy.IncreaseCharges();
     private void OnTriggerEnter(Collider other) {
-        if(!IsServer || !other.CompareTag("Player"))
+        if(!IsServer || !other.CompareTag("Player") || other.GetComponent<Death>().lives.Value < 1)
             return;
 
         NetworkObject player = other.GetComponentInParent<NetworkObject>();

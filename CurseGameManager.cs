@@ -38,9 +38,6 @@ public class CurseGameManager : NetworkBehaviour {
     private void OnClientConnected(ulong clientId) {
         var playerObj = NetworkManager.Singleton.ConnectedClients[clientId].PlayerObject;
         // Now you have the player's NetworkObject. Needed?
-
-        
-
     }
 
     public override void OnNetworkSpawn() {

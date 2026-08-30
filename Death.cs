@@ -11,9 +11,9 @@ public class Death : NetworkBehaviour {
     public NetworkVariable<int> lives = new NetworkVariable<int>(3);
     public NetworkVariable<bool> afterlifePlayer = new NetworkVariable<bool>(false);
 
-    public GameObject playerController, jumpscareObject, cameraParent, jumpscareGhost, jumpscareAngel, handObjectParent, ghostShadow;
-    public AudioSource source;
-    public AudioClip jumpscareClip, hitDamageClip;
+    public GameObject playerController, jumpscareObject, cameraParent, jumpscareGhost, jumpscareAngel, handObjectParent, ghostShadow, playerDeadBodyPrefab;
+    public AudioSource twoDimAudioSource, musicSourceA, musicSourceB;
+    public AudioClip jumpscareClip, hitDamageClip, afterlifeAClip, afterlifeBClip, transitionClip;
     public AudioClip[] stingerClips;
     public float scareVolume = 1.0f;
 
@@ -28,11 +28,112 @@ public class Death : NetworkBehaviour {
     [SerializeField] private SkinnedMeshRenderer[] bodyMeshes;
     [SerializeField] private Material normalBodyAMat, normalBodyBMat, ghostBodyMat;
     [SerializeField] private Light jumpscareLight;
+    public Animator playerArmsAnimator;
+  //  public bool reviving = false;
+    public GameObject playerDeadBody;
+    public float returnDuration = 4f;
+    private AudioClip storedClipA, storedClipB;
+    private float storedVolumeA, storedVolumeB;
+
+    public bool channelingLife = false, channelingDone = false;
+    public float lifeChannelAmount, lifeChannelRecoveryRate, lifeChannelDuration;
+
+    public override void OnNetworkSpawn() {
+        var cg = GameObject.Find("Client Curse Game Manager").GetComponent<CurseGameManagerClient>();
+        musicSourceA = cg.musicSource;
+        musicSourceB = cg.musicAlternate;
+
+        afterlifePlayer.OnValueChanged += OnAfterlifeChanged;
+        lives.OnValueChanged += OnLifeChanged;
+    }
+
+    private void Update() {
+        ChannelUpdate(); // always?
+    }
+
+    // Called from inside this.Update();
+    // Any changes here must be mirrored in the UIManager version.
+    private void ChannelUpdate() {
+        if(channelingLife && !channelingDone) lifeChannelAmount -= 1 * Time.deltaTime;
+        else lifeChannelAmount = Mathf.Clamp(lifeChannelAmount += lifeChannelRecoveryRate * Time.deltaTime, 0, lifeChannelDuration);
+
+        if(lifeChannelAmount <= 0) {
+            channelingDone = true;
+            // probably hide the UI now.
+            //source.PlayOneShot(breathClip);
+        }
+        if(lifeChannelAmount == lifeChannelDuration) {
+            channelingDone = false;
+        }
+    }
+
+    #region AFTERLIFE
+    public void OnAfterlifeChanged(bool oldValue, bool newValue) {
+        playerArmsAnimator.SetBool("Afterlife", newValue);
+
+        GetComponentInChildren<PlayerMovement>().GetComponentInChildren<GroundChecker>().afterlife = newValue;
+        GetComponentInChildren<PlayerMovement>().GetComponentInChildren<GroundChecker>().UpdateClips();
+    }
+
+    private void OnLifeChanged(int valueOld, int valueNew) {
+        if(valueOld == 0 && valueNew == 1) {
+            SetRevivalPerms();
+            // reviving = true;
+            StartCoroutine(ReturnToBodyCoroutine());
+        }
+    }
+
+    private IEnumerator ReturnToBodyCoroutine() {
+        Vector3 startPosition = transform.position;
+        float elapsed = 0f;
+        while(elapsed < returnDuration) {
+            elapsed += Time.deltaTime;
+
+            float t = elapsed / returnDuration;
+
+            // Smooth the movement
+            t = Mathf.SmoothStep(0f, 1f, t);
+
+            transform.position = Vector3.Lerp(
+                startPosition,
+                playerDeadBody.transform.position,
+                t
+            );
+
+            yield return null;
+        }
+
+        // Make absolutely sure we're exactly at the body
+        transform.position = playerDeadBody.transform.position;
+
+        // Restore player control here
+        // Finish your transformation back into the player here
+       
+        afterlifePlayer.Value = false;
+        // UI manager will hear this and take 1.3 seconds to fade to black. We mimic that time and then return control.
+        StartCoroutine(UndoAfterlifeEffects());
+        
+    }
+
+    private IEnumerator UndoAfterlifeEffects() {
+        yield return new WaitForSeconds(3f);
+        SetPlayerPerms(true);
+        GetComponent<PlayerHandler>().cameraReference.GetComponent<CameraEffectsManager>().NormalLayers();
+        GetComponent<PlayerHandler>().cameraReference.GetComponent<CameraEffectsManager>().NormalEffects();
+        GameObject.Destroy(playerDeadBody);
+        if(storedClipA != null) AudioController.FadeToAnother(this, musicSourceA, .5f, afterlifeAClip, storedVolumeA);
+        if(storedClipB != null) AudioController.FadeToAnother(this, musicSourceB, .5f, afterlifeBClip, storedVolumeB);
+        if(IsServer) SetBodyMaterialsClientRpc(false); // do this false when..?
+        else SetBodyMaterialsServerRpc(false);
+        GetComponent<ToolController>().ForceToPrevhand(0);
+    }
+    #endregion
+
 
     // Ghost calls this. Always server.
     // Client side UIManager.cs handles local visuals.
     public void LoseLife(bool ghostAttack) {
-        source.PlayOneShot(hitDamageClip);
+        twoDimAudioSource.PlayOneShot(hitDamageClip);
         if(playerController.GetComponent<PlayerMovement>().isHiding) {
             foreach(HidingSpot spot in GameObject.FindObjectsByType<HidingSpot>(FindObjectsSortMode.None)) {
                 if(spot.hidingHere.Value && spot.MatchesPlayer(NetworkManager.Singleton.LocalClientId)) {
@@ -40,16 +141,19 @@ public class Death : NetworkBehaviour {
                 }
             }
         }
-        lives.Value--;
-        source.PlayOneShot(stingerClips[lives.Value]); // I inverted this, invert the sound list.
+        int whatLivesWillBe = lives.Value - 1;
+        LoseLifeServerRpc(); // may take time to register the rpc after this.
+        twoDimAudioSource.PlayOneShot(stingerClips[whatLivesWillBe]); // I inverted this, invert the sound list.
 
-        if(lives.Value == 0) {
+        if(whatLivesWillBe == 0) {
             GetComponent<Animator>().SetBool("Dead", true); // Synced?
+            if(ghostAttack) playerArmsAnimator.SetTrigger("DyingFromGhost");
+            else playerArmsAnimator.SetTrigger("DyingFromAngel");
             SetPlayerPerms(false);
             // Jumpscare visuals IF ghostAttack. ISOLATE JUMPSCARE CODE TO ONLY BE WHAT'S NEEDED FOR ANIMATIONS.
             // Then set animator of player to dead bool.
             // Player cannot move temporarily. This and the 2 above happen simultaneously.
-            
+
             Jumpscare(!ghostAttack);
             // Animation plays of player falling down from first person point of view... Camera effects...Darkness.
             // More camera effects..glowing green flame spiritual energy. You now are ghost above your body.
@@ -61,8 +165,22 @@ public class Death : NetworkBehaviour {
             // new gameobject to make. Worry about animations later.
             // Update player perms.
         }
+    }
 
+    [ServerRpc]
+    private void LoseLifeServerRpc() {
+        lives.Value--;
+    }
 
+    [ServerRpc]
+    private void RequestAfterLifeBoolChangeServerRpc(bool state) {
+        afterlifePlayer.Value = state;
+    }
+
+    // Called by player reviving another. Will trigger OnLifeChanged in this script.
+    [ServerRpc(RequireOwnership = false)]
+    public void GainLifeServerRpc() {
+        lives.Value++;
     }
 
     private IEnumerator AfterlifeSequence() {
@@ -70,18 +188,40 @@ public class Death : NetworkBehaviour {
 
         yield return new WaitForSeconds(1f);
 
-        afterlifePlayer.Value = true;
+        RequestAfterLifeBoolChangeServerRpc(true);
+
         yield return new WaitForSeconds(4f);
-        SetBodyMaterials(true); // do this false when..?
+
+        if(IsServer) SetBodyMaterialsClientRpc(true); // do this false when..?
+        else SetBodyMaterialsServerRpc(true);
+
         SetPlayerGhostPerms();
+
         yield return new WaitForSeconds(1f);
         cameraParent.transform.parent.GetComponent<Animator>().Play("AfterlifeAnim");
         UndoJumpscareEffects();
+        GetComponent<PlayerHandler>().cameraReference.GetComponent<CameraEffectsManager>().AfterlifeLayers();
+        // Spawn the player's ghost body now. Other players will see no change, because it will be spawned while
+        // Simultaneously setting the real player's body (who would be starting to stand) as invisible.
+        playerDeadBody =  GameObject.Instantiate(playerDeadBodyPrefab);
+        playerDeadBody.transform.position = transform.position;
+        playerDeadBody.transform.rotation = transform.rotation;
+        playerDeadBody.GetComponent<PlayerDeadBody>().playerID.Value = NetworkManager.Singleton.LocalClientId;
+        playerDeadBody.GetComponent<NetworkObject>().Spawn();
+
+        GetComponent<Animator>().SetBool("Dead", false);
+        storedClipA = musicSourceA.clip;
+        storedClipB = musicSourceB.clip;
+        storedVolumeA = musicSourceA.volume;
+        storedVolumeB = musicSourceB.volume;
+        AudioController.FadeToAnother(this, musicSourceA, .5f, afterlifeAClip, 0.217f);//FadeInAudio(this, chaseClip, 3, .1f);
+        AudioController.FadeToAnother(this, musicSourceB, .5f, afterlifeBClip, .85f);//FadeInAudio(this, chaseClip, 3, .1f);
+        twoDimAudioSource.PlayOneShot(transitionClip);
     }
 
     public void Jumpscare(bool angel) {
         //saveSystem.SetMissionData(-1, GetComponent<CurseGameManager>().timeSpent, GetComponent<CurseGameManager>().livesLeft,
-       //     GetComponent<CurseGameManager>().timeSpotted, GetComponent<CurseGameManager>().longestChase, GetComponent<CurseGameManager>().purifyState);
+        //     GetComponent<CurseGameManager>().timeSpotted, GetComponent<CurseGameManager>().longestChase, GetComponent<CurseGameManager>().purifyState);
 
         if(!angel) StartCoroutine(JumpscareGhostSequence());
         else StartCoroutine(JumpscareAngelSequence());
@@ -106,7 +246,7 @@ public class Death : NetworkBehaviour {
         */
         #endregion
         GetComponent<PlayerHandler>().cameraReference.GetComponent<CameraEffectsManager>().AfterlifeEffects(2f);
-        source.PlayOneShot(jumpscareClip, 0.4f);
+        twoDimAudioSource.PlayOneShot(jumpscareClip, 0.4f);
         ghostShadow.transform.GetChild(0).GetChild(0).GetComponent<ParticleSystem>().Stop();
         ghostShadow.transform.GetChild(0).GetChild(1).GetComponent<SkinnedMeshRenderer>().enabled = false;
         jumpscareObject.SetActive(true);
@@ -135,11 +275,11 @@ public class Death : NetworkBehaviour {
         jumpscareAngel.SetActive(true);
         jumpscareObject.SetActive(true);
 
-        source.PlayOneShot(jumpscareClip, 0.4f);
+        twoDimAudioSource.PlayOneShot(jumpscareClip, 0.4f);
 
         //wait for 1 (?) seconds, then pause the game. Load a menu that's animated without using timescale. What to do about the pause menu functionality?
         yield return new WaitForSeconds(1.13333f);
-       // realGhostChild.GetComponent<Animator>().speed = 0;
+        // realGhostChild.GetComponent<Animator>().speed = 0;
 
         //if(GetComponent<PurificationManager>().cursedObjectScript != null) AudioController.FadeOutAudio(this, GetComponent<PurificationManager>().cursedObjectScript.pSourceB, .5f);
         //yield return new WaitForSeconds(2.5f);
@@ -180,10 +320,13 @@ public class Death : NetworkBehaviour {
         GetComponent<ToolController>().playerAlive = state; // 3
 
         cameraReference.GetComponent<InteractRaycast>().playerAlive = state; // 5
-       // playerController.GetComponent<PlayerMovement>().enabled = state;
+        // playerController.GetComponent<PlayerMovement>().enabled = state;
         //Cursor.lockState = CursorLockMode.None;
         //GetComponent<PauseGame>().normalUI.SetActive(false);
         //GetComponent<PauseGame>().pausedUI.SetActive(false);
+        if(state) {
+            GetComponentInChildren<CapsuleCollider>().enabled = true;
+        }
     }
 
     // SetPlayerGhostPerms Activates a specific restricted permission set, allowing the player to do some things.
@@ -192,20 +335,45 @@ public class Death : NetworkBehaviour {
         cameraReference.GetComponent<MouseLook>().playerAlive = true; // 2
         GetComponent<ToolController>().playerAlive = false; // 3
 
-        cameraReference.GetComponent<InteractRaycast>().playerAlive = false; // change this to true, and a ghostbool to true.
+        cameraReference.GetComponent<InteractRaycast>().playerAlive = true; // change this to true, and a ghostbool to true.
+        cameraReference.GetComponent<InteractRaycast>().afterlife = true; // change this to true, and a ghostbool to true.
+
         // the interact raycast should do unique things if the ghostbool is true.
         // playerController.GetComponent<PlayerMovement>().enabled = true;
         GetComponentInChildren<PlayerMovement>().playerAlive = true;
 
     }
 
+    private void SetRevivalPerms() {
+        CameraFollow cameraReference = GetComponent<PlayerHandler>().cameraReference;
+
+        cameraReference.GetComponent<InteractRaycast>().playerAlive = false; // change this to true, and a ghostbool to true.
+        cameraReference.GetComponent<InteractRaycast>().afterlife = false; // change this to true, and a ghostbool to true.
+        GetComponentInChildren<PlayerMovement>().playerAlive = false;
+        GetComponentInChildren<CapsuleCollider>().enabled = false;
+    }
+
+    [ServerRpc]
+    private void SetBodyMaterialsServerRpc(bool ghost) {
+        SetBodyMaterialsClientRpc(ghost);
+    }
+
     // SetBodyMaterials changes the player's body and hands to be the normal color or a ghostly color.
-    private void SetBodyMaterials(bool ghost) {
+    [ClientRpc]
+    private void SetBodyMaterialsClientRpc(bool ghost) {
         for(int i = 0; i < bodyMeshes.Length; i++) {
             
             bodyMeshes[i].material = ghost ? ghostBodyMat : normalBodyAMat;
-            
+            bodyMeshes[i].gameObject.layer = ghost ? LayerMask.NameToLayer("Afterlife") : 
+                LayerMask.NameToLayer("Default");
         }
         bodyMeshes[0].material = ghost ? ghostBodyMat : normalBodyBMat;
+
+        // Set the layers of the player's body to be Afterlife. At this point the player's camera is also rendering afterlife.
+        // This MUST be a client RPC. We want to run this on the other player's death.cs too, since their stuff must be on
+        // the afterlife layer because we want to see them.
+
+
+
     }
 }

@@ -138,7 +138,7 @@ public class Enemy : NetworkBehaviour {
         GameObject closestPlayer = targetSubset[0];
         for(int i = 1; i < targetSubset.Count; i++) {
             float distanceToTest = Vector3.Distance(targetSubset[i].transform.position, closestPlayer.transform.position);
-            if(distanceToTest < minDist) {
+            if(distanceToTest < minDist && targetSubset[i].GetComponent<Death>().lives.Value > 0) {
                 minDist = distanceToTest;
                 closestPlayer = targetSubset[i];
             }
@@ -155,7 +155,7 @@ public class Enemy : NetworkBehaviour {
         //string results = "visiplayers: ";
         foreach(GameObject player in listOfPlayers) {
             //results = results + player.transform.position.ToString() + "-" + coneDetector.SeeParticularTarget(player.transform) + "...";
-            if(coneDetector.SeeParticularTarget(player.transform)) playersVisible.Add(player);
+            if(player.GetComponent<Death>().lives.Value > 0 && coneDetector.SeeParticularTarget(player.transform)) playersVisible.Add(player);
         }
         //Debug.Log(results);
         if(playersVisible.Count > 0) {
@@ -477,7 +477,8 @@ public class Enemy : NetworkBehaviour {
         Debug.Log("GHOST=Setting ghost invis to: " + invisState);
         if(invisState) {
             foreach(SkinnedMeshRenderer meshRen in meshRenderers) {
-                meshRen.enabled = false;
+                //meshRen.enabled = false;
+                meshRen.gameObject.layer =LayerMask.NameToLayer("Afterlife");
             }
             foreach(GameObject horn in horns) {
                 horn.SetActive(false);
@@ -505,7 +506,8 @@ public class Enemy : NetworkBehaviour {
         // If we are NOT invisible:
         if(!invisState) {
             foreach(SkinnedMeshRenderer meshRen in meshRenderers) {
-                meshRen.enabled = true;
+                //meshRen.enabled = true;
+                meshRen.gameObject.layer = LayerMask.NameToLayer("Default");
             }
             foreach(GameObject horn in horns) {
                 horn.SetActive(true);
@@ -522,7 +524,8 @@ public class Enemy : NetworkBehaviour {
     public void MakeVisible() {
         if(invisible.Value) {
             foreach(SkinnedMeshRenderer meshRen in meshRenderers) {
-                meshRen.enabled = true;
+               // meshRen.enabled = true;
+                meshRen.gameObject.layer = LayerMask.NameToLayer("Afterlife");
             }
             foreach(GameObject horn in horns) {
                 horn.SetActive(true);

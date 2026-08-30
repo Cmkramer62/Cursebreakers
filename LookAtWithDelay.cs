@@ -10,7 +10,7 @@ public class LookAtWithDelay : MonoBehaviour {
    // public AudioSource cameraSound;
 
     private void Start() {
-        if(defaultToPlayer) targetObject = GameObject.Find("Main Camera").transform;
+        if(defaultToPlayer) targetObject = GameObject.FindGameObjectWithTag("MainCamera").transform;
     }
 
     private void Update() {

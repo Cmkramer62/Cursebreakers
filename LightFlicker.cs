@@ -174,6 +174,15 @@ public class LightFlicker : NetworkBehaviour {
         }
     }
 
+    [ServerRpc(RequireOwnership = false)]
+    public void AfterlifeInvertLightStateServerRpc() {
+        if(!alive) {
+            int randomChanceOfBlowing = Random.Range(0, 21);
+            if(randomChanceOfBlowing == 0) BlowUpLightClientRpc();
+            else InvertLightStateClientRpc();
+        }
+    }
+
 }
 
 

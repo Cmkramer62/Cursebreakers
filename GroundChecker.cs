@@ -8,7 +8,7 @@ public class GroundChecker : MonoBehaviour {
     public LayerMask groundMask;
     public bool isGrounded = false, inAirFromJump = false;
 
-    [SerializeField] private Animator playerAnimator;
+    [SerializeField] private Animator playerAnimator, armsAnimator;
 
     private string currentTag = "Grass";
 
@@ -16,7 +16,10 @@ public class GroundChecker : MonoBehaviour {
     public AudioClip[] normalStepClips, metalStepClips, woodStepClips, ventStepClips, waterStepClips, tileStepClips, carpetStepClips, rockStepClips;
 
     public AudioClip[] normalLandClips, metalLandClips, woodLandClips, ventLandClips, waterLandClips, tileLandClips, carpetLandClips, rockLandClips;
-    private AudioClip[] playingFromClips;
+    public AudioClip[] afterlifeStepClips;
+
+    public bool afterlife = false;
+    public AudioClip[] playingFromClips;
     /*
      * Goal is to check the ground beneath the user.
      * Change sound of footsteps based on material
@@ -42,7 +45,8 @@ public class GroundChecker : MonoBehaviour {
         RaycastHit hit;
         bool priorState = isGrounded;
         isGrounded = Physics.Raycast(groundCheck.position, Vector3.down, out hit, groundDistance, groundMask);
-        playerAnimator.SetBool("Grounded", isGrounded); 
+        playerAnimator.SetBool("Grounded", isGrounded);
+        armsAnimator.SetBool("Grounded", isGrounded);
         if(!priorState && isGrounded) {
             currentTag = hit.collider.tag;
 
@@ -63,6 +67,9 @@ public class GroundChecker : MonoBehaviour {
         }
     }
 
+    public void UpdateClips() {
+        playingFromClips = AssignList(true);
+    }
 
     public void PlaySound() {
         footSource.pitch = (Random.Range(0.87f, 0.93f)); //(Random.Range(0.78f, 0.87f));
@@ -72,6 +79,8 @@ public class GroundChecker : MonoBehaviour {
     }
 
     private AudioClip[] AssignList(bool walking) {
+        if(afterlife) return afterlifeStepClips;
+
         if(currentTag.Equals("Metal")) return walking ? metalStepClips : metalLandClips;
         else if(currentTag.Equals("Wood")) return walking ? woodStepClips : woodLandClips;
         else if(currentTag.Equals("Vent")) return walking ? ventStepClips : ventLandClips;

@@ -22,6 +22,7 @@ public class PlayerHandler : NetworkBehaviour {
     // Camera for the reason of mimicing the position of the cam's sphere child.
     [SerializeField] private MatchRotation rotationMatchingScriptCamhead, rotationMatchingScriptToolbelt;
     [HideInInspector] public CameraFollow cameraReference;
+    public ParticleSystem channelParticles;
 
     public override void OnNetworkSpawn() {
         if(!IsOwner) {

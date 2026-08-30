@@ -30,13 +30,13 @@ public class PlayerMovement : NetworkBehaviour {
     public LayerMask groundMask;
     public KeyCode crouchKey = KeyCode.LeftControl;
 
-    [SerializeField] Animator playerAnimator;
+    [SerializeField] Animator playerAnimator, armsAnimator;
 
     public ConeLOSDetector enemyVisionScript;
     #region SOUND VARIABLES
-        public AudioSource source;
-        public AudioClip breathClip, crouchClip;
-        public AudioClip[] jumpClip;
+    public AudioSource source;
+    public AudioClip breathClip, crouchClip, ghostJump;
+    public AudioClip[] jumpClip;
     #endregion
 
     public LightFlickerNonNetworked lanternReference;
@@ -50,6 +50,7 @@ public class PlayerMovement : NetworkBehaviour {
     [SerializeField] private ParticleSystem feathersVFXA, feathersVFXB;
 
     private float afterlifeFallAugment = 1f, afterlifeSpeedAugment = 1f, afterlifeJumpAugment = 1f;
+    private bool afterlife = false;
 
     private void Awake() {
 
@@ -91,6 +92,7 @@ public class PlayerMovement : NetworkBehaviour {
         afterlifeFallAugment = newState ? .5f : 1f;
         afterlifeSpeedAugment = newState ? 1.5f : 1f;
         afterlifeJumpAugment = newState ? 1.4f : 1f;
+        afterlife = newState;
     }
 
     public void ResetVarsToDefaults() {
@@ -111,10 +113,12 @@ public class PlayerMovement : NetworkBehaviour {
 
     private void Jump() {
         fallingVelocity.y = Mathf.Sqrt(jumpHeight * -2f * afterlifeJumpAugment * gravity);
-        source.PlayOneShot(jumpClip[Random.Range(0, jumpClip.Length)]);
+        source.PlayOneShot(afterlife ? ghostJump : jumpClip[Random.Range(0, jumpClip.Length)]);
 
         playerAnimator.SetTrigger("Jump");
         playerAnimator.SetBool("InAirFromJump", true);
+        if(transform.parent.GetComponent<ToolController>().heldIndex.Value == 0) armsAnimator.SetTrigger("Jump"); // might this sometimes not be properly set?
+        armsAnimator.SetBool("Grounded", false);
         if(airRoutine != null) StopCoroutine(airRoutine);
         airRoutine = StartCoroutine(InAirFromJumpTimer());
     }
@@ -160,12 +164,12 @@ public class PlayerMovement : NetworkBehaviour {
         //cachedTransform.localScale = new Vector3(originalScale.x, Mathf.Clamp(currentHeight -= (isCrouched ? 2f : -2f) * Time.deltaTime, crouchHeight, originalScale.y), originalScale.z);
         headTransform.localPosition = new Vector3(originalHeadHeight.x, Mathf.Clamp(currentHeight -= (isCrouched ? 2f : -2f) * Time.deltaTime, crouchHeight, originalHeadHeight.y), originalHeadHeight.z);
 
-        if(!sliding && allowedToCrouch && allowedToMove && (Input.GetKeyDown(crouchKey) || Input.GetKeyUp(crouchKey)) && !isSprinting) {
+        if(!sliding && allowedToCrouch && allowedToMove && (Input.GetKeyDown(crouchKey) || Input.GetKeyUp(crouchKey)) && !isSprinting && !afterlife) {
             isCrouched = !Input.GetKeyDown(crouchKey);
             Crouch();
         }
         else if(!sliding && allowedToCrouch && allowedToMove && (Input.GetKeyDown(crouchKey) || Input.GetKeyUp(crouchKey)) 
-            && isSprinting && groundCheckerScript.isGrounded && !slideOnCooldown) {
+            && isSprinting && groundCheckerScript.isGrounded && !slideOnCooldown && !afterlife) {
             StartCoroutine(SlideRoutine());
         }
 
@@ -221,7 +225,7 @@ public class PlayerMovement : NetworkBehaviour {
     // Called from inside this.Update();
     // Any changes here must be mirrored in the UIManager version.
     private void StaminaUpdate() {
-        if(isSprinting && !isTired) playerHandlerScript.stamina.Value -= 1 * Time.deltaTime;
+        if(isSprinting && !isTired && !afterlife) playerHandlerScript.stamina.Value -= 1 * Time.deltaTime;
         else playerHandlerScript.stamina.Value = Mathf.Clamp(playerHandlerScript.stamina.Value += staminaRecoveryRate * Time.deltaTime, 0, staminaDuration);
         
         if(playerHandlerScript.stamina.Value <= 0) {

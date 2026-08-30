@@ -8,7 +8,7 @@ public class HidingSpot : NetworkBehaviour {
     public Transform positionHide;
     public NetworkVariable<bool> hidingHere = new NetworkVariable<bool>(false);
     public bool scareOnExit = false;
-    public AudioClip enterClip, exitClip;
+    public AudioClip enterClip, exitClip, paranormalClip;
     public GameObject hidingUI;
 
     public bool tutorialHidingSpot = false;
@@ -55,6 +55,23 @@ public class HidingSpot : NetworkBehaviour {
         if(hidingHere.Value) return;
 
         occupantClientId.Value = clientID;
+    }
+
+    // GHOSTS SHOULD ALSO DO THIS AS PARANORMAL EVENT.
+    public void Paranormal() {
+        if(!GetComponent<AudioSource>().isPlaying) AfterlifeJiggleServerRpc();
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    public void AfterlifeJiggleServerRpc() {
+        AfterlifeJiggleClientRpc();
+    }
+
+    [ClientRpc]
+    public void AfterlifeJiggleClientRpc() {
+        GetComponent<Animator>().Play("LockerParanormalAnim");
+        // play noise
+        GetComponent<AudioSource>().PlayOneShot(paranormalClip);
     }
 
     // Will only be called by the owner, since the camera is client's only.?

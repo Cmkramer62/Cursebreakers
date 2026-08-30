@@ -29,6 +29,8 @@ public class UIManager : MonoBehaviour {
     [SerializeField] private Material[] spellParticleMaterials;
     [SerializeField] private GameObject[] bloodUI, heartsUI;
     [SerializeField] private Animator afterlifeTransitionAnimator;
+    [SerializeField] private GameObject afterlifeUI, livesUI, toolbarUIParent;
+    [HideInInspector] public int trackedLives = 3; // manual: change.
 
     private void Awake() {
         Instance = this;
@@ -50,8 +52,15 @@ public class UIManager : MonoBehaviour {
     }
 
     private void OnLivesChange(int oldAmount, int newAmount) {
-        bloodUI[newAmount].SetActive(true);
-        heartsUI[newAmount].GetComponent<Animator>().Play("HeartIconLoss");
+        Debug.Log("Life change: " + oldAmount + " " + newAmount);
+        if(oldAmount > newAmount) {
+            bloodUI[newAmount].SetActive(true);
+            heartsUI[newAmount].GetComponent<Animator>().Play("HeartIconLoss");
+        }
+        else {
+            heartsUI[oldAmount].GetComponent<Animator>().Play("HeartIconAnim");
+        }
+        trackedLives = newAmount;
     }
 
     private void OnAfterlifeChange(bool oldValue, bool newValue) {
@@ -64,6 +73,14 @@ public class UIManager : MonoBehaviour {
         // Are there any ways they could enter 0 and not want this?
         if(enteringGhost) afterlifeTransitionAnimator.Play("AfterlifeFade");
         else afterlifeTransitionAnimator.Play("AfterlifeFadeFrom");
+
+        AfterlifeUI(enteringGhost);
+    }
+
+    private void AfterlifeUI(bool state) {
+        afterlifeUI.SetActive(state);
+        toolbarUIParent.SetActive(!state);
+        livesUI.SetActive(!state);
     }
 
     private void Update() {
