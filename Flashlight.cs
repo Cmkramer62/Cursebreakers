@@ -32,15 +32,22 @@ public class Flashlight : NetworkBehaviour {
         // Apply initial state
         ApplyFlashlightState(flashlightEnabled.Value);
         
-        
-        gameObject.SetActive(false);
+        if(IsOwner) StartCoroutine(FindUIManager());
 
-        if(!IsOwner) return;
+        gameObject.SetActive(false);
+    }
+
+    // The OnNetworkSpawn occurs before the scene has fully loaded. So we wait until it has, and find what we need.
+    private IEnumerator FindUIManager() {
+        var uiManagerInstance = UIManager.Instance;
+        while(uiManagerInstance == null) {
+            uiManagerInstance = UIManager.Instance;
+            yield return null;
+        }
+
         // Pass this self to the client-side UI Manager so it can handle the UI of this.
         UIManager.Instance.RegisterGeistlight(this);
     }
-
-
 
     public void OnDisable() {
         if(!IsOwner) return;

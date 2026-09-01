@@ -181,7 +181,7 @@ public class Enemy : NetworkBehaviour {
 
         if(allowedToMove.Value) {
             var myTarget = SeenAndClosestPlayer();
-            bool playerSeen = coneDetector.aTargetVisible && !myTarget.GetComponentInChildren<PlayerMovement>().isHiding && normalAggro.Value;// && //!player.GetComponent<PlayerMovement>().isHiding;
+            bool playerSeen = coneDetector.aTargetVisible && !myTarget.GetComponentInChildren<PlayerMovement>().isHiding && normalAggro.Value && myTarget.GetComponent<Death>().lives.Value > 0;// && //!player.GetComponent<PlayerMovement>().isHiding;
             bool playerInAttackRange = Physics.CheckSphere(cachedTransform.position, attackRange, playerLayer) && normalAggro.Value;
 
             //Debug.Log("GHOST= Player:" + myTarget.name + myTarget.transform.position.x + " LOS:" + coneDetector.aTargetVisible + " NOTHIDE:" +

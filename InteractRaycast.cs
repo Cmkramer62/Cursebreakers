@@ -18,7 +18,7 @@ public class InteractRaycast : NetworkBehaviour {
     public Animator crosshairAnimator;
     public CursedObject curseScript;
     private Death deathScript;
-    [SerializeField] private GameObject defaultCrosshair, interactCrosshair, afterlifeInteractCrosshair, channelLifeCrosshair; // cursedObjCrosshair
+    [SerializeField] private GameObject defaultCrosshair, interactCrosshair, afterlifeInteractCrosshair, channelLifeCrosshair, cursedObjCrosshair;
     public enum CrosshairType { Nothing, InteractLiving, InteractAfterlife, Channel, CursedObject}
 
 
@@ -44,6 +44,7 @@ public class InteractRaycast : NetworkBehaviour {
             }
             else {
                 if(hit.transform.gameObject.tag == "PlayerBody") currentRaycastedType = CrosshairType.Channel;
+                else if(hit.transform.gameObject.tag == "CursedObject") currentRaycastedType = CrosshairType.CursedObject;
                 else currentRaycastedType = CrosshairType.InteractLiving;
             }
             
@@ -65,9 +66,13 @@ public class InteractRaycast : NetworkBehaviour {
                         break;
                     case "CursedObject":
                         if(!afterlife) {
-                            InteractPrompt seenPrompt2 = hit.transform.GetComponent<InteractPrompt>();
-                            seenPrompt2.InteractWithObject();
-                            if(seenPrompt2.list) source.PlayOneShot(seenPrompt2.interactWithSound, volumeOfClick);
+                            //InteractPrompt seenPrompt2 = hit.transform.GetComponent<InteractPrompt>();
+                            //seenPrompt2.InteractWithObject();
+                            //if(seenPrompt2.list) source.PlayOneShot(seenPrompt2.interactWithSound, volumeOfClick);
+
+                            // something something purification manager, something something client side hears that..
+
+
                         }
                         break;
                     case "Takeable":
@@ -102,6 +107,7 @@ public class InteractRaycast : NetworkBehaviour {
                             // Play noise.
                             // start animation?
                             deathScript.GetComponent<PlayerHandler>().channelParticles.Play();
+                            AudioController.FadeInAudio(this, deathScript.channelSourceThreeDim, .5f, .86f);
                         }
                         break;
                         
@@ -147,7 +153,7 @@ public class InteractRaycast : NetworkBehaviour {
                 deathScript.playerArmsAnimator.SetBool("Channeling", false);
                 Debug.Log("channel trigger off");
                 deathScript.GetComponent<PlayerHandler>().channelParticles.Stop();
-
+                if(deathScript.channelSourceThreeDim.isPlaying) AudioController.FadeOutAudio(this, deathScript.channelSourceThreeDim, 2f);
             }
 
         }
@@ -160,6 +166,7 @@ public class InteractRaycast : NetworkBehaviour {
                 deathScript.playerArmsAnimator.SetBool("Channeling", false);
                 Debug.Log("channel trigger off");
                 deathScript.GetComponent<PlayerHandler>().channelParticles.Stop();
+                if(deathScript.channelSourceThreeDim.isPlaying) AudioController.FadeOutAudio(this, deathScript.channelSourceThreeDim, 2f);
 
             }
         }
@@ -179,6 +186,7 @@ public class InteractRaycast : NetworkBehaviour {
         interactCrosshair.SetActive(currentRaycastedType == CrosshairType.InteractLiving);
         afterlifeInteractCrosshair.SetActive(currentRaycastedType == CrosshairType.InteractAfterlife);
         channelLifeCrosshair.SetActive(currentRaycastedType == CrosshairType.Channel);
+        cursedObjCrosshair.SetActive(currentRaycastedType == CrosshairType.CursedObject);
     }
 
 }

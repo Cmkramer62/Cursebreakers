@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.Audio;
 using Unity.Netcode;
+using Dissonance;
 
 public class Death : NetworkBehaviour {
 
@@ -11,8 +12,10 @@ public class Death : NetworkBehaviour {
     public NetworkVariable<int> lives = new NetworkVariable<int>(3);
     public NetworkVariable<bool> afterlifePlayer = new NetworkVariable<bool>(false);
 
-    public GameObject playerController, jumpscareObject, cameraParent, jumpscareGhost, jumpscareAngel, handObjectParent, ghostShadow, playerDeadBodyPrefab;
-    public AudioSource twoDimAudioSource, musicSourceA, musicSourceB;
+    public GameObject playerController, jumpscareObject, cameraParent, jumpscareAngel, handObjectParent, ghostShadow, playerDeadBodyPrefab;
+    [SerializeField] private GameObject[] jumpscareGhost;
+    public int jumpscareGhostBodyIndex = -1;
+    public AudioSource twoDimAudioSource, musicSourceA, musicSourceB, channelSourceThreeDim;
     public AudioClip jumpscareClip, hitDamageClip, afterlifeAClip, afterlifeBClip, transitionClip;
     public AudioClip[] stingerClips;
     public float scareVolume = 1.0f;
@@ -26,7 +29,8 @@ public class Death : NetworkBehaviour {
     public AudioMixer masterMixer;
 
     [SerializeField] private SkinnedMeshRenderer[] bodyMeshes;
-    [SerializeField] private Material normalBodyAMat, normalBodyBMat, ghostBodyMat;
+    [SerializeField] private MeshRenderer halo;
+    [SerializeField] private Material normalBodyAMat, normalBodyBMat, ghostBodyMat, haloNormalMat;
     [SerializeField] private Light jumpscareLight;
     public Animator playerArmsAnimator;
   //  public bool reviving = false;
@@ -38,13 +42,23 @@ public class Death : NetworkBehaviour {
     public bool channelingLife = false, channelingDone = false;
     public float lifeChannelAmount, lifeChannelRecoveryRate, lifeChannelDuration;
 
-    public override void OnNetworkSpawn() {
-        var cg = GameObject.Find("Client Curse Game Manager").GetComponent<CurseGameManagerClient>();
-        musicSourceA = cg.musicSource;
-        musicSourceB = cg.musicAlternate;
-
+    public override void OnNetworkSpawn() {        
         afterlifePlayer.OnValueChanged += OnAfterlifeChanged;
         lives.OnValueChanged += OnLifeChanged;
+
+        StartCoroutine(FindClientGameManager());
+    }
+
+    // The OnNetworkSpawn occurs before the scene has fully loaded. So we wait until it has, and find what we need.
+    private IEnumerator FindClientGameManager() {
+        CurseGameManagerClient clientCG = FindAnyObjectByType<CurseGameManagerClient>();
+        while(clientCG == null) {
+            clientCG = FindAnyObjectByType<CurseGameManagerClient>();
+            yield return null;
+        }
+
+        musicSourceA = clientCG.musicSource;
+        musicSourceB = clientCG.musicAlternate;
     }
 
     private void Update() {
@@ -80,6 +94,16 @@ public class Death : NetworkBehaviour {
             SetRevivalPerms();
             // reviving = true;
             StartCoroutine(ReturnToBodyCoroutine());
+        }
+
+        if(valueNew == 0) {
+            // turn off mic.
+            GameObject.FindAnyObjectByType<VoiceBroadcastTrigger>().enabled = false;
+        }
+        else {
+            // turn on mic.
+            GameObject.FindAnyObjectByType<VoiceBroadcastTrigger>().enabled = true;
+
         }
     }
 
@@ -121,8 +145,10 @@ public class Death : NetworkBehaviour {
         GetComponent<PlayerHandler>().cameraReference.GetComponent<CameraEffectsManager>().NormalLayers();
         GetComponent<PlayerHandler>().cameraReference.GetComponent<CameraEffectsManager>().NormalEffects();
         GameObject.Destroy(playerDeadBody);
-        if(storedClipA != null) AudioController.FadeToAnother(this, musicSourceA, .5f, afterlifeAClip, storedVolumeA);
-        if(storedClipB != null) AudioController.FadeToAnother(this, musicSourceB, .5f, afterlifeBClip, storedVolumeB);
+        if(storedClipA != null) AudioController.FadeToAnother(this, musicSourceA, .5f, storedClipA, storedVolumeA);
+        else AudioController.FadeOutAudio(this, musicSourceA, .5f);
+        if(storedClipB != null) AudioController.FadeToAnother(this, musicSourceB, .5f, storedClipB, storedVolumeB);
+        else AudioController.FadeOutAudio(this, musicSourceB, .5f);
         if(IsServer) SetBodyMaterialsClientRpc(false); // do this false when..?
         else SetBodyMaterialsServerRpc(false);
         GetComponent<ToolController>().ForceToPrevhand(0);
@@ -250,7 +276,8 @@ public class Death : NetworkBehaviour {
         ghostShadow.transform.GetChild(0).GetChild(0).GetComponent<ParticleSystem>().Stop();
         ghostShadow.transform.GetChild(0).GetChild(1).GetComponent<SkinnedMeshRenderer>().enabled = false;
         jumpscareObject.SetActive(true);
-        jumpscareGhost.SetActive(true);
+        //foreach(GameObject ghostModel in jumpscareGhost) ghostModel.SetActive(true);
+        jumpscareGhost[jumpscareGhostBodyIndex].SetActive(true);
         ghostShadow.SetActive(true); // animator on shadow not enabled.
         ghostShadow.transform.GetChild(0).GetComponent<Animator>().Play("Scream 0"); // done to only mimic the position.
 
@@ -260,7 +287,7 @@ public class Death : NetworkBehaviour {
         ghostShadow.GetComponent<Animator>().enabled = true;
         ghostShadow.transform.GetChild(0).GetChild(0).GetComponent<ParticleSystem>().Play();
         ghostShadow.transform.GetChild(0).GetChild(1).GetComponent<SkinnedMeshRenderer>().enabled = true;
-        jumpscareGhost.SetActive(false);
+        jumpscareGhost[jumpscareGhostBodyIndex].SetActive(false);
         //if(GetComponent<PurificationManager>().cursedObjectScript != null) AudioController.FadeOutAudio(this, GetComponent<PurificationManager>().cursedObjectScript.pSourceB, .5f);
         //yield return new WaitForSeconds(1.5f);
         //  deathUI.SetActive(true);
@@ -293,7 +320,7 @@ public class Death : NetworkBehaviour {
         ghostShadow.transform.GetChild(0).GetChild(0).GetComponent<ParticleSystem>().Stop();
         ghostShadow.transform.GetChild(0).GetChild(1).GetComponent<SkinnedMeshRenderer>().enabled = false;
         jumpscareObject.SetActive(false);
-        jumpscareGhost.SetActive(false);
+        jumpscareGhost[jumpscareGhostBodyIndex].SetActive(false);
         ghostShadow.SetActive(false);
         ghostShadow.GetComponent<Animator>().enabled = false;
         GetComponent<PlayerHandler>().cameraReference.GetComponent<CameraEffectsManager>().NormalLayers();
@@ -368,12 +395,8 @@ public class Death : NetworkBehaviour {
                 LayerMask.NameToLayer("Default");
         }
         bodyMeshes[0].material = ghost ? ghostBodyMat : normalBodyBMat;
-
-        // Set the layers of the player's body to be Afterlife. At this point the player's camera is also rendering afterlife.
-        // This MUST be a client RPC. We want to run this on the other player's death.cs too, since their stuff must be on
-        // the afterlife layer because we want to see them.
-
-
-
+        halo.material = ghost ? ghostBodyMat : haloNormalMat;
+        halo.gameObject.layer = ghost ? LayerMask.NameToLayer("Afterlife") :
+                LayerMask.NameToLayer("Default");
     }
 }

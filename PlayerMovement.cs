@@ -71,6 +71,18 @@ public class PlayerMovement : NetworkBehaviour {
 
     public override void OnNetworkSpawn() {
         if(!IsOwner) return;
+
+        StartCoroutine(FindUIManager());
+    }
+
+    // The OnNetworkSpawn occurs before the scene has fully loaded. So we wait until it has, and find what we need.
+    private IEnumerator FindUIManager() {
+        var uiManagerInstance = UIManager.Instance;
+        while(uiManagerInstance == null) {
+            uiManagerInstance = UIManager.Instance;
+            yield return null;
+        }
+
         // Pass this self to the client-side UI Manager so it can handle the UI of this.
         UIManager.Instance.RegisterPlayer(this);
         UIManager.Instance.RegisterToolController(transform.parent.GetComponent<ToolController>());
