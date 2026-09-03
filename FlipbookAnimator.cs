@@ -33,6 +33,7 @@ public class FlipbookAnimator : MonoBehaviour {
     }
 
     private void OnDisable() {
+        spriteIndex = 0;
         CancelInvoke();
     }
 }

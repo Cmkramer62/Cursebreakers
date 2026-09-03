@@ -1,6 +1,7 @@
 using UnityEngine;
 using Unity.Netcode;
 using UnityEngine.SceneManagement;
+using System.Collections;
 
 public class GameManager : MonoBehaviour {
 
@@ -28,7 +29,15 @@ public class GameManager : MonoBehaviour {
 
         if(!NetworkManager.Singleton.IsServer &&
             clientId == NetworkManager.Singleton.LocalClientId) {
-            SceneManager.LoadScene(hubSceneName);
+            StartCoroutine(ReturnToHub());
         }
     }
+
+    private IEnumerator ReturnToHub() {
+        yield return null;
+
+        // replace with scene loading script.
+        SceneManager.LoadScene(hubSceneName);
+    }
+
 }

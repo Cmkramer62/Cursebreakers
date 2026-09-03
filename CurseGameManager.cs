@@ -87,18 +87,18 @@ public class CurseGameManager : NetworkBehaviour {
                 if(curseSpawnBuffer >= curseSpawnBufferMax) {
                     if(UnityEngine.Random.Range(0, oddsSpawnRate) == 0) {
                         GameObject newCurse = GameObject.Instantiate(cursedObjectPrefabs[UnityEngine.Random.Range(0, cursedObjectPrefabs.Length)], curseManagerClientScript.spawnPoints[i].transform);
-                        Debug.Log("--Spawned in new non-goal curse: " + newCurse.name);
+                        //Debug.Log("--Spawned in new non-goal curse: " + newCurse.name);
                         newCurse.GetComponent<NetworkObject>().Spawn();
-                        Debug.Log("--Spawn in new non-goal curse.");
+                        //Debug.Log("--Spawn in new non-goal curse.");
 
                         //newCurse.GetComponentInChildren<CursedObject>().toolControllerScript = GetComponent<ToolController>();
                         newCurse.GetComponentInChildren<CursedObject>().curseGameManager = this;
                         newCurse.GetComponentInChildren<CursedObject>().SetRandomCurses();
-                        Debug.Log("--Spawn in new non-goal curse.");
+                        //Debug.Log("--Spawn in new non-goal curse.");
 
                         // set random number of curses
                         curseSpawnBuffer = 0;
-                        Debug.Log("--About to call remove with: " + i);
+                        //Debug.Log("--About to call remove with: " + i);
                         latestFalseCurseIndex.Value = i;
                      //   RemovePropItem(i);
                     }

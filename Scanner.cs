@@ -14,7 +14,7 @@ public class Scanner : NetworkBehaviour  {
     [SerializeField] private GameObject scannerVFX, scannerCanvas;
     [SerializeField] private Transform magicFollowPoint, canvasFollowPoint, headTransformLookAt;
 
-    private bool spawnedObj = false;
+    public bool spawnedObj = false;
     // There will be 4 glyphs in total. 4th signifying strongest EMF.
     public GameObject[] magicCanvasGlyphs;
     public GameObject particles, canvas;
@@ -32,11 +32,21 @@ public class Scanner : NetworkBehaviour  {
         toolController.defaultEMF.OnValueChanged += OnScannerChanged;
         OnScannerChanged(0, toolController.defaultEMF.Value);
 
+        StartCoroutine(DelayedSpawning());
+    }
+
+    private IEnumerator DelayedSpawning() {
+
+        yield return WaitForNetworkSceneLoad();
+
         if(!spawnedObj) {
             spawnedObj = true;
 
             particles = GameObject.Instantiate(scannerVFX);
             canvas = GameObject.Instantiate(scannerCanvas);
+
+            //Debug.Log($"Created particles: {particles.name}, ID: {particles.GetInstanceID()}");
+            //Debug.Log($"Created canvas: {canvas.name}, ID: {canvas.GetInstanceID()}");
 
             magicCanvasGlyphs = new GameObject[4] {canvas.transform.GetChild(0).GetChild(0).gameObject,
                 canvas.transform.GetChild(0).GetChild(1).gameObject,
@@ -113,7 +123,7 @@ public class Scanner : NetworkBehaviour  {
 
     
     void OnScannerChanged(int oldValue, int newValue) {
-        Debug.Log("Scanner owner: " + IsOwner);
+        //Debug.Log("Scanner owner: " + IsOwner);
          ScannerEffects(newValue);
         //scannerValue.Value = newValue;
     }
@@ -121,7 +131,7 @@ public class Scanner : NetworkBehaviour  {
    // 8=4,7=4, 6=3,5=3, 4=2,3=2, 2=1,1=1, 0=0
     void ScannerEffects(int newValue) {
         if(gameObject.activeInHierarchy) {
-            Debug.Log("Scanner new: " + newValue);
+            //Debug.Log("Scanner new: " + newValue);
             int newAmount = (newValue / 2) + (newValue % 2);
 
             for(int i = 0; i < magicCanvasGlyphs.Length; i++) {
@@ -133,6 +143,24 @@ public class Scanner : NetworkBehaviour  {
                 source.PlayOneShot(beep);
             }
         }
+    }
+
+    private IEnumerator WaitForNetworkSceneLoad() {
+        bool sceneLoaded = false;
+
+        void OnSceneEvent(SceneEvent sceneEvent) {
+            if(sceneEvent.SceneEventType == SceneEventType.LoadEventCompleted) {
+                sceneLoaded = true;
+            }
+        }
+
+        NetworkManager.Singleton.SceneManager.OnSceneEvent += OnSceneEvent;
+
+        while(!sceneLoaded) {
+            yield return null;
+        }
+
+        NetworkManager.Singleton.SceneManager.OnSceneEvent -= OnSceneEvent;
     }
 
 }

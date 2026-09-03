@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using UnityEngine.Animations;
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 /*
  * UIManager is meant to be the client-side controller of all local UI.
  * No part of this is synchronized to multiplayer.
@@ -11,7 +12,7 @@ public class UIManager : MonoBehaviour {
     public static UIManager Instance;
 
     [SerializeField] private InteractRaycast raycastScript;
-    private Flashlight geistlightScript;
+    public Flashlight geistlightScript;
     private PlayerMovement movementScript;
     private ToolController toolbeltScript;
     private Death deathScript;
@@ -32,6 +33,8 @@ public class UIManager : MonoBehaviour {
     [SerializeField] private GameObject afterlifeUI, livesUI, toolbarUIParent;
     [HideInInspector] public int trackedLives = 3; // manual: change.
 
+    [SerializeField] private TextMeshProUGUI joinCode;
+
     private void Awake() {
         Instance = this;
     }
@@ -48,7 +51,7 @@ public class UIManager : MonoBehaviour {
         deathScript.lives.OnValueChanged += OnLivesChange;
         deathScript.afterlifePlayer.OnValueChanged += OnAfterlifeChange;
         //OnNewCurseSpawn(0, serverCurseManager.goalCurseIndex.Value);
-
+        joinCode.text = GameObject.FindAnyObjectByType<MultiplayerManager>().multiplayerJoinCode;
     }
 
     private void OnLivesChange(int oldAmount, int newAmount) {
@@ -134,7 +137,7 @@ public class UIManager : MonoBehaviour {
      * It simply registers itself to this client-side script.
      */
     public void RegisterGeistlight(Flashlight geistlightScript) {
-        Debug.Log("Registered local player to UI");
+        //Debug.Log("Registered local player to UI");
 
         // Example hookup
         // flashlight.flashlightEnabled.OnValueChanged += UpdateFlashlightUI;
