@@ -5,82 +5,35 @@ using Unity.Services.Multiplayer;
 using TMPro;
 
 public class HubManager : MonoBehaviour {
-    public string sceneName;
-
     [SerializeField]
-    private int maxPlayers = 4;
+    private TMP_InputField joinCodeInput;
+    [SerializeField] private SceneLoader loaderScript;
+    [SerializeField] private TextMeshProUGUI levelSelectionNotifyText, errorCodeText;
+    [SerializeField] private GameObject startButton;
 
-    private ISession currentSession;
+    private void Start() {
+        MultiplayerManager.Instance.OnStringChanged += OnErrorCodeChanged;
 
-    public TMP_InputField inputField; 
-
-    public async void CreateGame() {
-        try {
-            var options = new SessionOptions {
-                MaxPlayers = maxPlayers
-            }.WithRelayNetwork();
-
-            currentSession =
-                await MultiplayerService.Instance.CreateSessionAsync(options);
-
-            Debug.Log("Relay session created!");
-            Debug.Log($"Join Code: {currentSession.Code}");
-            FindAndUpdateMultiplayerManager();
-            CheckNetworkStarted();
-        }
-        catch(Exception e) {
-            Debug.LogError($"Failed to create Relay session: {e}");
-        }
     }
 
-    private void FindAndUpdateMultiplayerManager() {
-        MultiplayerManager managerScript = GameObject.FindAnyObjectByType<MultiplayerManager>();
-        Debug.Log($"Transmitting Code: {currentSession.Code}");
-        managerScript.multiplayerJoinCode = currentSession.Code;
+    private void OnErrorCodeChanged(string newCode) {
+        errorCodeText.text = newCode;
     }
 
-    private void CheckNetworkStarted() {
-        if(currentSession.Network.State == NetworkState.Started) {
-            LoadGameScene();
-        }
-        else {
-            currentSession.Network.StateChanged += OnNetworkStateChanged;
-        }
+    public void JoinGame() {
+        loaderScript.StartLoadingScreen();
+        MultiplayerManager.Instance.JoinGame(joinCodeInput.text);
     }
 
-    private void OnNetworkStateChanged(NetworkState state) {
-        Debug.Log($"Network state changed: {state}");
-
-        if(state == NetworkState.Started) {
-            currentSession.Network.StateChanged -= OnNetworkStateChanged;
-            LoadGameScene();
-        }
+    public void CreateGame() {
+        loaderScript.StartLoadingScreen();
+        MultiplayerManager.Instance.CreateGame();
     }
 
-    private void LoadGameScene() {
-        Debug.Log("Relay network started! Loading Game scene.");
-
-        NetworkManager.Singleton.SceneManager.LoadScene(
-            sceneName,
-            UnityEngine.SceneManagement.LoadSceneMode.Single
-        );
-    }
-   
-
-    public async void JoinGame() {
-
-        try {
-
-            string joinCode = inputField.text.Trim().ToUpper();
-
-            currentSession =
-                await MultiplayerService.Instance.JoinSessionByCodeAsync(joinCode);
-
-            Debug.Log("Successfully joined Relay session!");
-            Debug.Log($"Session ID: {currentSession.Id}");
-        }
-        catch(Exception e) {
-            Debug.LogError($"Failed to join Relay session: {e}");
-        }
+    public void SetLevel(string levelName) {
+        MultiplayerManager.Instance.gameSceneName = levelName;
+        levelSelectionNotifyText.GetComponent<TextAdder>().endWord = levelName;
+        levelSelectionNotifyText.GetComponent<TextAdder>().StartAddingText();
+        startButton.SetActive(true);
     }
 }

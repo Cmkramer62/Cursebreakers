@@ -120,7 +120,7 @@ public class GhostRandomizer : NetworkBehaviour {
 
     // Called by EITHER. Runs when code changes, or on network spawn.
     public void ApplyRandomization(GhostAppearance generatedCode) {
-        Debug.Log("Applying randomization: " + generatedCode.body + " " + generatedCode.eyes);
+        //Debug.Log("Applying randomization: " + generatedCode.body + " " + generatedCode.eyes);
         debugAppearance = generatedCode;
         ghostBodies[generatedCode.body].SetActive(true);
         //deathScript.realGhostChild = ghostBodies[index];
@@ -149,7 +149,7 @@ public class GhostRandomizer : NetworkBehaviour {
         if(serverGameManagerScript.goalCurse.Value.TryGet(out NetworkObject networkObject)) {
             potentialGoalCurse = networkObject.gameObject;
         }
-        if(potentialGoalCurse == null) Debug.Log("ERROR IN CURSED OBJECT, COULD NOT GET GOALCURSE.");
+        if(potentialGoalCurse == null) Debug.LogError("ERROR IN CURSED OBJECT, COULD NOT GET GOALCURSE.");
 
         var goalCurseEnviroSlot = potentialGoalCurse.GetComponentInChildren<CursedObject>().cursesList[1];
 
@@ -165,13 +165,13 @@ public class GhostRandomizer : NetworkBehaviour {
     }
 
     public void ApplyCursedAura() {
-        Debug.Log("Starting apply aura");
+        //Debug.Log("Starting apply aura");
 
         GameObject potentialGoalCurse = null;
         if(serverGameManagerScript.goalCurse.Value.TryGet(out NetworkObject networkObject)) {
             potentialGoalCurse = networkObject.gameObject;
         }
-        if(potentialGoalCurse == null) Debug.Log("ERROR IN CURSED OBJECT, COULD NOT GET GOALCURSE.");
+        if(potentialGoalCurse == null) Debug.LogError("ERROR IN CURSED OBJECT, COULD NOT GET GOALCURSE.");
         int goalCurseAuraSlot = potentialGoalCurse.GetComponentInChildren<CursedObject>().cursesList[2];
 
         if(goalCurseAuraSlot == (int)CursedObject.CursedTypes.Glowing) {
@@ -197,7 +197,7 @@ public class GhostRandomizer : NetworkBehaviour {
             bellScript.ghostSearchWithSound = true;
         }
         
-        Debug.Log("done apply aura");
+        //Debug.Log("done apply aura");
     }
 
 

@@ -22,6 +22,8 @@ public class SceneLoader : MonoBehaviour {
 
     [SerializeField, Range(0.1f, 3f)] private float delay = 1f;
 
+    private List<float> originalVolumes = new List<float>();
+
     private void Start() {
         masterMixer.SetFloat("MainVolumeParam", 0);
     }
@@ -30,13 +32,22 @@ public class SceneLoader : MonoBehaviour {
         clip = newClip;
     }
 
+    public void StartLoadingScreen() {
+        loadingScreen.SetActive(true);
+        FadeOutAllSources();
+    }
+
+    public void CancelLoadingScreen() {
+        loadingScreen.SetActive(false);
+        FadeInAllSources();
+    }
+
     //Loads a scene based on index number
     public void LoadScene(int sceneNumber) {
         //if(sceneNumber == 3) saveSystem.SetLevel(0);
-        loadingScreen.SetActive(true);
+        StartLoadingScreen();
         inventoryScript.SaveData();
         PlayerPrefs.SetInt("levelNumber", sceneNumber);
-        FadeOutAllSources();
         StartCoroutine(LoadAsynchronously(sceneNumber));
     }
 
@@ -56,8 +67,7 @@ public class SceneLoader : MonoBehaviour {
      */
     public void LoadSceneWithoutSavingNext(int sceneNumber) {
         if(sceneNumber == 3) saveSystem.SetLevel(0);
-        loadingScreen.SetActive(true);
-        FadeOutAllSources();
+        StartLoadingScreen();
         StartCoroutine(LoadAsynchronously(sceneNumber));
     }
 
@@ -107,8 +117,16 @@ public class SceneLoader : MonoBehaviour {
     }
 
     public void FadeOutAllSources() {
+        if(originalVolumes.Count > 0) originalVolumes.Clear();
         foreach(AudioSource source in sourcesToFade) {
+            originalVolumes.Add(source.volume);
             AudioController.FadeOutAudio(this, source, 1f);
+        }
+    }
+
+    private void FadeInAllSources() {
+        for(int i = 0; i < sourcesToFade.Length; i++) {
+            AudioController.FadeInAudio(this, sourcesToFade[i], 1f, originalVolumes[i]);
         }
     }
 

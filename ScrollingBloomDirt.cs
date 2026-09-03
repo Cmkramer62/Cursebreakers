@@ -14,6 +14,9 @@ public class ScrollingBloomDirt : MonoBehaviour {
     [SerializeField] private Texture normalBloomTexture;
     private Bloom bloom;
 
+    // Used only by the HUB.
+    [SerializeField] private bool runOnStart = false;
+
     private void Start() {
         // Create the texture Bloom will actually use.
         dirtRenderTexture = new RenderTexture(
@@ -33,7 +36,7 @@ public class ScrollingBloomDirt : MonoBehaviour {
             return;
         }
 
-
+        if(runOnStart) AfterlifeBloomTexture();
     }
 
     public void AfterlifeBloomTexture() {

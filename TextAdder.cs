@@ -14,23 +14,25 @@ public class TextAdder : MonoBehaviour {
     public AudioClip clip; // can be set by another script.
 
     [SerializeField] private TextAdder chainedTextScript;
-    public bool startOnEnable = true;
+    public bool startOnEnable = true, delayOnlyOnFirst = false;
+    private bool done = false;
 
     private void OnEnable() {
+        text = GetComponent<TextMeshProUGUI>();
+        text.text = "";
         if(startOnEnable) StartAddingText();
     }
 
     public void StartAddingText() {
-        text = GetComponent<TextMeshProUGUI>();
         text.text = "";
         i = 0;
-        InvokeRepeating("AddingText", delay, interval);
+        InvokeRepeating("AddingText", delayOnlyOnFirst && done ? 0 : delay, interval);
+        done = true;
     }
 
     private void AddingText() {
         if(i >= endWord.Length) {
             CancelInvoke("AddingText");
-            if(useAudio) source.Pause();
 
             if(chainedTextScript != null && gameObject.activeInHierarchy) chainedTextScript.StartAddingText();
         }
@@ -48,6 +50,5 @@ public class TextAdder : MonoBehaviour {
     public void CancelText() {
         CancelInvoke("AddingText");
         text.text = "";
-        if(useAudio) source.Pause();
     }
 }

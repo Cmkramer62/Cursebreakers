@@ -195,7 +195,7 @@ public class Enemy : NetworkBehaviour {
                         walkPointSet = false;
                         aggressionCharges.Value--;
                         if(aggressionCharges.Value < 0) aggressionCharges.Value = 0;
-                        Debug.Log("Lowering from escaping a chase.");
+                        //Debug.Log("Lowering from escaping a chase.");
                     }
                     ModePatrolling();
                     if(currentChaseDuration > longestChaseDuration) {
@@ -229,7 +229,7 @@ public class Enemy : NetworkBehaviour {
                     //else {
                         Scream();
                         AudioController.FadeToAnother(this, musicSource, .3f, chaseMusicClip, .1f);//FadeInAudio(this, chaseClip, 3, .1f);
-                        Debug.Log("Saw you when you saw me. ");
+                       // Debug.Log("Saw you when you saw me. ");
 
                     //}
                     // deathScript.GetComponent<CurseGameManager>().timeSpotted++;
@@ -474,7 +474,7 @@ public class Enemy : NetworkBehaviour {
     }
 
     public void InvertVisibility(bool invisState) {
-        Debug.Log("GHOST=Setting ghost invis to: " + invisState);
+        //Debug.Log("GHOST=Setting ghost invis to: " + invisState);
         if(invisState) {
             foreach(SkinnedMeshRenderer meshRen in meshRenderers) {
                 //meshRen.enabled = false;
@@ -557,13 +557,13 @@ public class Enemy : NetworkBehaviour {
                 animator.Play("Attack" + Random.Range(1, 4).ToString());
                 monsterSource.pitch = 1;
                 monsterSource.PlayOneShot(attackClip, 0.5f);
-                Debug.Log("Hit");
+                //Debug.Log("Hit");
                 targetPlayerAttacked.GetComponent<Death>().LoseLife(true);
             }
             //InvertVisibility();
             aggressionCharges.Value--;
             if(aggressionCharges.Value < 0) aggressionCharges.Value = 0;
-            Debug.Log("lowering from attacking a player.");
+           // Debug.Log("lowering from attacking a player.");
         }
 
     }
