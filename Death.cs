@@ -42,6 +42,8 @@ public class Death : NetworkBehaviour {
     public bool channelingLife = false, channelingDone = false;
     public float lifeChannelAmount, lifeChannelRecoveryRate, lifeChannelDuration;
 
+    public PurificationManager purificationManagerScript;
+
     public override void OnNetworkSpawn() {        
         afterlifePlayer.OnValueChanged += OnAfterlifeChanged;
         lives.OnValueChanged += OnLifeChanged;
@@ -159,6 +161,8 @@ public class Death : NetworkBehaviour {
     // Ghost calls this. Always server.
     // Client side UIManager.cs handles local visuals.
     public void LoseLife(bool ghostAttack) {
+        AssignPurificationReference();
+
         twoDimAudioSource.PlayOneShot(hitDamageClip);
         if(playerController.GetComponent<PlayerMovement>().isHiding) {
             foreach(HidingSpot spot in GameObject.FindObjectsByType<HidingSpot>(FindObjectsSortMode.None)) {
@@ -186,19 +190,32 @@ public class Death : NetworkBehaviour {
             // UI looks different. Toolbar only has Nihil. Stamina is green hued.
 
             // IF there are more lives/people left, then transition to a ghost. Otherwise...death UI?
-            StartCoroutine(AfterlifeSequence());
+            if(purificationManagerScript.totalLives.Value >= 2) {
+                StartCoroutine(AfterlifeSequence());
+            }
+
             // fade to black, and then to a new pale greenish bluish color. (this is a new overlay. Both the fade and this are
             // new gameobject to make. Worry about animations later.
             // Update player perms.
         }
+
+        else {
+            purificationManagerScript.UpdateCurrentLivesServerRpc();
+        }
     }
 
-    [ServerRpc]
+    private void AssignPurificationReference() {
+        if(purificationManagerScript == null) {
+            purificationManagerScript = GameObject.FindAnyObjectByType<PurificationManager>();
+        }
+    }
+
+    [ServerRpc (RequireOwnership = false)]
     private void LoseLifeServerRpc() {
         lives.Value--;
     }
 
-    [ServerRpc]
+    [ServerRpc(RequireOwnership = false)]
     private void RequestAfterLifeBoolChangeServerRpc(bool state) {
         afterlifePlayer.Value = state;
     }
@@ -206,7 +223,11 @@ public class Death : NetworkBehaviour {
     // Called by player reviving another. Will trigger OnLifeChanged in this script.
     [ServerRpc(RequireOwnership = false)]
     public void GainLifeServerRpc() {
+        AssignPurificationReference();
+
         lives.Value++;
+
+        purificationManagerScript.UpdateCurrentLivesServerRpc();
     }
 
     private IEnumerator AfterlifeSequence() {
@@ -291,6 +312,7 @@ public class Death : NetworkBehaviour {
         //if(GetComponent<PurificationManager>().cursedObjectScript != null) AudioController.FadeOutAudio(this, GetComponent<PurificationManager>().cursedObjectScript.pSourceB, .5f);
         //yield return new WaitForSeconds(1.5f);
         //  deathUI.SetActive(true);
+        StartCoroutine(UpdateGrandLivesAndEndGame());
 
     }
 
@@ -312,6 +334,13 @@ public class Death : NetworkBehaviour {
         //yield return new WaitForSeconds(2.5f);
         // deathUI.SetActive(true);
 
+        StartCoroutine(UpdateGrandLivesAndEndGame());
+    }
+
+    // If the purification manager finds that the new total Lives is 0, it will kick everyone.
+    private IEnumerator UpdateGrandLivesAndEndGame() {
+        yield return new WaitForSeconds(1f); // better way of doing this? What should we wait on?
+        purificationManagerScript.UpdateCurrentLivesServerRpc();
     }
 
     private void UndoJumpscareEffects() {
@@ -380,13 +409,13 @@ public class Death : NetworkBehaviour {
         GetComponentInChildren<CapsuleCollider>().enabled = false;
     }
 
-    [ServerRpc]
+    [ServerRpc(RequireOwnership = false)]
     private void SetBodyMaterialsServerRpc(bool ghost) {
         SetBodyMaterialsClientRpc(ghost);
     }
 
     // SetBodyMaterials changes the player's body and hands to be the normal color or a ghostly color.
-    [ClientRpc]
+    [ClientRpc(RequireOwnership = false)]
     private void SetBodyMaterialsClientRpc(bool ghost) {
         for(int i = 0; i < bodyMeshes.Length; i++) {
             

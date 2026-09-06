@@ -186,7 +186,37 @@ public class MultiplayerManager : MonoBehaviour {
             NetworkManager.Singleton.Shutdown();
         }
 
+        // DONT do the below if the HUB becomes 3d and it doesn't start with a canvas.
+        Cursor.lockState = CursorLockMode.None;
         SceneManager.LoadScene(hubSceneName);
+    }
+
+    // ============================================================
+    // EXIT GAME
+    // ============================================================
+
+    public async void ExitGame() {
+        try {
+            if(currentSession != null) {
+                await currentSession.LeaveAsync();
+
+                currentSession = null;
+                latestUpdateMessage = "Left multiplayer session.";
+                Debug.Log(latestUpdateMessage);
+            }
+            GameObject.FindAnyObjectByType<SceneLoader>().StartLoadingScreen();
+        }
+        catch(Exception e) {
+            latestUpdateMessage = $"Failed to leave multiplayer session: {e}";
+            Debug.LogError(latestUpdateMessage);
+        }
+
+        if(NetworkManager.Singleton != null &&
+            NetworkManager.Singleton.IsListening) {
+            NetworkManager.Singleton.Shutdown();
+        }
+
+        Application.Quit();
     }
 
 
@@ -222,6 +252,7 @@ public class MultiplayerManager : MonoBehaviour {
     private IEnumerator ReturnToHub() {
         GameObject.FindAnyObjectByType<SceneLoader>().StartLoadingScreen();
         yield return null;
+        Cursor.lockState = CursorLockMode.None;
         SceneManager.LoadScene(hubSceneName);
     }
 }

@@ -113,6 +113,13 @@ public class Enemy : NetworkBehaviour {
         InvertVisibility(invisible.Value);
     }
 
+    private void OnDestroy() {
+        if(NetworkManager.Singleton != null) {
+            NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
+            NetworkManager.Singleton.OnClientDisconnectCallback -= OnClientDisconnected;
+        }
+    }
+
     // Returns the closest player out of all the players, visible or not.
     public GameObject ClosestPlayer() {
         return ClosestPlayer(listOfPlayers);

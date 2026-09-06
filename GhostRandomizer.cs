@@ -1,5 +1,7 @@
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.Animations;
+using System.Collections;
 
 public struct GhostAppearance : INetworkSerializable {
     public int body;
@@ -56,13 +58,14 @@ public class GhostRandomizer : NetworkBehaviour {
 
     public Enemy ghostScript;
     public NetworkVariable<bool> overrideEyes = new NetworkVariable<bool>(false);
-    public CurseGameManager serverGameManagerScript;
     
     public GameObject ghostGeistParticles;
     public Bell bellScript;
     public GameObject[] enviroParticles, horns;
     public RuntimeAnimatorController floatingController;
     public bool searchWithSound = false;
+
+    public CurseGameManager serverGameManagerScript;
     public CursedObject goalCurse;
 
     public override void OnNetworkSpawn() {
@@ -139,27 +142,44 @@ public class GhostRandomizer : NetworkBehaviour {
 
    // [ClientRpc]
     private void ApplyClues() {
-        GoalCurseReference();
-        ApplyCursedAura();
-        ApplyCursedEnvironment();
+        // GoalCurseReference();
+        //ApplyCursedAura();
+        // ApplyCursedEnvironment();
+        StartCoroutine(GetServerAndCurseReference());
     }
 
     private void GoalCurseReference() {
         var cursesInScene = GameObject.FindObjectsOfType<CursedObject>();
+        Debug.Log("RAND-Found " + cursesInScene.Length + " curses. ");
         foreach(CursedObject curseFound in cursesInScene) {
-            if(curseFound.goalCurse.Value) goalCurse = curseFound;
+            if(curseFound.goalCurse.Value) {
+                goalCurse = curseFound;
+                Debug.Log("RAND-Found it: " + curseFound.name + " - " + goalCurse.name);
+            }
         }
+        
+    }
+
+    private IEnumerator GetServerAndCurseReference() {
+        while(serverGameManagerScript == null) {
+            serverGameManagerScript = GameObject.FindAnyObjectByType<CurseGameManager>();
+            // can also TryGetOut curse object and wait to call them until we have it too.
+            yield return null;
+        }
+
+        ApplyCursedAura();
+        ApplyCursedEnvironment();
     }
 
     public void ApplyCursedEnvironment() {
-        //GameObject potentialGoalCurse = null;
-        //if(serverGameManagerScript.goalCurse.Value.TryGet(out NetworkObject networkObject)) {
-        //    potentialGoalCurse = networkObject.gameObject;
-        //}
-        //if(potentialGoalCurse == null) Debug.LogError("ERROR IN CURSED OBJECT, COULD NOT GET GOALCURSE.");
+        GameObject potentialGoalCurse = null;
+        if(serverGameManagerScript.goalCurse.Value.TryGet(out NetworkObject networkObject)) {
+            potentialGoalCurse = networkObject.gameObject;
+        }
+        if(potentialGoalCurse == null) Debug.LogError("ERROR IN CURSED OBJECT, COULD NOT GET GOALCURSE.");
 
-       // var goalCurseEnviroSlot = potentialGoalCurse.GetComponentInChildren<CursedObject>().cursesList[1];
-        var goalCurseEnviroSlot = goalCurse.cursesList[1];
+        var goalCurseEnviroSlot = potentialGoalCurse.GetComponentInChildren<CursedObject>().cursesList[1];
+        //var goalCurseEnviroSlot = goalCurse.cursesList[1];
 
         enviroParticles[0].SetActive(goalCurseEnviroSlot == (int)CursedObject.CursedTypes.Glowing);
         enviroParticles[1].SetActive(goalCurseEnviroSlot == (int)CursedObject.CursedTypes.EMF);
@@ -175,29 +195,29 @@ public class GhostRandomizer : NetworkBehaviour {
     public void ApplyCursedAura() {
         //Debug.Log("Starting apply aura");
 
-        //GameObject potentialGoalCurse = null;
-        // if(serverGameManagerScript.goalCurse.Value.TryGet(out NetworkObject networkObject)) {
-        //     potentialGoalCurse = networkObject.gameObject;
-        // }
-       // potentialGoalCurse = GameObject.Find("Goal Curse");
+        GameObject potentialGoalCurse = null;
+         if(GameObject.FindAnyObjectByType<CurseGameManager>().goalCurse.Value.TryGet(out NetworkObject networkObject)) {
+            potentialGoalCurse = networkObject.gameObject;
+         }
 
-       // if(potentialGoalCurse == null) Debug.LogError("ERROR IN CURSED OBJECT, COULD NOT GET GOALCURSE.");
-       // int goalCurseAuraSlot = potentialGoalCurse.GetComponentInChildren<CursedObject>().cursesList[2];
-        int goalCurseAuraSlot = goalCurse.cursesList[2];
+        if(potentialGoalCurse == null) Debug.LogError("ERROR IN CURSED OBJECT, COULD NOT GET GOALCURSE.");
+        int goalCurseAuraSlot = potentialGoalCurse.GetComponentInChildren<CursedObject>().cursesList[2];
+       // int goalCurseAuraSlot = goalCurse.cursesList[2];
 
         if(goalCurseAuraSlot == (int)CursedObject.CursedTypes.Glowing) {
             ghostGeistParticles.SetActive(true);
-            GetComponent<Enemy>().animator.transform.parent.gameObject.GetComponent<Enemy>().geistAura.Value = true;
+            SetGeistAuraServerRpc();
         }
         else if(goalCurseAuraSlot == (int)CursedObject.CursedTypes.EMF) {
             GetComponent<Enemy>().animator.runtimeAnimatorController = floatingController;
         }
         else if(goalCurseAuraSlot == (int)CursedObject.CursedTypes.Aura) {
-            overrideEyes.Value = true; // Does this happen too late?
+            SetOverrideEyesServerRpc();
+            // Does this happen too late?
         }
         else if(goalCurseAuraSlot == (int)CursedObject.CursedTypes.Thermo) {
             // debug
-            GetComponent<Enemy>().freezingAura.Value = true;
+            SetFreezingAuraServerRpc();
         }
         else if(goalCurseAuraSlot == (int)CursedObject.CursedTypes.Unholy) {
             foreach(GameObject horns in horns) {
@@ -205,12 +225,26 @@ public class GhostRandomizer : NetworkBehaviour {
             }
         }
         else {
-            bellScript.ghostSearchWithSound = true;
+            searchWithSound = true;
         }
         
         //Debug.Log("done apply aura");
     }
 
+    [ServerRpc(RequireOwnership = false)]
+    private void SetFreezingAuraServerRpc() {
+        GetComponent<Enemy>().freezingAura.Value = true;
+    }
+    
+    [ServerRpc (RequireOwnership = false) ]
+    private void SetGeistAuraServerRpc() {
+        GetComponent<Enemy>().geistAura.Value = true;
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    private void SetOverrideEyesServerRpc() {
+        overrideEyes.Value = true; 
+    }
 
     #region Setting Body Parts
     private void SetGownLongHair(GhostAppearance generatedCode) {

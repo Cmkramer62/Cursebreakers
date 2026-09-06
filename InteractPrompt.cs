@@ -62,9 +62,9 @@ public class InteractPrompt : MonoBehaviour {
             else textPromptScript.QueueTextPrompt(displayText.Split('_'), textSound, this);
         }
         else {
-            textPromptScript.GetComponent<PurificationManager>().DisplayQuestion();
-            textPromptScript.GetComponent<PurificationManager>().potentialCursedItem = gameObject;
-            textPromptScript.GetComponent<PurificationManager>().cursedObjectScript = gameObject.GetComponentInChildren<CursedObject>();
+           // textPromptScript.GetComponent<PurificationManager>().DisplayQuestion();
+            //textPromptScript.GetComponent<PurificationManager>().potentialCursedItem = gameObject;
+            //textPromptScript.GetComponent<PurificationManager>().cursedObjectScript = gameObject.GetComponentInChildren<CursedObject>();
 
         }
 

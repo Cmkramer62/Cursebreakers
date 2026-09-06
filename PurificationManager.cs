@@ -4,54 +4,83 @@ using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
 using UnityEngine.Animations;
+using Unity.Netcode;
 
-public class PurificationManager : MonoBehaviour {
-    
-    public GameObject mainCamera;
-    [HideInInspector]
-    public GameObject potentialCursedItem;
-    public int ritualTimer;
-    public ConeLOSDetector ghostVisionScript;
-    public Enemy ghostScript;
-    public bool allowedToDisplayQuestion = false;
-    public EndPortal endPortalScript;
-    [HideInInspector]
-    public CursedObject cursedObjectScript;
 
-    private bool allowedToTimer = true;
-    private Coroutine purifyRoutine;
+public class PurificationManager : NetworkBehaviour {
 
-    public void DisplayQuestion() {
-        if(!allowedToDisplayQuestion && allowedToTimer) {
-            GetComponent<PauseGame>().ActivateQuestionPause();
+    public List<GameObject> listOfPlayers = new List<GameObject>();
+    public NetworkVariable<int> totalLives = new NetworkVariable<int>(0);
+    //  public int totalLives = 0;
+
+    public override void OnNetworkSpawn() {
+        if(!IsServer)
+            return;
+
+        NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
+        NetworkManager.Singleton.OnClientDisconnectCallback += OnClientDisconnected;
+
+        RefreshPlayerList();
+    }
+
+    private void OnDestroy() {
+        if(NetworkManager.Singleton != null) {
+            NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
+            NetworkManager.Singleton.OnClientDisconnectCallback -= OnClientDisconnected;
         }
     }
 
-    public void StartPurificationRitual() {
-        DisplayQuestion(); // Turning off the question UI.
-        GetComponent<CurseGameManager>().purifyState = potentialCursedItem.name == "Goal Curse" ? -1 : 1;
-        purifyRoutine = StartCoroutine(PurificationTimer());
+    void RefreshPlayerList() {
+        listOfPlayers.Clear();
 
-        if(ghostScript.invisible.Value) ghostScript.InvertVisibilityServerRpc();
-        ghostVisionScript.visibilityOverride = true;
-        endPortalScript.activated = true;
-        allowedToDisplayQuestion = true;
+        foreach(var client in NetworkManager.Singleton.ConnectedClientsList) {
+            if(client.PlayerObject != null) {
+                GameObject player = client.PlayerObject.gameObject;
+                if(player != null) listOfPlayers.Add(player);
+            }
+        }
+        UpdateCurrentLivesServerRpc();
     }
 
-    private IEnumerator PurificationTimer() {
-        yield return new WaitForSeconds(1f);
-        cursedObjectScript.pSourceA.Play();
-        yield return new WaitForSeconds(1f);
-        cursedObjectScript.pSourceB.Play();
-        yield return new WaitForSeconds(1f);
-        cursedObjectScript.purificationParticles.Play();
+    private void OnClientConnected(ulong clientId) {
+        NetworkObject playerObject = NetworkManager.Singleton.ConnectedClients[clientId].PlayerObject;
 
-        yield return new WaitForSeconds(ritualTimer);
-        if(allowedToTimer) GetComponent<Death>().Jumpscare(false);
+        if(playerObject != null && !listOfPlayers.Contains(playerObject.gameObject))
+            listOfPlayers.Add(playerObject.gameObject);
+        
+        Death deathScriptOfNewPlayer = playerObject.gameObject.GetComponent<Death>();
+        totalLives.Value += deathScriptOfNewPlayer.lives.Value;
     }
 
-    public void KillTimer() {
-        allowedToTimer = false;
-        if(purifyRoutine != null) StopCoroutine(purifyRoutine);
+    // When a client disconnects, remove all null entries in listOfPlayers,
+    // but also remove any clientID in the list that match whomever disconnected.
+    // (Done because their disconnect can fire before player destruction!
+    private void OnClientDisconnected(ulong clientId) {
+        listOfPlayers.RemoveAll(player => player == null ||
+            player.GetComponent<NetworkObject>().OwnerClientId == clientId);
+
+        UpdateCurrentLivesServerRpc();
+    }
+     
+    // Does not need server rpc, only called by server scripts. Upon host/server triggering last IF
+    // statement, the client will get kicked along with host.
+    [ServerRpc (RequireOwnership = false)]
+    public void UpdateCurrentLivesServerRpc() {
+        int currentLives = 0;
+
+        foreach(GameObject player in listOfPlayers) {
+            currentLives += player.GetComponent<Death>().lives.Value;
+        }
+
+        totalLives.Value = currentLives;
+
+        // This is called by life loss and life gain.
+        // Life gain does not do anything. But upon life loss, game could end.
+
+        if(totalLives.Value == 0) {
+            // This will only be run and called by the Host/server.
+            // Will that force everyone out?
+            MultiplayerManager.Instance.LeaveGame();
+        }
     }
 }

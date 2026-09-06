@@ -9,4 +9,8 @@ public class GameManager : MonoBehaviour {
         MultiplayerManager.Instance.LeaveGame();
     }
 
+    public void ExitGame() {
+        MultiplayerManager.Instance.ExitGame();
+    }
+
 }

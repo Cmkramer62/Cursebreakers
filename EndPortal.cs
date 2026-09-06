@@ -21,8 +21,8 @@ public class EndPortal : MonoBehaviour {
     private void OnTriggerEnter(Collider other) {
         if(activated && other.name == "Player") {
             GetComponent<BoxCollider>().enabled = false;
-            AudioController.FadeOutAudio(this, purificationScript.cursedObjectScript.pSourceA, 1f);
-            AudioController.FadeOutAudio(this, purificationScript.cursedObjectScript.pSourceB, 1f);
+            //AudioController.FadeOutAudio(this, purificationScript.cursedObjectScript.pSourceA, 1f);
+            //AudioController.FadeOutAudio(this, purificationScript.cursedObjectScript.pSourceB, 1f);
 
             StartCoroutine(EndGoalTimer());
         }
@@ -45,7 +45,7 @@ public class EndPortal : MonoBehaviour {
         yield return new WaitForSeconds(1f);
        
 
-
+        /*
         if(purificationScript.potentialCursedItem.name == "Goal Curse") {
             //saveSystem.SetLevel(1);
             saveSystem.SetMissionData(1, purificationScript.GetComponent<CurseGameManager>().timeSpent, purificationScript.GetComponent<Death>().lives.Value,
@@ -72,5 +72,6 @@ public class EndPortal : MonoBehaviour {
         else {
             deathScript.Jumpscare(false);
         }
+        */
     }
 }

@@ -83,7 +83,7 @@ public class CurseGameManager : NetworkBehaviour {
                 spawn.rotation
             );
 
-            ghostReference.GetComponent<GhostRandomizer>().serverGameManagerScript = this;
+           // ghostReference.GetComponent<GhostRandomizer>().serverGameManagerScript = this;
             ghostReference.GetComponent<NetworkObject>().Spawn();
             ghostReference.GetComponent<Enemy>().musicSource = curseManagerClientScript.musicSource;
             ghostReference.GetComponent<Enemy>().allowedToMove.Value = true;
