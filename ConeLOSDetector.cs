@@ -21,6 +21,7 @@ public class ConeLOSDetector : MonoBehaviour {
 
     public void SetMyList() {
         myTransform = gameObject.transform;
+        targetTransforms.Clear();
         targetTransforms = new List<Transform>();
 
         if(player && targetTransforms.Count < 1) {
@@ -31,6 +32,17 @@ public class ConeLOSDetector : MonoBehaviour {
                 targetTransforms.Add(obj.transform);
             }
         }
+    }
+
+    // A variant of SetMyList, this is given a specific list based on what has disconnected
+    // via clientID rather than checking what is in the scene.
+    public void SetGhostsListOnDisconnects(List<GameObject> playerList) {
+        targetTransforms.Clear();
+        targetTransforms = new List<Transform>();
+    
+        foreach(GameObject ghostPlayerGiven in playerList) {
+            targetTransforms.Add(ghostPlayerGiven.transform);
+        }  
     }
 
     /*

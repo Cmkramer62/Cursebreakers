@@ -1,7 +1,5 @@
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
 using Unity.Netcode;
+using UnityEngine;
 
 public struct GhostAppearance : INetworkSerializable {
     public int body;
@@ -65,6 +63,7 @@ public class GhostRandomizer : NetworkBehaviour {
     public GameObject[] enviroParticles, horns;
     public RuntimeAnimatorController floatingController;
     public bool searchWithSound = false;
+    public CursedObject goalCurse;
 
     public override void OnNetworkSpawn() {
         generatedRanString.OnValueChanged += (_, newCode) =>
@@ -140,18 +139,27 @@ public class GhostRandomizer : NetworkBehaviour {
 
    // [ClientRpc]
     private void ApplyClues() {
+        GoalCurseReference();
         ApplyCursedAura();
         ApplyCursedEnvironment();
     }
 
-    public void ApplyCursedEnvironment() {
-        GameObject potentialGoalCurse = null;
-        if(serverGameManagerScript.goalCurse.Value.TryGet(out NetworkObject networkObject)) {
-            potentialGoalCurse = networkObject.gameObject;
+    private void GoalCurseReference() {
+        var cursesInScene = GameObject.FindObjectsOfType<CursedObject>();
+        foreach(CursedObject curseFound in cursesInScene) {
+            if(curseFound.goalCurse.Value) goalCurse = curseFound;
         }
-        if(potentialGoalCurse == null) Debug.LogError("ERROR IN CURSED OBJECT, COULD NOT GET GOALCURSE.");
+    }
 
-        var goalCurseEnviroSlot = potentialGoalCurse.GetComponentInChildren<CursedObject>().cursesList[1];
+    public void ApplyCursedEnvironment() {
+        //GameObject potentialGoalCurse = null;
+        //if(serverGameManagerScript.goalCurse.Value.TryGet(out NetworkObject networkObject)) {
+        //    potentialGoalCurse = networkObject.gameObject;
+        //}
+        //if(potentialGoalCurse == null) Debug.LogError("ERROR IN CURSED OBJECT, COULD NOT GET GOALCURSE.");
+
+       // var goalCurseEnviroSlot = potentialGoalCurse.GetComponentInChildren<CursedObject>().cursesList[1];
+        var goalCurseEnviroSlot = goalCurse.cursesList[1];
 
         enviroParticles[0].SetActive(goalCurseEnviroSlot == (int)CursedObject.CursedTypes.Glowing);
         enviroParticles[1].SetActive(goalCurseEnviroSlot == (int)CursedObject.CursedTypes.EMF);
@@ -167,12 +175,15 @@ public class GhostRandomizer : NetworkBehaviour {
     public void ApplyCursedAura() {
         //Debug.Log("Starting apply aura");
 
-        GameObject potentialGoalCurse = null;
-        if(serverGameManagerScript.goalCurse.Value.TryGet(out NetworkObject networkObject)) {
-            potentialGoalCurse = networkObject.gameObject;
-        }
-        if(potentialGoalCurse == null) Debug.LogError("ERROR IN CURSED OBJECT, COULD NOT GET GOALCURSE.");
-        int goalCurseAuraSlot = potentialGoalCurse.GetComponentInChildren<CursedObject>().cursesList[2];
+        //GameObject potentialGoalCurse = null;
+        // if(serverGameManagerScript.goalCurse.Value.TryGet(out NetworkObject networkObject)) {
+        //     potentialGoalCurse = networkObject.gameObject;
+        // }
+       // potentialGoalCurse = GameObject.Find("Goal Curse");
+
+       // if(potentialGoalCurse == null) Debug.LogError("ERROR IN CURSED OBJECT, COULD NOT GET GOALCURSE.");
+       // int goalCurseAuraSlot = potentialGoalCurse.GetComponentInChildren<CursedObject>().cursesList[2];
+        int goalCurseAuraSlot = goalCurse.cursesList[2];
 
         if(goalCurseAuraSlot == (int)CursedObject.CursedTypes.Glowing) {
             ghostGeistParticles.SetActive(true);

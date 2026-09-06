@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using Unity.Netcode;
 using UnityEngine.Animations;
-
+using UnityEngine.SceneManagement;
 public class Scanner : NetworkBehaviour  {
 
     public bool allowedToScan = true;
@@ -146,6 +146,9 @@ public class Scanner : NetworkBehaviour  {
     }
 
     private IEnumerator WaitForNetworkSceneLoad() {
+        if(!IsServer && SceneManager.GetActiveScene().isLoaded)
+            yield break;
+
         bool sceneLoaded = false;
 
         void OnSceneEvent(SceneEvent sceneEvent) {

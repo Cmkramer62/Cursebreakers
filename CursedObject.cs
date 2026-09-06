@@ -10,6 +10,7 @@ public class CursedObject : NetworkBehaviour {
     // How do I make the below a synchronized thing? Data type is not normal.
     public enum CursedTypes { Glowing, EMF, Aura, Thermo, Unholy, Sound}
     public NetworkList<int> cursesList = new NetworkList<int>();
+    public NetworkVariable<bool> goalCurse = new NetworkVariable<bool>(false);
 
     public Light geistLight;
     [SerializeField] private ParticleSystem geistLightParticles, distortion;

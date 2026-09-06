@@ -63,6 +63,13 @@ public class PlayerHandler : NetworkBehaviour {
         */
     }
 
+    [ClientRpc]
+    public void SetSpawnPositionClientRpc( Vector3 position, Quaternion rotation, ClientRpcParams clientRpcParams = default) {
+        GetComponent<CharacterController>().enabled = false;
+        transform.SetPositionAndRotation(position, rotation);
+        GetComponent<CharacterController>().enabled = true;
+    }
+
     private IEnumerator FindCamera() {
         while(cameraReference == null) {
             cameraReference = FindObjectOfType<CameraFollow>();

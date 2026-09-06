@@ -65,7 +65,7 @@ public class InteractRaycast : NetworkBehaviour {
                         }
                         break;
                     case "CursedObject":
-                        if(!afterlife) {
+                        if(!afterlife && GetComponent<MouseLook>().playerBody != null && GetComponent<MouseLook>().playerBody.GetComponent<ToolController>().heldIndex.Value == 0) {
                             //InteractPrompt seenPrompt2 = hit.transform.GetComponent<InteractPrompt>();
                             //seenPrompt2.InteractWithObject();
                             //if(seenPrompt2.list) source.PlayOneShot(seenPrompt2.interactWithSound, volumeOfClick);
@@ -148,7 +148,7 @@ public class InteractRaycast : NetworkBehaviour {
                     }
                 }
             }
-            else if(Input.GetKeyUp(KeyCode.E) && deathScript.channelingLife) {
+            else if((Input.GetKeyUp(KeyCode.E) && deathScript.channelingLife) || GetComponent<MouseLook>().playerBody.GetComponent<ToolController>().heldIndex.Value != 0) {
                 deathScript.channelingLife = false; // UNOPTIMIZED?
                 deathScript.playerArmsAnimator.SetBool("Channeling", false);
                 Debug.Log("channel trigger off");
@@ -187,6 +187,12 @@ public class InteractRaycast : NetworkBehaviour {
         afterlifeInteractCrosshair.SetActive(currentRaycastedType == CrosshairType.InteractAfterlife);
         channelLifeCrosshair.SetActive(currentRaycastedType == CrosshairType.Channel);
         cursedObjCrosshair.SetActive(currentRaycastedType == CrosshairType.CursedObject);
+
+        // Override. If player is not holding Nihil out.
+        if(GetComponent<MouseLook>().playerBody!= null && GetComponent<MouseLook>().playerBody.GetComponent<ToolController>().heldIndex.Value != 0 && currentRaycastedType == CrosshairType.CursedObject) {
+            defaultCrosshair.SetActive(true);
+            cursedObjCrosshair.SetActive(false);
+        }
     }
 
 }

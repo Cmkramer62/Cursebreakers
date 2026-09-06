@@ -67,16 +67,20 @@ public class Enemy : NetworkBehaviour {
     }
 
     private void OnClientConnected(ulong clientId) {
-        var playerObject = NetworkManager.Singleton.ConnectedClients[clientId].PlayerObject;
-        if(playerObject != null && !listOfPlayers.Contains(playerObject.gameObject)) listOfPlayers.Add(playerObject.gameObject);
-        GetComponent<ConeLOSDetector>().SetMyList();
+        NetworkObject playerObject = NetworkManager.Singleton.ConnectedClients[clientId].PlayerObject;
 
+        if(playerObject != null && !listOfPlayers.Contains(playerObject.gameObject))
+            listOfPlayers.Add(playerObject.gameObject);
+
+        GetComponent<ConeLOSDetector>().SetMyList();
     }
 
     private void OnClientDisconnected(ulong clientId) {
-        listOfPlayers.RemoveAll(player => player == null);
-        GetComponent<ConeLOSDetector>().SetMyList();
+        listOfPlayers.RemoveAll(player => player == null ||
+            player.GetComponent<NetworkObject>().OwnerClientId == clientId);
 
+        // GetComponent<ConeLOSDetector>().SetMyList();
+        GetComponent<ConeLOSDetector>().SetGhostsListOnDisconnects(listOfPlayers);
     }
 
     public override void OnNetworkSpawn() {
@@ -93,7 +97,7 @@ public class Enemy : NetworkBehaviour {
         if(IsServer) {
             RefreshPlayerList();
             GetComponent<ConeLOSDetector>().SetMyList();
-            // InvertVisibilityServerRpc();
+
             var playerLastSeemMarker = GameObject.Instantiate(playerLastSeenMarkerPrefab);
             playerLastSeemMarker.GetComponent<NetworkObject>().Spawn();
             NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
@@ -104,22 +108,9 @@ public class Enemy : NetworkBehaviour {
         {
             InvertVisibility(newState);
         };
-        //InvertVisibility(true);
+
         if(IsServer) invisible.Value = true;
         InvertVisibility(invisible.Value);
-
-        //listOfPlayers = new List<GameObject>(GameObject.FindGameObjectsWithTag("Player")); //GameObject.Find("Player").transform;
-
-        // We're going to get all the below now from simply children of SeenAndClosestPlayer().
-
-        // playersBreath = new List<ParticleSystem>();
-        // foreach(GameObject player in playerTransform) { playersBreath.Add(player.GetComponentInChildren<ParticleSystem>()); }
-        // playersBreath = playerTransform.GetComponentInChildren<ParticleSystem>();
-
-        // playerVision = new List<ConeLOSDetector>();
-        // foreach(GameObject player in playerTransform) { playerVision.Add(player.transform.GetChild(1).GetChild(0).GetComponent<ConeLOSDetector>()); }
-        // playerTransform.GetChild(1).GetChild(0).GetComponent<ConeLOSDetector>();
-
     }
 
     // Returns the closest player out of all the players, visible or not.

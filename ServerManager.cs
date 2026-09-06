@@ -1,5 +1,6 @@
 using Unity.Netcode;
 using UnityEngine;
+using System;
 
 public class ServerManager : NetworkBehaviour {
     [SerializeField] private GameObject timerPrefab, curseGamePrefab;
@@ -19,4 +20,5 @@ public class ServerManager : NetworkBehaviour {
         cursegame.GetComponent<CurseGameManager>().spawnGhost = spawnGhost;
         cursegame.GetComponent<NetworkObject>().Spawn();
     }
+
 }

@@ -34,6 +34,7 @@ public class CurseGameManager : NetworkBehaviour {
 
     private CurseGameManagerClient curseManagerClientScript;
     public bool spawnGhost = true;
+    public GameObject[] spawnPoints;
 
     private void OnClientConnected(ulong clientId) {
         var playerObj = NetworkManager.Singleton.ConnectedClients[clientId].PlayerObject;
@@ -65,7 +66,7 @@ public class CurseGameManager : NetworkBehaviour {
 
         //goalCurse.GetComponentInChildren<CursedObject>().toolControllerScript = GetComponent<ToolController>();
         curse.GetComponentInChildren<CursedObject>().SetRandomGoal(); // set the curses to be a random 3.
-
+        curse.GetComponentInChildren<CursedObject>().goalCurse.Value = true;
 
         // We don't also have a goalCurseTrackedID anymore. goalCurseTrackedID.Value = goalCurse.GetComponent<NetworkObject>().NetworkObjectId;
         // Freebie is found and handled on client-side manager script, ONLY after the networked cursedObject is given its curses.
@@ -73,9 +74,16 @@ public class CurseGameManager : NetworkBehaviour {
 
         // Spawn in ghost before the curses are revealed.
         if(spawnGhost) {
-            ghostReference = GameObject.Instantiate(ghostPrefab); // where?
-            ghostReference.GetComponent<GhostRandomizer>().serverGameManagerScript = this;
+            PopulateSpawnPoints();
 
+            ghostReference = GameObject.Instantiate(ghostPrefab); // where?
+            Transform spawn = GetSpawnPoint();
+            ghostReference.transform.SetPositionAndRotation(
+                spawn.position,
+                spawn.rotation
+            );
+
+            ghostReference.GetComponent<GhostRandomizer>().serverGameManagerScript = this;
             ghostReference.GetComponent<NetworkObject>().Spawn();
             ghostReference.GetComponent<Enemy>().musicSource = curseManagerClientScript.musicSource;
             ghostReference.GetComponent<Enemy>().allowedToMove.Value = true;
@@ -108,4 +116,15 @@ public class CurseGameManager : NetworkBehaviour {
         }
     }
 
+    private void PopulateSpawnPoints() {
+        spawnPoints = GameObject.FindGameObjectsWithTag("GhostSpawnPoint");
+        Array.Sort(spawnPoints, (a, b) =>
+            string.Compare(a.name, b.name, StringComparison.Ordinal)
+        );
+    }
+
+    private Transform GetSpawnPoint() {
+        int index = UnityEngine.Random.Range(0, spawnPoints.Length);
+        return spawnPoints[index].transform;
+    }
 }

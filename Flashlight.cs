@@ -30,7 +30,7 @@ public class Flashlight : NetworkBehaviour {
         flashlightEnabled.OnValueChanged += OnFlashlightChanged;
 
         // Apply initial state
-        ApplyFlashlightState(flashlightEnabled.Value);
+        if(IsServer) ApplyFlashlightState(flashlightEnabled.Value);
         
         if(IsOwner) StartCoroutine(FindUIManager());
         else gameObject.SetActive(false);
