@@ -74,6 +74,7 @@ public class CameraEffectsManager : MonoBehaviour {
         HideCameraLayer("Water");
         HideCameraLayer("UI");
         HideCameraLayer("Interactable");
+        HideCameraLayer("Wall");
         //Hide("Player");
         //Show("Special");
     }
@@ -88,7 +89,8 @@ public class CameraEffectsManager : MonoBehaviour {
         ShowCameraLayer("UI");
         ShowCameraLayer("Interactable");
         ShowCameraLayer("Player");
-        ShowCameraLayer("Special");
+        ShowCameraLayer("Special"); 
+        ShowCameraLayer("Wall");
         HideCameraLayer("Afterlife");
     }
 
@@ -103,6 +105,7 @@ public class CameraEffectsManager : MonoBehaviour {
         ShowCameraLayer("Player");
         ShowCameraLayer("Special");
         ShowCameraLayer("Afterlife");
+        ShowCameraLayer("Wall");
     }
 
     private IEnumerator ChangeSaturationRoutine(float target, float duration) {

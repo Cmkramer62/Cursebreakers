@@ -61,12 +61,14 @@ public class GhostRandomizer : NetworkBehaviour {
     
     public GameObject ghostGeistParticles;
     public Bell bellScript;
-    public GameObject[] enviroParticles, horns;
+    //public GameObject[] enviroParticles, horns;
+    [SerializeField] private GameObject algorClueEmitter;
     public RuntimeAnimatorController floatingController;
     public bool searchWithSound = false;
 
     public CurseGameManager serverGameManagerScript;
     public CursedObject goalCurse;
+    [HideInInspector] public GameObject fulgorShadow;
 
     public override void OnNetworkSpawn() {
         generatedRanString.OnValueChanged += (_, newCode) =>
@@ -167,68 +169,45 @@ public class GhostRandomizer : NetworkBehaviour {
             yield return null;
         }
 
-        ApplyCursedAura();
-        ApplyCursedEnvironment();
+        //ApplyCursedAura();
+        //ApplyCursedEnvironment();
+        TurnOnClueEmission(0);
     }
 
-    public void ApplyCursedEnvironment() {
+    public void TurnOnClueEmission(int indexOfClue) {
+
         GameObject potentialGoalCurse = null;
+
         if(serverGameManagerScript.goalCurse.Value.TryGet(out NetworkObject networkObject)) {
             potentialGoalCurse = networkObject.gameObject;
         }
-        if(potentialGoalCurse == null) Debug.LogError("ERROR IN CURSED OBJECT, COULD NOT GET GOALCURSE.");
-
-        var goalCurseEnviroSlot = potentialGoalCurse.GetComponentInChildren<CursedObject>().cursesList[1];
-        //var goalCurseEnviroSlot = goalCurse.cursesList[1];
-
-        enviroParticles[0].SetActive(goalCurseEnviroSlot == (int)CursedObject.CursedTypes.Glowing);
-        enviroParticles[1].SetActive(goalCurseEnviroSlot == (int)CursedObject.CursedTypes.EMF);
-        enviroParticles[2].SetActive(goalCurseEnviroSlot == (int)CursedObject.CursedTypes.Aura);
-        enviroParticles[3].SetActive(goalCurseEnviroSlot == (int)CursedObject.CursedTypes.Thermo);
-        enviroParticles[4].SetActive(goalCurseEnviroSlot == (int)CursedObject.CursedTypes.Unholy);
-
-        searchWithSound = goalCurseEnviroSlot == (int)CursedObject.CursedTypes.Sound;
-        //if(goalCurseSpecific == (int)CursedObject.CursedTypes.Sound) bellScript.ghostSearchWithSound = true;
-        // this needs to be moved somewhere else. /\
-    }
-
-    public void ApplyCursedAura() {
-        //Debug.Log("Starting apply aura");
-
-        GameObject potentialGoalCurse = null;
-         if(GameObject.FindAnyObjectByType<CurseGameManager>().goalCurse.Value.TryGet(out NetworkObject networkObject)) {
-            potentialGoalCurse = networkObject.gameObject;
-         }
-
-        if(potentialGoalCurse == null) Debug.LogError("ERROR IN CURSED OBJECT, COULD NOT GET GOALCURSE.");
-        int goalCurseAuraSlot = potentialGoalCurse.GetComponentInChildren<CursedObject>().cursesList[2];
-       // int goalCurseAuraSlot = goalCurse.cursesList[2];
-
-        if(goalCurseAuraSlot == (int)CursedObject.CursedTypes.Glowing) {
-            ghostGeistParticles.SetActive(true);
-            SetGeistAuraServerRpc();
+        else {
+            Debug.LogError("ERROR IN CURSED OBJECT, COULD NOT GET GOALCURSE.");
         }
-        else if(goalCurseAuraSlot == (int)CursedObject.CursedTypes.EMF) {
-            GetComponent<Enemy>().animator.runtimeAnimatorController = floatingController;
+
+        // curseToEmit is the "integer" way of representing the curse in the slot of indexOfClue.
+        int curseToEmit = potentialGoalCurse.GetComponentInChildren<CursedObject>().cursesList[indexOfClue];
+
+        if(curseToEmit == (int)CursedObject.CurseType.StellaeTrait) {
+
         }
-        else if(goalCurseAuraSlot == (int)CursedObject.CursedTypes.Aura) {
-            SetOverrideEyesServerRpc();
-            // Does this happen too late?
+        else if(curseToEmit == (int)CursedObject.CurseType.RadiatioTrait) {
+
         }
-        else if(goalCurseAuraSlot == (int)CursedObject.CursedTypes.Thermo) {
-            // debug
-            SetFreezingAuraServerRpc();
+        else if(curseToEmit == (int)CursedObject.CurseType.FulgorTrait) {
+            fulgorShadow.SetActive(true);
+            fulgorShadow.GetComponent<FulgorShadow>().keepOn = true;
         }
-        else if(goalCurseAuraSlot == (int)CursedObject.CursedTypes.Unholy) {
-            foreach(GameObject horns in horns) {
-                horns.SetActive(true);
-            }
+        else if(curseToEmit == (int)CursedObject.CurseType.AlgorTrait) {
+            algorClueEmitter.SetActive(true);
+        }
+        else if(curseToEmit == (int)CursedObject.CurseType.ProfanusTrait) {
+
         }
         else {
             searchWithSound = true;
         }
         
-        //Debug.Log("done apply aura");
     }
 
     [ServerRpc(RequireOwnership = false)]
@@ -367,4 +346,68 @@ public class GhostRandomizer : NetworkBehaviour {
         victorian[2].materials = mats3;
     }
     #endregion
+
+
+    /*
+    public void ApplyCursedEnvironment() {
+        GameObject potentialGoalCurse = null;
+        if(serverGameManagerScript.goalCurse.Value.TryGet(out NetworkObject networkObject)) {
+            potentialGoalCurse = networkObject.gameObject;
+        }
+        if(potentialGoalCurse == null) Debug.LogError("ERROR IN CURSED OBJECT, COULD NOT GET GOALCURSE.");
+
+        var goalCurseEnviroSlot = potentialGoalCurse.GetComponentInChildren<CursedObject>().cursesList[1];
+        //var goalCurseEnviroSlot = goalCurse.cursesList[1];
+
+        enviroParticles[0].SetActive(goalCurseEnviroSlot == (int)CursedObject.CurseType.Glowing);
+        enviroParticles[1].SetActive(goalCurseEnviroSlot == (int)CursedObject.CurseType.EMF);
+        enviroParticles[2].SetActive(goalCurseEnviroSlot == (int)CursedObject.CurseType.Aura);
+        enviroParticles[3].SetActive(goalCurseEnviroSlot == (int)CursedObject.CurseType.Thermo);
+        enviroParticles[4].SetActive(goalCurseEnviroSlot == (int)CursedObject.CurseType.Unholy);
+
+        searchWithSound = goalCurseEnviroSlot == (int)CursedObject.CurseType.Sound;
+        //if(goalCurseSpecific == (int)CursedObject.CursedTypes.Sound) bellScript.ghostSearchWithSound = true;
+        // this needs to be moved somewhere else. /\
+    }
+
+    public void ApplyCursedAura() {
+        //Debug.Log("Starting apply aura");
+
+        GameObject potentialGoalCurse = null;
+         if(GameObject.FindAnyObjectByType<CurseGameManager>().goalCurse.Value.TryGet(out NetworkObject networkObject)) {
+            potentialGoalCurse = networkObject.gameObject;
+         }
+
+        if(potentialGoalCurse == null) Debug.LogError("ERROR IN CURSED OBJECT, COULD NOT GET GOALCURSE.");
+        int goalCurseAuraSlot = potentialGoalCurse.GetComponentInChildren<CursedObject>().cursesList[2];
+       // int goalCurseAuraSlot = goalCurse.cursesList[2];
+
+        if(goalCurseAuraSlot == (int)CursedObject.CurseType.Glowing) {
+            ghostGeistParticles.SetActive(true);
+            SetGeistAuraServerRpc();
+        }
+        else if(goalCurseAuraSlot == (int)CursedObject.CurseType.EMF) {
+            GetComponent<Enemy>().animator.runtimeAnimatorController = floatingController;
+        }
+        else if(goalCurseAuraSlot == (int)CursedObject.CurseType.Aura) {
+            SetOverrideEyesServerRpc();
+            // Does this happen too late?
+        }
+        else if(goalCurseAuraSlot == (int)CursedObject.CurseType.Thermo) {
+            // debug
+            SetFreezingAuraServerRpc();
+        }
+        else if(goalCurseAuraSlot == (int)CursedObject.CurseType.Unholy) {
+            foreach(GameObject horns in horns) {
+                horns.SetActive(true);
+            }
+        }
+        else {
+            searchWithSound = true;
+        }
+        
+        //Debug.Log("done apply aura");
+    }
+    */
+
 }

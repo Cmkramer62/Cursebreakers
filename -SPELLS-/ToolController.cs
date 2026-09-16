@@ -27,6 +27,7 @@ public class ToolController : NetworkBehaviour {
     private CursedObject[] listOfAllCurses;
     public NetworkVariable<int> defaultEMF = new NetworkVariable<int>(0), 
         defaultTemp = new NetworkVariable<int>(60);
+    public float averageTemperature = -1;
 
     public Flashlight geistLightScript;
     public SpellFulgor cameraScript;
@@ -37,6 +38,7 @@ public class ToolController : NetworkBehaviour {
     [SerializeField] private SkinnedMeshRenderer[] armMeshRenderers;
     [SerializeField] private Animator firstPersonArmsAnimator;
 
+    private Transform algorCrystalTransform;
 
     public override void OnNetworkSpawn() {
         heldIndex.OnValueChanged += OnHeldIndexChanged;
@@ -58,9 +60,8 @@ public class ToolController : NetworkBehaviour {
         if(!IsServer) {
             return;
         }
-
-        InvokeRepeating("UpdateTemp", 0, Random.Range(0.5f, 1));
-        InvokeRepeating("UpdateEMF", 0, Random.Range(1, 4));
+        algorCrystalTransform = playerItemMeshes[5].transform.GetChild(0).transform;
+        InvokeRepeating("UpdateEMF", 0, 2);
        // InvokeRepeating("CheckHolyWater", 0, Random.Range(2, 4));
     }
 
@@ -69,6 +70,8 @@ public class ToolController : NetworkBehaviour {
         if(!IsOwner) {
             return;
         }
+
+        UpdateTemp();
 
         if(!cycleCooldown && playerAlive && allowedToCycle && Input.GetAxis("Mouse ScrollWheel") > 0f) CycleDownServerRpc();
         else if(!cycleCooldown && playerAlive && allowedToCycle && Input.GetAxis("Mouse ScrollWheel") < 0f) CycleUpServerRpc();
@@ -204,38 +207,35 @@ public class ToolController : NetworkBehaviour {
     #endregion
 
     private void UpdateTemp() {
-       
-        if(playerItemMeshes[5].activeInHierarchy) {
-            //Debug.Log("Updating Temp.");
-            // check distances of all cursedObjects in our radius that have thermo.
-            // find the one that has the shortest distance to us.
-            // set the thermometer's goal temp to be that cursedObject's temperature + the distance. ie. if the goalTemp is 0, but we are 10 away, it reads 10.
-            float smallestDistance = 100f;
-            CursedObject closestCurse = null;
 
-            foreach(CursedObject curse in cursedObjectsWithinRange) {
-                var testingDistance = Vector3.Distance(playerItemMeshes[5].transform.position, curse.transform.position);
-                if(testingDistance < smallestDistance) {
-                    closestCurse = curse;
-                    smallestDistance = testingDistance;
-                }
-            }
+        if(!playerItemMeshes[5].activeInHierarchy) {
+            return;
+        }
+        
+        const float roomTemperature = 60f;
+        const float maxRange = 5f;
 
-            bool closestIsCold;
-            if(closestCurse == null) closestIsCold = false;
-            else closestIsCold = closestCurse.cursesList.Contains((int)CursedObject.CursedTypes.Thermo);
+        float temperature = roomTemperature;
 
-            // if(closest thing is thermo cold curse, random is range between -5 and -1.
-            int fluctuation;
-            if(closestIsCold) fluctuation = Random.Range(-9, 3);
-            // else, random range is between -3 and 3
-            else fluctuation = Random.Range(-2, 10);
+        foreach(CursedObject cursedObject in cursedObjectsWithinRange) {
+            float distance = Vector3.Distance(algorCrystalTransform.position, cursedObject.transform.position);
+            float influence = 1f - Mathf.Clamp01(distance / maxRange);
 
-            defaultTemp.Value += fluctuation;
-            if(defaultTemp.Value < -20) defaultTemp.Value = -20;
-            else if(defaultTemp.Value > 60) defaultTemp.Value = 60;
+            temperature = Mathf.Lerp(temperature, cursedObject.temperature, influence);
         }
 
+        // Hidden ice
+        //int hiddenIceAmount = playerItemMeshes[5].GetComponent<Thermometer>().AmountOfHiddenIceCrystalsNearby();
+        foreach(Collider col in playerItemMeshes[5].GetComponent<Thermometer>().collidersInside) {
+            float iceDist = Vector3.Distance(algorCrystalTransform.position, col.transform.position);
+            float influence = 1f - Mathf.Clamp01(iceDist / maxRange);
+
+            temperature = Mathf.Lerp(temperature, -20f, influence);
+        }
+
+        temperature = Mathf.Clamp(temperature, -20f, 60f);
+
+        defaultTemp.Value = Mathf.RoundToInt(temperature);
     }
 
     private void UpdateEMF() {
@@ -255,7 +255,7 @@ public class ToolController : NetworkBehaviour {
         bool anyActive = false;
         if(playerItemMeshes[6].activeSelf) {
             foreach(CursedObject curse in cursedObjectsWithinRange) {
-                if(curse.cursesList.Contains((int)CursedObject.CursedTypes.Unholy)) {
+                if(curse.cursesList.Contains((int)CursedObject.CurseType.ProfanusTrait)) {
                     playerItemMeshes[6].GetComponent<HolyWater>().active.Value = true; //TurnHolyOnServerRpc();
                     anyActive = true;
                 }

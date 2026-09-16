@@ -174,7 +174,7 @@ public class UIManager : MonoBehaviour {
                 geistlightScript.GetComponent<LookAtWithDelay>().working = true;
             }
             if(raycastScript.curseScript != null && raycastScript.curseScript.charge >= 100f && raycastScript.curseScript.geistLight.intensity == 0) {
-                raycastScript.curseScript.DisplayCurse(CursedObject.CursedTypes.Glowing, true);
+                raycastScript.curseScript.DisplayCurse(CursedObject.CurseType.StellaeTrait, true);
 
             }
         }

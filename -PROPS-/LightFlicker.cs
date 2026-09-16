@@ -5,7 +5,7 @@ using Unity.Netcode;
 public class LightFlicker : NetworkBehaviour {
 
     public Light source;
-    public bool makesNoise, materialSwap = false, flicker = true, alive = true;
+    public bool makesNoise, materialSwap = false, flicker = true, alive = true, usesParticles = false;
     public float maximumDim = 0f, maximumBoost = 1f, tickSpeed = 0.04f, strength = 200;
     public int minSecAwake = 9, maxSecAwake = 30, minSecDead = 3, maxSecDead = 15;
 
@@ -14,7 +14,7 @@ public class LightFlicker : NetworkBehaviour {
     public AudioSource buzzingSource, flickeringSource, interactSource;
     public AudioClip turnOnSound, turnOffSound, blowUpSound;
 
-    [SerializeField] ParticleSystem blowUpParticles;
+    [SerializeField] ParticleSystem blowUpParticles, aliveParticles;
 
     private float defaultIntensity;
     // IF YOU SYNC ANY VARS, REMOVE THEIR ASSIGNMENTS OF THE CLIENT RPCs AND PUT THEM IN THE SERVER RPCs!
@@ -61,6 +61,8 @@ public class LightFlicker : NetworkBehaviour {
             //if(materialSwap) aliveBulbMat.SetColor("_EmissionColor", Color.white * 1f);
         }
         source.intensity = defaultIntensity;
+        if(usesParticles) aliveParticles.Play();
+
         yield return new WaitForSeconds(Random.Range(minSecAwake, maxSecAwake));
         if(!forceChange && flicker) StartCoroutine(StartFlickerLight());
     }
@@ -110,6 +112,7 @@ public class LightFlicker : NetworkBehaviour {
             bulbRenderer.material = deadBulbMat;
         }
         source.intensity = 0;
+        if(usesParticles) aliveParticles.Stop();
 
         yield return new WaitForSeconds(Random.Range(minSecDead, maxSecDead));
         //Debug.Log(source.intensity);
@@ -154,6 +157,7 @@ public class LightFlicker : NetworkBehaviour {
         StartCoroutine(KillLight());
         interactSource.PlayOneShot(blowUpSound);
         blowUpParticles.Play();
+        if(usesParticles) aliveParticles.Stop();
 
         gameObject.tag = "Generic";
     }

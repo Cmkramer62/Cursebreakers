@@ -18,7 +18,8 @@ public class InteractRaycast : NetworkBehaviour {
     public Animator crosshairAnimator;
     public CursedObject curseScript;
     private Death deathScript;
-    [SerializeField] private GameObject defaultCrosshair, interactCrosshair, afterlifeInteractCrosshair, channelLifeCrosshair, cursedObjCrosshair;
+    [SerializeField] private GameObject defaultCrosshair, interactCrosshair, afterlifeInteractCrosshair, channelLifeCrosshair, cursebreakCrosshair, cursedObjectCrosshairs;
+    [SerializeField] private GameObject[] spellCrosshairs;
     public enum CrosshairType { Nothing, InteractLiving, InteractAfterlife, Channel, CursedObject}
 
 
@@ -55,7 +56,7 @@ public class InteractRaycast : NetworkBehaviour {
                 crosshairAnimator.Play("Crosshair Bump Anim");
                 switch(hit.transform.gameObject.tag) {
                     case "Door":
-                        if(!afterlife) hit.transform.parent.parent.gameObject.GetComponent<Door>().InteractDoor();
+                        if(!afterlife) hit.transform.gameObject.GetComponent<Door>().InteractDoor();
                         break;
                     case "Generic":
                         if(!afterlife) {
@@ -187,12 +188,24 @@ public class InteractRaycast : NetworkBehaviour {
         interactCrosshair.SetActive(currentRaycastedType == CrosshairType.InteractLiving);
         afterlifeInteractCrosshair.SetActive(currentRaycastedType == CrosshairType.InteractAfterlife);
         channelLifeCrosshair.SetActive(currentRaycastedType == CrosshairType.Channel);
-        cursedObjCrosshair.SetActive(currentRaycastedType == CrosshairType.CursedObject);
-
+        
         // Override. If player is not holding Nihil out.
         if(GetComponent<MouseLook>().playerBody!= null && GetComponent<MouseLook>().playerBody.GetComponent<ToolController>().heldIndex.Value != 0 && currentRaycastedType == CrosshairType.CursedObject) {
-            defaultCrosshair.SetActive(true);
-            cursedObjCrosshair.SetActive(false);
+            //defaultCrosshair.SetActive(true);
+            cursebreakCrosshair.SetActive(false);
+            cursedObjectCrosshairs.SetActive(true);
+            SetSpellCrosshairs(GetComponent<MouseLook>().playerBody.GetComponent<ToolController>().heldIndex.Value-1);
+        }
+        else {
+            cursebreakCrosshair.SetActive(currentRaycastedType == CrosshairType.CursedObject);
+            cursedObjectCrosshairs.SetActive(false);
+            SetSpellCrosshairs(-1);
+        }
+    }
+
+    private void SetSpellCrosshairs(int index) {
+        for(int i = 0; i < spellCrosshairs.Length; i++) {
+            spellCrosshairs[i].SetActive(i == index);
         }
     }
 

@@ -33,8 +33,11 @@ public class CurseGameManager : NetworkBehaviour {
     public int timeSpent = 0, timeSpotted = 0, longestChase = 0, purifyState = 0;
 
     private CurseGameManagerClient curseManagerClientScript;
-    public bool spawnGhost = true;
+    public bool spawnGhost = true, dontMoveGhost = false, randomizeCurse = true;
     public GameObject[] spawnPoints;
+
+    
+    [Tooltip("Used if randomizeCurse is false.")] public CursedObject.CurseType freebieCurse, enviroCurse, auraCurse;
 
     private void OnClientConnected(ulong clientId) {
         var playerObj = NetworkManager.Singleton.ConnectedClients[clientId].PlayerObject;
@@ -42,19 +45,16 @@ public class CurseGameManager : NetworkBehaviour {
     }
 
     public override void OnNetworkSpawn() {
-        // spawnPoints = GameObject.FindGameObjectsWithTag("CurseSpawn");
-        curseManagerClientScript = GameObject.Find("Client Curse Game Manager").GetComponent<CurseGameManagerClient>();
-        if(!IsServer) return;
+        curseManagerClientScript = GameObject.FindAnyObjectByType<CurseGameManagerClient>();
+        
+        if(!IsServer) {
+            return;
+        }
 
         NetworkManager.OnClientConnectedCallback += OnClientConnected;
 
-        
         goalCurseIndex.Value = UnityEngine.Random.Range(0, curseManagerClientScript.spawnPoints.Count);
 
-        // goal curse section. goalCurseIndex used to be 'i'
-        //old goalCurse = GameObject.Instantiate(cursedObjectPrefabs[UnityEngine.Random.Range(0, cursedObjectPrefabs.Length)], curseManagerClientScript.spawnPoints[goalCurseIndex.Value].transform);
-        //old goalCurse.GetComponent<NetworkObject>().Spawn();
-        //  THE 2 ABOVE HAS BEEN CONVERTED TO THE 4 BELOW  \/
         GameObject curse = GameObject.Instantiate(cursedObjectPrefabs[UnityEngine.Random.Range(0, cursedObjectPrefabs.Length)],
             curseManagerClientScript.spawnPoints[goalCurseIndex.Value].transform);
         
@@ -63,49 +63,33 @@ public class CurseGameManager : NetworkBehaviour {
         networkObject.Spawn();
         goalCurse.Value = networkObject;
 
-
-        //goalCurse.GetComponentInChildren<CursedObject>().toolControllerScript = GetComponent<ToolController>();
-        curse.GetComponentInChildren<CursedObject>().SetRandomGoal(); // set the curses to be a random 3.
+        if(randomizeCurse) {
+            curse.GetComponentInChildren<CursedObject>().SetRandomGoal();
+        }
+        else {
+            curse.GetComponentInChildren<CursedObject>().SetSpecificGoal((int)freebieCurse, (int)enviroCurse, (int)auraCurse);
+        }
         curse.GetComponentInChildren<CursedObject>().goalCurse.Value = true;
-
-        // We don't also have a goalCurseTrackedID anymore. goalCurseTrackedID.Value = goalCurse.GetComponent<NetworkObject>().NetworkObjectId;
-        // Freebie is found and handled on client-side manager script, ONLY after the networked cursedObject is given its curses.
-
 
         // Spawn in ghost before the curses are revealed.
         if(spawnGhost) {
-            PopulateSpawnPoints();
-
-            ghostReference = GameObject.Instantiate(ghostPrefab); // where?
-
-            //ghostReference.transform.SetPositionAndRotation(spawn.position, spawn.rotation);
-
-            // ghostReference.GetComponent<GhostRandomizer>().serverGameManagerScript = this;
+            PopulateGhostSpawnPoints();
+            ghostReference = GameObject.Instantiate(ghostPrefab);
             StartCoroutine(PlaceGhostWhenReady());
             ghostReference.GetComponent<NetworkObject>().Spawn();
-            
             ghostReference.GetComponent<Enemy>().musicSource = curseManagerClientScript.musicSource;
-            ghostReference.GetComponent<Enemy>().allowedToMove.Value = true;
+            ghostReference.GetComponent<Enemy>().allowedToMove.Value = !dontMoveGhost;
         }
 
-        // RemovePropItem(goalCurseIndex);
         for (int i = 0; i < curseManagerClientScript.spawnPoints.Count; i++) {
             if(i != goalCurseIndex.Value) {
                 if(curseSpawnBuffer >= curseSpawnBufferMax) {
                     if(UnityEngine.Random.Range(0, oddsSpawnRate) == 0) {
                         GameObject newCurse = GameObject.Instantiate(cursedObjectPrefabs[UnityEngine.Random.Range(0, cursedObjectPrefabs.Length)], curseManagerClientScript.spawnPoints[i].transform);
-                        //Debug.Log("--Spawned in new non-goal curse: " + newCurse.name);
                         newCurse.GetComponent<NetworkObject>().Spawn();
-                        //Debug.Log("--Spawn in new non-goal curse.");
-
-                        //newCurse.GetComponentInChildren<CursedObject>().toolControllerScript = GetComponent<ToolController>();
                         newCurse.GetComponentInChildren<CursedObject>().curseGameManager = this;
                         newCurse.GetComponentInChildren<CursedObject>().SetRandomCurses();
-                        //Debug.Log("--Spawn in new non-goal curse.");
-
-                        // set random number of curses
                         curseSpawnBuffer = 0;
-                        //Debug.Log("--About to call remove with: " + i);
                         latestFalseCurseIndex.Value = i;
                      //   RemovePropItem(i);
                     }
@@ -130,7 +114,7 @@ public class CurseGameManager : NetworkBehaviour {
         ghostObj.GetComponent<Enemy>().SetSpawnPositionClientRpc(spawn.position, spawn.rotation);
     }
 
-    private void PopulateSpawnPoints() {
+    private void PopulateGhostSpawnPoints() {
         spawnPoints = GameObject.FindGameObjectsWithTag("GhostSpawnPoint");
         Array.Sort(spawnPoints, (a, b) =>
             string.Compare(a.name, b.name, StringComparison.Ordinal)

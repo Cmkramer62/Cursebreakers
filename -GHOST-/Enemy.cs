@@ -19,7 +19,7 @@ public class Enemy : NetworkBehaviour {
     public SkinnedMeshRenderer[] meshRenderers;
     public GameObject[] horns;
     public ParticleSystem geistlightAura;
-    public GameObject shadow, paranormalSounds, ghostEffects;
+    public GameObject shadow, paranormalSounds;//, environmentalVFX, auraVFX;
 
     public enum Mode { chasing, patrolling }
     public Mode currentMode;
@@ -30,7 +30,7 @@ public class Enemy : NetworkBehaviour {
 
     //public Death deathScript;
     public Vector3 walkPoint;
-    public Animator animator, shadowAnimator;
+    public Animator animator, shadowAnimator, fulgorShadowAnimator;
 
     [SerializeField] private GameObject playerLastSeenMarkerPrefab;
     public NetworkVariable<NetworkObjectReference> playerLastSeen = new NetworkVariable<NetworkObjectReference>();
@@ -168,6 +168,7 @@ public class Enemy : NetworkBehaviour {
         if(allowedToMove.Value) {
             if(animator.gameObject.activeInHierarchy) animator.SetFloat("Velocity", veloNetwork.Value);
             if(shadowAnimator.gameObject.activeInHierarchy) shadowAnimator.SetFloat("Velocity", veloNetwork.Value);
+            if(fulgorShadowAnimator.gameObject.activeInHierarchy) fulgorShadowAnimator.SetFloat("Velocity", veloNetwork.Value);
         }
 
         if(!IsServer) return;
@@ -335,6 +336,7 @@ public class Enemy : NetworkBehaviour {
         waitingForScream = true;
         animator.Play("Scream");
         shadowAnimator.Play("Scream");
+        fulgorShadowAnimator.Play("Scream");
     }
 
     private IEnumerator ScreamAnimTimer() {
@@ -475,7 +477,8 @@ public class Enemy : NetworkBehaviour {
             foreach(GameObject horn in horns) {
                 horn.SetActive(false);
             }
-            ghostEffects.SetActive(true);
+           // environmentalVFX.SetActive(true);
+           // auraVFX.SetActive(false);
             walkSpeed = invisSpeed;
         }
         else {
@@ -495,7 +498,7 @@ public class Enemy : NetworkBehaviour {
         yield return new WaitForSeconds(1f);
         shadow.SetActive(false);
 
-        // If we are NOT invisible:
+        // If we are visible:
         if(!invisState) {
             foreach(SkinnedMeshRenderer meshRen in meshRenderers) {
                 //meshRen.enabled = true;
@@ -504,7 +507,8 @@ public class Enemy : NetworkBehaviour {
             foreach(GameObject horn in horns) {
                 horn.SetActive(true);
             }
-            ghostEffects.SetActive(false);
+            //environmentalVFX.SetActive(false);
+            //auraVFX.SetActive(true);
         }
         // THIS IS THE DELAY BEFORE REACTIVATING PARANORMAL SOUNDS.
         if(invisState) yield return new WaitForSeconds(15f);
@@ -522,7 +526,7 @@ public class Enemy : NetworkBehaviour {
             foreach(GameObject horn in horns) {
                 horn.SetActive(true);
             }
-            ghostEffects.SetActive(false);
+            //environmentalVFX.SetActive(false);
         }
     }
 
@@ -567,6 +571,7 @@ public class Enemy : NetworkBehaviour {
         alreadyAttacked = false;
         animator.SetBool("Attack", false);
         shadowAnimator.SetBool("Attack", false);
+        fulgorShadowAnimator.SetBool("Attack", false);
     }
 
     public void TakeDamage(float damage) {
@@ -592,6 +597,7 @@ public class Enemy : NetworkBehaviour {
     private IEnumerator DestroyEnemyCoroutine() {
         animator.SetBool("Dead", true);
         shadowAnimator.SetBool("Dead", true);
+        fulgorShadowAnimator.SetBool("Dead", true);
         yield return new WaitForSeconds(1.8f);
         Destroy(gameObject);
     }

@@ -8,13 +8,13 @@ using Unity.Netcode;
 public class CursedObject : NetworkBehaviour {
 
     // How do I make the below a synchronized thing? Data type is not normal.
-    public enum CursedTypes { Glowing, EMF, Aura, Thermo, Unholy, Sound}
+    public enum CurseType { StellaeTrait, RadiatioTrait, FulgorTrait, AlgorTrait, ProfanusTrait, EvocareTrait}
     public NetworkList<int> cursesList = new NetworkList<int>();
     public NetworkVariable<bool> goalCurse = new NetworkVariable<bool>(false);
 
     public Light geistLight;
     [SerializeField] private ParticleSystem geistLightParticles, distortion;
-    public int emfLevel = 7, temperature = -20;
+    public int emfLevel = 7, temperature = 60;
 
    // public ToolController toolControllerScript;
     private Coroutine lightRoutine;
@@ -60,30 +60,51 @@ public class CursedObject : NetworkBehaviour {
     }
 
     public void SetRandomGoal() {
-        //Debug.Log("Random Goals " + cursesList.Count);
-        if(cursesList.Count == 3) return;
+        if(cursesList.Count == 3) {
+            return;
+        }
         else {
-            CursedTypes curseToAdd;
-            int rand = Random.Range(0, 6);
-            if(cursesList.Count == 2) goalCurseThirdAspectIndex = rand; // We keep track of the last aspect's index for the goal curse.
-            if(rand == 0) curseToAdd = CursedTypes.Glowing;
-            else if(rand == 1) curseToAdd = CursedTypes.EMF;
-            else if(rand == 2) curseToAdd = CursedTypes.Aura;
-            else if(rand == 3) {
-                curseToAdd = CursedTypes.Thermo;
-                temperature = -20;
-            }
-            else if(rand == 4) curseToAdd = CursedTypes.Unholy;
-            else curseToAdd = CursedTypes.Sound;
+            CurseType curseToAdd = CurseGivenIndex(Random.Range(0, 6));
 
             if(!cursesList.Contains((int)curseToAdd)) {
                 cursesList.Add((int)curseToAdd);
-                //Debug.Log("Goal Curse: " + curseToAdd.ToString());
-                //index.Add(rand);
             }
             SetRandomGoal();
-            
         }
+    }
+
+    // Rather than randomly assign the curses, this method is used to give the goal curse specified curses.
+    public void SetSpecificGoal(int freebieCurseIndex, int enviroCurseIndex, int auraCurseIndex) {
+        cursesList.Add((int)CurseGivenIndex(freebieCurseIndex));
+        cursesList.Add((int)CurseGivenIndex(enviroCurseIndex));
+        cursesList.Add((int)CurseGivenIndex(auraCurseIndex));
+    }
+
+    private CurseType CurseGivenIndex(int index) {
+        
+        CurseType curseToAdd;
+        
+        if(index == 0) {
+            curseToAdd = CurseType.StellaeTrait;
+        }
+        else if(index == 1) {
+            curseToAdd = CurseType.RadiatioTrait;
+        }
+        else if(index == 2) {
+            curseToAdd = CurseType.FulgorTrait;
+        }
+        else if(index == 3) {
+            curseToAdd = CurseType.AlgorTrait;
+            temperature = -20;
+        }
+        else if(index == 4) {
+            curseToAdd = CurseType.ProfanusTrait;
+        }
+        else {
+            curseToAdd = CurseType.EvocareTrait;
+        }
+
+        return curseToAdd;
     }
 
     public void SetRandomCurses() {
@@ -97,7 +118,7 @@ public class CursedObject : NetworkBehaviour {
             if(potentialGoalCurse != null) antiInt = potentialGoalCurse.GetComponentInChildren<CursedObject>().goalCurseThirdAspectIndex;
             else Debug.Log("ERROR IN CURSED OBJECT, COULD NOT GET GOALCURSE.");
 
-            CursedTypes curseToAdd;
+            CurseType curseToAdd;
             int rand = Random.Range(0, 6);
             //Debug.Log("anti int " + antiInt);
             if(rand == antiInt) {
@@ -108,15 +129,7 @@ public class CursedObject : NetworkBehaviour {
             // if curse count is 2 (we only want to check the last and third curse. As in it's ok if 2/3 of the curses match up, but not the last one.
             // and rand = index of curse
             // also, because we are not remembering previous rands, we can have repeats. (only showing 2 or 1 curse).
-            if(rand == 0) curseToAdd = CursedTypes.Glowing;
-            else if(rand == 1) curseToAdd = CursedTypes.EMF;
-            else if(rand == 2) curseToAdd = CursedTypes.Aura;
-            else if(rand == 3) {
-                curseToAdd = CursedTypes.Thermo;
-                temperature = -20;
-            }
-            else if(rand == 4) curseToAdd = CursedTypes.Unholy;
-            else curseToAdd = CursedTypes.Sound;
+            curseToAdd = CurseGivenIndex(rand);
 
             if(!cursesList.Contains((int)curseToAdd)) {
                 cursesList.Add((int)curseToAdd);
@@ -134,14 +147,14 @@ public class CursedObject : NetworkBehaviour {
 
             if(toolControllerScript.IsServer) {
                 // EMF Section
-                if(cursesList.Contains((int)CursedTypes.EMF)) {
+                if(cursesList.Contains((int)CurseType.RadiatioTrait)) {
                     toolControllerScript.defaultEMF.Value = emfLevel;
                 }
                 else if(toolControllerScript.defaultEMF.Value != 7) {
                     toolControllerScript.defaultEMF.Value = Random.Range(0, 6);
                 }
 
-                if(cursesList.Contains((int)CursedTypes.Unholy)) {
+                if(cursesList.Contains((int)CurseType.ProfanusTrait)) {
                     // Wait random amount of time? Then,
                     toolControllerScript.CheckHolyWater();
                 }
@@ -158,7 +171,7 @@ public class CursedObject : NetworkBehaviour {
         
         if(charge <= 0 && lowering) {
             lowering = false;
-            DisplayCurse(CursedTypes.Glowing, false);
+            DisplayCurse(CurseType.StellaeTrait, false);
         }
 
     }
@@ -172,7 +185,7 @@ public class CursedObject : NetworkBehaviour {
 
             if(toolControllerScript.IsServer) {
                 // If leaving an EMF, set value to 0.
-                if(cursesList.Contains((int)CursedTypes.EMF)) {
+                if(cursesList.Contains((int)CurseType.RadiatioTrait)) {
                     toolControllerScript.defaultEMF.Value = 0;
                 }
                 // If this isn't an EMF and they're not currently in a real EMF, set value to 0;
@@ -180,7 +193,7 @@ public class CursedObject : NetworkBehaviour {
                     toolControllerScript.defaultEMF.Value = 0;
                 }
 
-                if(cursesList.Contains((int)CursedTypes.Unholy)) {
+                if(cursesList.Contains((int)CurseType.ProfanusTrait)) {
                     // Wait random amount of time? Then,
                     toolControllerScript.CheckHolyWater();
                     Debug.Log("Left and this curse-" + gameObject.name + " does have unholy");
@@ -191,14 +204,14 @@ public class CursedObject : NetworkBehaviour {
         }
     }
 
-    public void DisplayCurse(CursedTypes type, bool state) {
+    public void DisplayCurse(CurseType type, bool state) {
         Debug.Log("Displaying curse ");
         bool found = false;
-        foreach(CursedTypes curCurse in cursesList) {
+        foreach(CurseType curCurse in cursesList) {
             if(type == curCurse) found = true;
         }
         // run a check to see if the "type" is even in our list of curses in "cursesList".
-        if(found && type == CursedTypes.Glowing) {
+        if(found && type == CurseType.StellaeTrait) {
             //geistLight.gameObject.SetActive(state);
             //Debug.Log("starting routine");
             if(lightRoutine != null) StopCoroutine(lightRoutine);
@@ -214,14 +227,14 @@ public class CursedObject : NetworkBehaviour {
                 geistLightParticles.Stop();
             }
         }
-        if(found && type == CursedTypes.Aura) {
+        if(found && type == CurseType.FulgorTrait) {
             if(state) distortion.Play();
             
             if(!source.isPlaying) source.PlayOneShot(cameraWhooshClip, 1);
             // play jumpscare sound? Something very light. Perhaps even from a small random array of them.
             // is this a common thing amongst other curse reveals?..
         }
-        if(found && type == CursedTypes.Sound) {
+        if(found && type == CurseType.EvocareTrait) {
             source.pitch = Random.Range(.8f, 1.2f);
             source.PlayOneShot(cursedAudioClips[Random.Range(0, cursedAudioClips.Length)]);
         }

@@ -75,7 +75,7 @@ public class Bell : NetworkBehaviour {
 
     private void TriggerCurse(bool state) {
         foreach(CursedObject objectee in gameObject.transform.parent.parent.parent.GetComponentInChildren<ToolController>().cursedObjectsWithinRange) {
-            objectee.DisplayCurse(CursedObject.CursedTypes.Sound, state);
+            objectee.DisplayCurse(CursedObject.CurseType.EvocareTrait, state);
         }
     }
 }

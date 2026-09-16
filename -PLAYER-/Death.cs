@@ -12,11 +12,11 @@ public class Death : NetworkBehaviour {
     public NetworkVariable<int> lives = new NetworkVariable<int>(3);
     public NetworkVariable<bool> afterlifePlayer = new NetworkVariable<bool>(false);
 
-    public GameObject playerController, jumpscareObject, cameraParent, jumpscareAngel, handObjectParent, ghostShadow, playerDeadBodyPrefab;
+    public GameObject playerController, jumpscareObject, fulgorJumpscare, cameraParent, jumpscareAngel, handObjectParent, ghostShadow, playerDeadBodyPrefab;
     [SerializeField] private GameObject[] jumpscareGhost;
     public int jumpscareGhostBodyIndex = -1;
-    public AudioSource twoDimAudioSource, musicSourceA, musicSourceB, channelSourceThreeDim;
-    public AudioClip jumpscareClip, hitDamageClip, afterlifeAClip, afterlifeBClip, transitionClip;
+    public AudioSource threeDimAudioSource, twoDimAudioSource, musicSourceA, musicSourceB, channelSourceThreeDim;
+    public AudioClip jumpscareClip, fulgorJumpscareClip, hitDamageClip, afterlifeAClip, afterlifeBClip, transitionClip;
     public AudioClip[] stingerClips;
     public float scareVolume = 1.0f;
 
@@ -163,7 +163,7 @@ public class Death : NetworkBehaviour {
     public void LoseLife(bool ghostAttack) {
         AssignPurificationReference();
 
-        twoDimAudioSource.PlayOneShot(hitDamageClip);
+        threeDimAudioSource.PlayOneShot(hitDamageClip);
         if(playerController.GetComponent<PlayerMovement>().isHiding) {
             foreach(HidingSpot spot in GameObject.FindObjectsByType<HidingSpot>(FindObjectsSortMode.None)) {
                 if(spot.hidingHere.Value && spot.MatchesPlayer(NetworkManager.Singleton.LocalClientId)) {
@@ -173,7 +173,7 @@ public class Death : NetworkBehaviour {
         }
         int whatLivesWillBe = lives.Value - 1;
         LoseLifeServerRpc(); // may take time to register the rpc after this.
-        twoDimAudioSource.PlayOneShot(stingerClips[whatLivesWillBe]); // I inverted this, invert the sound list.
+        threeDimAudioSource.PlayOneShot(stingerClips[whatLivesWillBe]); // I inverted this, invert the sound list.
 
         if(whatLivesWillBe == 0) {
             GetComponent<Animator>().SetBool("Dead", true); // Synced?
@@ -207,7 +207,7 @@ public class Death : NetworkBehaviour {
     public void LoseRemainingLives(bool ghostAttack) {
         AssignPurificationReference();
 
-        twoDimAudioSource.PlayOneShot(hitDamageClip);
+        threeDimAudioSource.PlayOneShot(hitDamageClip);
         if(playerController.GetComponent<PlayerMovement>().isHiding) {
             foreach(HidingSpot spot in GameObject.FindObjectsByType<HidingSpot>(FindObjectsSortMode.None)) {
                 if(spot.hidingHere.Value && spot.MatchesPlayer(NetworkManager.Singleton.LocalClientId)) {
@@ -217,7 +217,7 @@ public class Death : NetworkBehaviour {
         }
         int whatLivesWillBe = lives.Value - lives.Value;
         LoseAllLivesServerRpc(); // may take time to register the rpc after this.
-        twoDimAudioSource.PlayOneShot(stingerClips[whatLivesWillBe]); // I inverted this, invert the sound list.
+        threeDimAudioSource.PlayOneShot(stingerClips[whatLivesWillBe]); // I inverted this, invert the sound list.
         GetComponent<Animator>().SetBool("Dead", true); // Synced?
         if(ghostAttack) playerArmsAnimator.SetTrigger("DyingFromGhost");
         else playerArmsAnimator.SetTrigger("DyingFromAngel");
@@ -306,6 +306,20 @@ public class Death : NetworkBehaviour {
         else StartCoroutine(JumpscareAngelSequence());
     }
 
+    // This is a jumpscare that does not kill the player.
+    // It occurs when the player is flashing the ghost too much with fulgor.
+    public void JumpscareFulgor() {
+        StartCoroutine(JumpscareFulgorSequence());
+    }
+
+    private IEnumerator JumpscareFulgorSequence() {
+        fulgorJumpscare.SetActive(true);
+        twoDimAudioSource.PlayOneShot(fulgorJumpscareClip, 1f);
+        yield return new WaitForSeconds(.6f);
+        fulgorJumpscare.GetComponent<Animator>().Play("Leave Jumpscare");
+        fulgorJumpscare.SetActive(false);
+    }
+
     // This needs to occur ONLY on client side, to the client that's being jumpscared.
     private IEnumerator JumpscareGhostSequence() {
         //masterMixer.SetFloat("MainVolumeParam", -80);
@@ -329,6 +343,7 @@ public class Death : NetworkBehaviour {
         ghostShadow.transform.GetChild(0).GetChild(0).GetComponent<ParticleSystem>().Stop();
         ghostShadow.transform.GetChild(0).GetChild(1).GetComponent<SkinnedMeshRenderer>().enabled = false;
         jumpscareObject.SetActive(true);
+        fulgorJumpscare.SetActive(false);
         //foreach(GameObject ghostModel in jumpscareGhost) ghostModel.SetActive(true);
         jumpscareGhost[jumpscareGhostBodyIndex].SetActive(true);
         ghostShadow.SetActive(true); // animator on shadow not enabled.
@@ -355,7 +370,7 @@ public class Death : NetworkBehaviour {
 
         jumpscareAngel.SetActive(true);
         jumpscareObject.SetActive(true);
-
+        fulgorJumpscare.SetActive(false);
         twoDimAudioSource.PlayOneShot(jumpscareClip, 0.4f);
 
         //wait for 1 (?) seconds, then pause the game. Load a menu that's animated without using timescale. What to do about the pause menu functionality?

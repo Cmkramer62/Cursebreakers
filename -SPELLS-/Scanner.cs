@@ -103,7 +103,8 @@ public class Scanner : NetworkBehaviour  {
             chainsNormal.SetActive(false);
 
             OnScannerChanged(0, toolController.defaultEMF.Value);
-
+            particles.GetComponent<DelayFollow>().enabled = true;
+            canvas.GetComponent<DelayFollow>().enabled = true;
         }
         // play expand anim
     }
@@ -117,6 +118,8 @@ public class Scanner : NetworkBehaviour  {
             chainsNormal.SetActive(true);
             //play sound effect too?
             //Pause playING passive thrumming sound.
+            particles.GetComponent<DelayFollow>().enabled = false;
+            canvas.GetComponent<DelayFollow>().enabled = false;
         }
         // play shrink anim on uI
     }
