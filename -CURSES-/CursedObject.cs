@@ -141,7 +141,7 @@ public class CursedObject : NetworkBehaviour {
 
     // Will this trigger for my tool controller if another player triggers this?
     private void OnTriggerEnter(Collider other) {
-        if(other.CompareTag("Player")) {
+        if(other.CompareTag("Player") && other.GetComponent<ToolController>()) {
             var toolControllerScript = other.GetComponent<ToolController>();
             toolControllerScript.cursedObjectsWithinRange.Add(this);
 
@@ -178,7 +178,7 @@ public class CursedObject : NetworkBehaviour {
 
     // Will this trigger for my tool controller if another player triggers this?
     private void OnTriggerExit(Collider other) {
-        if(other.CompareTag("Player")) {
+        if(other.CompareTag("Player") && other.GetComponent<ToolController>()) {
             var toolControllerScript = other.GetComponent<ToolController>();
 
             toolControllerScript.cursedObjectsWithinRange.Remove(this); //flawed. What if another curse removes itself before

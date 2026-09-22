@@ -22,9 +22,13 @@ public class PlayerHandler : NetworkBehaviour {
     // Camera for the reason of mimicing the position of the cam's sphere child.
     [SerializeField] private MatchRotation rotationMatchingScriptCamhead, rotationMatchingScriptToolbelt;
     public CameraFollow cameraReference;
-    public ParticleSystem channelParticles;
+    public ParticleSystem channelParticles, spawnParticles;
+    [HideInInspector] public bool spawnParticlesPlaying = false;
 
     public override void OnNetworkSpawn() {
+        // Whether owner or not, turn on the spawning particles (beam of light).
+        TurnOnSpawnParticles();
+
         if(!IsOwner) {
             rotationMatchingScriptCamhead.enabled = false;
             rotationMatchingScriptToolbelt.enabled = false;
@@ -34,33 +38,16 @@ public class PlayerHandler : NetworkBehaviour {
 
         ghostScript = GameObject.FindAnyObjectByType<Enemy>();
         StartCoroutine(FindCamera());
-        /*
-        cameraReference = FindObjectOfType<CameraFollow>();
-        cameraReference.SetTarget(cameraHolder);
-        cameraReference.GetComponent<PingCreator>().playerScript = playerMovementScript;
-        cameraReference.transform.GetChild(3).GetComponent<HeadBob>().playerMovement = playerMovementScript;
-        cameraReference.GetComponent<MouseLook>().playerBody = playerMovementScript.transform.parent;
-        cameraReference.GetComponent<MouseLook>().cameraAnimator = animatorRef;
+    }
 
-        rotationMatchingScriptCamhead.goFollow = cameraReference.gameObject;
-        rotationMatchingScriptToolbelt.goFollow = cameraReference.gameObject;
+    public void SetSpawnPosition(Vector3 position) {
+        CharacterController controller = GetComponent<CharacterController>();
 
-        if(ghostScript != null) {
-            playerMovementScript.enemyVisionScript = ghostScript.GetComponent<ConeLOSDetector>();
-            playerMovementScript.enemyVisionScript.AddTarget(playerMovementScript.transform);
-            ghostScript.GetComponent<GhostRandomizer>().deathScript = GetComponent<Death>();
-        }
-        Cursor.lockState = CursorLockMode.Locked;
+        controller.enabled = false;
 
-        foreach(SkinnedMeshRenderer bodyRenderer in bodySkinnedRenderers) {
-            bodyRenderer.enabled = false;
-        }
-        foreach(MeshRenderer meshRenderObj in bodyMeshRenderers) {
-            meshRenderObj.enabled = false;
-        }
+        transform.position = position;
 
-        flashlightScript.raycastScript = cameraReference.GetComponent<InteractRaycast>();
-        */
+        controller.enabled = true;
     }
 
     [ClientRpc]
@@ -70,6 +57,24 @@ public class PlayerHandler : NetworkBehaviour {
         transform.position = position;
         GetComponent<CharacterController>().enabled = true;
     }
+
+    private void Update() {
+        if(spawnParticlesPlaying) {
+            // turn off them if grounded is true.
+            if(GetComponentInChildren<GroundChecker>().isGrounded) {
+                spawnParticles.Stop();
+            }
+        }
+    }
+
+    public void TurnOnSpawnParticles() {
+        if(!IsOwner) {
+            spawnParticles.Play();
+            spawnParticlesPlaying = true;
+        }
+    }
+
+
 
     private IEnumerator FindCamera() {
         while(cameraReference == null) {

@@ -27,11 +27,6 @@ public class HeadBob : NetworkBehaviour {
     public bool alwaysBeMine = false; // Should be set to true for the Main Camera's Bob.
 
     public override void OnNetworkSpawn() {
-        if(!alwaysBeMine && !IsOwner) {
-            enabled = false;
-            return;
-        }
-
         objectOrigin = objectParent.localPosition;
     }
 
@@ -40,7 +35,7 @@ public class HeadBob : NetworkBehaviour {
         if(0 >= (Mathf.Sin(p_z * 2) * p_y_intesity) && !stepped) {
             stepped = true;
             if(playSounds && playerMovement.allowedToMove && groundChecker.isGrounded && !isIdle) {
-                groundChecker.PlaySound();
+                TriggerFootstepSoundClientRpc();
             }
 
         }
@@ -50,7 +45,16 @@ public class HeadBob : NetworkBehaviour {
 
     }
 
-    private void Update() {
+    [ClientRpc]
+    private void TriggerFootstepSoundClientRpc() {
+        groundChecker.PlaySound();
+    }
+
+    private void Update() { // wtf is always be mine. "if !always be mine && !isowner, then return" (what it was before).
+        if(!IsOwner) {
+            return;
+        }
+
         if(playerMovement!= null && !playerMovement.SlidingState() && playerMovement.playerAlive) {
             objectParent.localPosition = Vector3.Lerp(objectParent.localPosition, objectBobPosition, Time.deltaTime * 8f);
             if(playerMovement.allowedToMove && playerMovement.isSprinting) { //&& playerMovement.allowedToMove) {

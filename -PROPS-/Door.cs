@@ -5,7 +5,9 @@ using Unity.Netcode;
 
 public class Door : NetworkBehaviour {
 
-    public NetworkVariable<bool> state, locked, unlockable = new NetworkVariable<bool>(false);
+    public NetworkVariable<bool> state = new NetworkVariable<bool>(false);
+    public NetworkVariable<bool> locked = new NetworkVariable<bool>(false);
+    public NetworkVariable<bool> unlockable = new NetworkVariable<bool>(false);
 
     [SerializeField] private bool sceneLoading = false, causeInteraction = false, menuScene = false;
     public string keyname;
@@ -48,7 +50,7 @@ public class Door : NetworkBehaviour {
     [ServerRpc]
     private void InteractWithDoorServerRpc() {
         if(!locked.Value) {
-            OpenCloseDoor();
+            InvertDoorState();
         }
         //else if (unlockable && locked && gameManager.GetComponent<Inventory>().inventoryDictionary.ContainsKey(keyname)){
         //    UnlockDoor();
@@ -58,6 +60,7 @@ public class Door : NetworkBehaviour {
         }
     }
 
+    // Fix, with tutorial.
     public void UnlockDoor() {
         locked.Value = false;
         source.Stop();
@@ -65,9 +68,10 @@ public class Door : NetworkBehaviour {
     }
 
     /*
-     * Opens or closes the door based on the state bool.
+     * Simply inverts the bool of the state of the door.
+     * The listener will hear this, and cause DoorEffectsOpenCloseRpc() to trigger.
      */
-    public void OpenCloseDoor() {
+    public void InvertDoorState() {
         state.Value = !state.Value;
     }
 

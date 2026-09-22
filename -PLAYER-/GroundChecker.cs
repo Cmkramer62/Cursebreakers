@@ -13,13 +13,14 @@ public class GroundChecker : MonoBehaviour {
     public string currentTag = "Grass";
 
     public AudioSource footSource;
-    public AudioClip[] normalStepClips, metalStepClips, woodStepClips, ventStepClips, waterStepClips, tileStepClips, carpetStepClips, rockStepClips;
-
-    public AudioClip[] normalLandClips, metalLandClips, woodLandClips, ventLandClips, waterLandClips, tileLandClips, carpetLandClips, rockLandClips;
-    public AudioClip[] afterlifeStepClips;
+    [SerializeField] private AudioClip[]
+        tileStepClips, tileStepEchoClips,
+        tileDirtyStepClips, tileDirtyStepEchoClips,
+        woodStepClips, woodStepEchoClips,
+        waterStepClips, waterStepEchoClips, 
+        carpetStepClips, afterlifeStepClips;
 
     public bool afterlife = false;
-    public AudioClip[] playingFromClips;
 
     public AudioSource windSource;
     public AudioClip[] crashingSounds;
@@ -36,7 +37,6 @@ public class GroundChecker : MonoBehaviour {
             enabled = false;
             return;
         }
-        playingFromClips = ventStepClips;
     }
 
     private AudioClip GetRandomClip(AudioClip[] footstepList) {
@@ -46,8 +46,6 @@ public class GroundChecker : MonoBehaviour {
 
     // Update is called once per frame
     void Update() {
-        //isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundMask);
-
         RaycastHit hit;
         bool priorState = isGrounded;
 
@@ -62,9 +60,8 @@ public class GroundChecker : MonoBehaviour {
         playerAnimator.SetBool("Grounded", isGrounded);
         armsAnimator.SetBool("Grounded", isGrounded);
 
-
         // ==========================================
-        // AIRBORNE
+        // AIRBORNE SFX
         // ==========================================
 
         if(!isGrounded) {
@@ -79,26 +76,13 @@ public class GroundChecker : MonoBehaviour {
 
 
         // ==========================================
-        // LANDING
+        // LANDING SFX
         // ==========================================
 
         if(!priorState && isGrounded) {
             currentTag = hit.collider.tag;
 
-            // Landing sound
-            /*
-            if(!footSource.isPlaying) {
-                AudioClip[] playingLandingClips = AssignList(false);
-
-                footSource.pitch = Random.Range(0.87f, 0.93f);
-
-                AudioClip clip = GetRandomClip(playingLandingClips);
-
-                footSource.PlayOneShot(clip, footstepVolume);
-            }
-            */
             playerAnimator.SetBool("InAirFromJump", false);
-
 
             // ==========================================
             // CRASH SOUND
@@ -129,38 +113,41 @@ public class GroundChecker : MonoBehaviour {
 
 
         // ==========================================
-        // GROUND TAG
+        // GROUND TAG AND GROUND SFX
         // ==========================================
 
-        if(isGrounded && !hit.collider.CompareTag(currentTag)) {
+        if(isGrounded) {
             currentTag = hit.collider.tag;
-
-            playingFromClips = AssignList(true);
+            //playingFromClips = AssignList();
         }
     }
 
     public void UpdateClips() {
-        playingFromClips = AssignList(true);
+        //playingFromClips = AssignList();
     }
 
     public void PlaySound() {
-        footSource.pitch = (Random.Range(0.87f, 0.93f)); //(Random.Range(0.78f, 0.87f));
-        AudioClip clip = GetRandomClip(playingFromClips);
+        footSource.pitch = (Random.Range(0.87f, 0.93f));
+        //AudioClip clip = GetRandomClip(playingFromClips);
+        AudioClip clip = GetRandomClip(AssignList());
         footSource.PlayOneShot(clip, footstepVolume);
-        //footSource.pitch = 1f;
     }
 
-    private AudioClip[] AssignList(bool walking) {
-        footstepVolume = currentTag == "Vent" ? 2 : 1;
+    // AssignList returns an array of AudioClips based on currentTag's value.
+    // CurrentTag must already be assigned to return the proper value.
+    private AudioClip[] AssignList() {
         if(afterlife) return afterlifeStepClips;
 
-        if(currentTag == "Metal") return walking ? metalStepClips : metalLandClips;
-        else if(currentTag == "Wood") return walking ? woodStepClips : woodLandClips;
-        else if(currentTag == "Vent") return walking ? ventStepClips : ventLandClips;
-        else if(currentTag == ("Water")) return walking ? waterStepClips : waterLandClips;
-        else if(currentTag == ("Tile")) return walking ? tileStepClips : tileLandClips;
-        else if(currentTag == ("Carpet")) return walking ? carpetStepClips : carpetLandClips;
-        else if(currentTag == ("Rock")) return walking ? rockStepClips : rockLandClips;
-        else return walking ? normalStepClips : normalLandClips;
+        footstepVolume = currentTag.Contains("Echo") ? 2 : 1;
+
+        if(currentTag == "Tile") return tileStepClips;
+        else if(currentTag == "TileEcho") return tileStepEchoClips;
+        else if(currentTag == "TileDirty") return tileDirtyStepClips;
+        else if(currentTag == "TileDirtyEcho") return tileDirtyStepEchoClips;
+        else if(currentTag == "Wood") return woodStepClips;
+        else if(currentTag == "WoodEcho") return woodStepEchoClips;
+        else if(currentTag == "Water") return waterStepClips;
+        else if(currentTag == "WaterEcho") return waterStepEchoClips;
+        else return tileStepClips; // This default can be different for each level.
     }
 }
