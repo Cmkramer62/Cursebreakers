@@ -96,15 +96,17 @@ public class Portal : NetworkBehaviour {
     }
 
     private IEnumerator TeleportOut(GameObject player) {
-        source.PlayOneShot(chargingClip, .7f);
 
         player.GetComponent<Death>().SetPlayerPerms(false);
 
         if(otherPortal != null && portalType == PortalTypes.Teleport) otherPortal.used = true;
-
-        fadeAnimator.Play("FadeToWarp");
-        yield return new WaitForSeconds(animspeedA);
-
+        
+        if(!invisible) {
+            source.PlayOneShot(chargingClip, .7f);
+            fadeAnimator.Play("FadeToWarp");
+            yield return new WaitForSeconds(animspeedA);
+        }
+       
         if(portalType == PortalTypes.Teleport) StartCoroutine(TeleportIn(player));
         else StartCoroutine(TeleportScene());
     }
@@ -113,11 +115,11 @@ public class Portal : NetworkBehaviour {
         Vector3 playerDestination = new Vector3(otherPortal.transform.position.x, otherPortal.transform.position.y + teleportSpawnHeight, otherPortal.transform.position.z);
         player.GetComponent<PlayerHandler>().SetSpawnPosition(playerDestination);
 
-        if(teleportSpawnHeight > 1) player.GetComponent<PlayerHandler>().TurnOnSpawnParticles();
-
-        fadeAnimator.Play("FadeFromWarp");
-
-        yield return new WaitForSeconds(animspeedB);
+        if(!invisible) {
+            fadeAnimator.Play("FadeFromWarp");
+            if(teleportSpawnHeight > 1) player.GetComponent<PlayerHandler>().TurnOnSpawnParticles();
+            yield return new WaitForSeconds(animspeedB);
+        }
 
         player.GetComponent<Death>().SetPlayerPerms(true);
     }
