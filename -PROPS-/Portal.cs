@@ -14,6 +14,8 @@ public class Portal : NetworkBehaviour {
     public AudioSource source;
     public AudioClip chargingClip, enterClip, leaveClip;
 
+    [SerializeField] private bool invisible = false, instantTeleport = false;
+
     [SerializeField] private float teleportSpawnHeight = 10f;
 
     private bool used = false;
@@ -28,6 +30,10 @@ public class Portal : NetworkBehaviour {
         //gameManager = GameObject.Find("Game Manager");
         //sourceTwoDim = gameManager.transform.Find("Audio Source 2D").GetComponent<AudioSource>();
         fadeAnimator = GameObject.Find("Warp Animation").GetComponent<Animator>();
+
+        sparksA.gameObject.SetActive(!invisible);
+        sparksB.gameObject.SetActive(!invisible);
+
     }
 
     // Update is called once per frame
@@ -50,18 +56,25 @@ public class Portal : NetworkBehaviour {
             inside = false;
         }
 
-        sparksA.gravityModifier = -4f * charge;
-        sparksB.gravityModifier = -.5f * charge;
+        if(!invisible) {
+            sparksA.gravityModifier = -4f * charge;
+            sparksB.gravityModifier = -.5f * charge;
+        }
     }
 
     private void OnTriggerEnter(Collider other) {
         if(!IsOwner) {
             return;
         }
-        if(!used && other.CompareTag("Player")) {
-            source.PlayOneShot(enterClip, 1f);
+        if(!used && other.CompareTag("Player") && other.GetComponent<Death>()) {
+            if(!invisible) {
+                source.PlayOneShot(enterClip, 1f);
+            }
             playerReference = other.gameObject;
             inside = true;
+            if(instantTeleport) {
+                charge = 1f;
+            }
         }
     }
 
@@ -69,8 +82,10 @@ public class Portal : NetworkBehaviour {
         if(!IsOwner) {
             return;
         }
-        if(other.CompareTag("Player")) {
-            source.PlayOneShot(leaveClip, 1f);
+        if(other.CompareTag("Player") && other.GetComponent<Death>()) {
+            if(!invisible) {
+                source.PlayOneShot(leaveClip, 1f);
+            }
             inside = false;
             used = false;
         }
