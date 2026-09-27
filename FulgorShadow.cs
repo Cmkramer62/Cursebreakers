@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Animations;
 
 public class FulgorShadow : MonoBehaviour {
 
@@ -33,6 +34,11 @@ public class FulgorShadow : MonoBehaviour {
 
         // 3. Force Animator to immediately evaluate it
         animator.Update(0f);
+    }
+
+    public void SetShadowLookAt(bool state) {
+        LookAtConstraint constraint = GetComponent<LookAtConstraint>();
+        constraint.constraintActive = state;
     }
 
     public void SetState(bool state) {

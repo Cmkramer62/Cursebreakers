@@ -146,14 +146,20 @@ public class SpellFulgor : NetworkBehaviour {
 
         fulgorShadow.GetComponent<FulgorShadow>().ShadowTrigger();
         fulgorShadow.GetComponent<FulgorShadow>().SetState(true);
+        yield return null;
+        fulgorShadow.GetComponent<FulgorShadow>().SetShadowLookAt(false);
+
         yield return new WaitForSeconds(.05f);
 
         fulgorShadow.GetComponent<FulgorShadow>().SetState(false);
+
         yield return new WaitForSeconds(.05f);
 
         fulgorShadow.GetComponent<FulgorShadow>().SetState(true);
+
         yield return new WaitForSeconds(.05f);
 
+        fulgorShadow.GetComponent<FulgorShadow>().SetShadowLookAt(true);
         fulgorShadow.GetComponent<FulgorShadow>().SetState(false);
     }
 
