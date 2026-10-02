@@ -62,7 +62,7 @@ public class GhostRandomizer : NetworkBehaviour {
     public GameObject ghostGeistParticles;
     public Bell bellScript;
     //public GameObject[] enviroParticles, horns;
-    [SerializeField] private GameObject algorClueEmitter;
+    [SerializeField] private GameObject algorClueEmitter, radiatioClueEmitter;
     public RuntimeAnimatorController floatingController;
     public bool searchWithSound = false;
 
@@ -192,7 +192,7 @@ public class GhostRandomizer : NetworkBehaviour {
 
         }
         else if(curseToEmit == (int)CursedObject.CurseType.RadiatioTrait) {
-
+            radiatioClueEmitter.SetActive(true);
         }
         else if(curseToEmit == (int)CursedObject.CurseType.FulgorTrait) {
             fulgorShadow.SetActive(true);

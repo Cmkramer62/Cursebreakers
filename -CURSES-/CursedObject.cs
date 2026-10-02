@@ -148,10 +148,11 @@ public class CursedObject : NetworkBehaviour {
             if(toolControllerScript.IsServer) {
                 // EMF Section
                 if(cursesList.Contains((int)CurseType.RadiatioTrait)) {
-                    toolControllerScript.defaultEMF.Value = emfLevel;
+                    //toolControllerScript.defaultEMF.Value = emfLevel;
+                    toolControllerScript.amountOfRadiatioDetected.Value++;
                 }
                 else if(toolControllerScript.defaultEMF.Value != 7) {
-                    toolControllerScript.defaultEMF.Value = Random.Range(0, 6);
+                    //toolControllerScript.defaultEMF.Value = Random.Range(0, 6);
                 }
 
                 if(cursesList.Contains((int)CurseType.ProfanusTrait)) {
@@ -186,11 +187,11 @@ public class CursedObject : NetworkBehaviour {
             if(toolControllerScript.IsServer) {
                 // If leaving an EMF, set value to 0.
                 if(cursesList.Contains((int)CurseType.RadiatioTrait)) {
-                    toolControllerScript.defaultEMF.Value = 0;
+                    toolControllerScript.amountOfRadiatioDetected.Value--;
                 }
                 // If this isn't an EMF and they're not currently in a real EMF, set value to 0;
                 else if(toolControllerScript.defaultEMF.Value != 7) {
-                    toolControllerScript.defaultEMF.Value = 0;
+                    //toolControllerScript.defaultEMF.Value = 0;
                 }
 
                 if(cursesList.Contains((int)CurseType.ProfanusTrait)) {

@@ -10,23 +10,22 @@ public class PlayerMovement : NetworkBehaviour {
     
     public GroundChecker groundCheckerScript;
 
-    public float speed = 12f, staminaRecoveryRate = 1f, staminaDuration = 40f, jumpHeight = 1, slideSpeed = 4f, slideCooldown = 100f;
+    public float speed = 12f, staminaRecoveryRate = 1f, staminaDuration = 40f, jumpHeight = 1;
 
 
 
-    private float originalSpeed, crouchingSpeed, sprintActualMultiplier = 1f, gravity = -22f, sprintMultiplier = 3f;
-    public float crouchHeight = -0.696f, currentHeight = 0f;
+    public float crouchHeight = -0.696f, currentHeight = 0f, gravityStrength = -22f;
 
     [SerializeField]
     private bool shouldBeSlowed = false, sliding = false;
     public bool allowedToMove = true, allowedToCrouch = true, isSprinting = false,
-        isCrouched = false, isHiding = false, isTired = false, slideOnCooldown = false, playerAlive = true;
+        isCrouched = false, isHiding = false, isTired = false, playerAlive = true;
 
     [SerializeField]
     public CharacterController controller;
     public bool lockCursor = true;
     public Transform groundCheck;
-    public float groundDistance = 0.4f, amountCrouchSpots = 0f;
+    public float amountCrouchSpots = 0f;
     public LayerMask groundMask;
     public KeyCode crouchKey = KeyCode.LeftControl;
 
@@ -41,16 +40,42 @@ public class PlayerMovement : NetworkBehaviour {
 
     public LightFlickerNonNetworked lanternReference;
 
-    private Vector3 fallingVelocity, originalScale, originalHeadHeight;
-    private Transform cachedTransform;
+
     [SerializeField] private PlayerHandler playerHandlerScript;
     [SerializeField] private Transform headTransform;
-    private Coroutine airRoutine;
 
     [SerializeField] private ParticleSystem feathersVFXA, feathersVFXB;
 
+
+
+    [SerializeField] private float groundAcceleration = 50f;
+    [SerializeField] private float airAcceleration = 8f;
+    [SerializeField] private float groundedStickForce = 8f;
+
+    // =================
+    // SLIDE VARIABLES
+    // =================
+    [SerializeField] private bool slideConsumesAllStamina = false;
+    [SerializeField] private float staminaConsumtionOnSlide = 0f, slideCooldown = 100f, slideSpeed = 4f, slideDuration = 2f;
+    public bool slideOnCooldown = false;
+    private Vector3 slideDirection;
+    [SerializeField] private float slideDeceleration = 25f;
+    [SerializeField] private float downhillSlideAcceleration = 15f;
+    [SerializeField] private float uphillSlideDeceleration = 35f;
+    [SerializeField] private float slideEndSpeed = 11f;
+    [SerializeField] private float slopeEffect = 15f; // How much the degree of the slope effects the change in acceleration of a slide.
+
+    // =================
+    // PRIVATE VARIABLES
+    // =================
+    private Vector3 horizontalVelocity;
+    private Vector3 verticalVelocity;
     private float afterlifeFallAugment = 1f, afterlifeSpeedAugment = 1f, afterlifeJumpAugment = 1f;
     private bool afterlife = false;
+    private Vector3 fallingVelocity, originalScale, originalHeadHeight;
+    private Transform cachedTransform;
+    private Coroutine airRoutine;
+    private float originalSpeed, crouchingSpeed, sprintActualMultiplier = 1f, sprintMultiplier = 3f;
 
     private void Awake() {
 
@@ -111,13 +136,13 @@ public class PlayerMovement : NetworkBehaviour {
         allowedToMove = true;
         allowedToCrouch = true;
 
-        if(isCrouched) Crouch();   
+        if(isCrouched) Crouch(true);   
     }
 
-    public void Crouch() {
+    public void Crouch(bool affectSpeed) {
         Debug.Log("Crouch called.");
         CrouchEffectsServerRpc();
-        speed = isCrouched ? originalSpeed : crouchingSpeed;
+        if(affectSpeed) speed = isCrouched ? originalSpeed : crouchingSpeed;
         currentHeight = isCrouched ? crouchHeight : originalHeadHeight.y;
         //enemyVisionScript.fieldOfViewAngle += isCrouched ? 30 : -30;
         isCrouched = !isCrouched;
@@ -134,17 +159,21 @@ public class PlayerMovement : NetworkBehaviour {
     }
 
     private void Jump() {
-        fallingVelocity.y = Mathf.Sqrt(jumpHeight * -2f * afterlifeJumpAugment * gravity);
-        source.PlayOneShot(afterlife ? ghostJump : jumpClip[Random.Range(0, jumpClip.Length)]);
+        int spellHeldIndex = transform.parent.GetComponent<ToolController>().heldIndex.Value;
+        verticalVelocity.y = Mathf.Sqrt( jumpHeight * -2f * afterlifeJumpAugment * gravityStrength );
+
+        source.PlayOneShot( afterlife ? ghostJump : jumpClip[Random.Range(0, jumpClip.Length)] );
 
         playerAnimator.SetTrigger("Jump");
         playerAnimator.SetBool("InAirFromJump", true);
-        if(transform.parent.GetComponent<ToolController>().heldIndex.Value == 0) armsAnimator.SetTrigger("Jump"); // might this sometimes not be properly set?
+
+        if(spellHeldIndex == 0 || spellHeldIndex == 3 || spellHeldIndex == 4 || spellHeldIndex == 7) armsAnimator.SetTrigger("Jump");
         armsAnimator.SetBool("Grounded", false);
         if(airRoutine != null) StopCoroutine(airRoutine);
         airRoutine = StartCoroutine(InAirFromJumpTimer());
     }
 
+    // Wrong.
     private IEnumerator InAirFromJumpTimer() {
         yield return new WaitForSeconds(1f);
         playerAnimator.SetBool("InAirFromJump", false);
@@ -166,82 +195,142 @@ public class PlayerMovement : NetworkBehaviour {
 
         if(!playerAlive) return;
 
-        // MOVEMENT Section
-        var horiz = Input.GetAxis("Horizontal");
-        var vert = Input.GetAxis("Vertical");
-        Vector3 inputVector = cachedTransform.right * horiz + cachedTransform.forward * vert;
-        
+        // =========================
+        // MOVEMENT / JUMP / GRAVITY
+        // =========================
+        float horiz = 0f;
+        float vert = 0f;
+        // Horizontal Movement
+        if(allowedToMove) {
+            horiz = Input.GetAxis("Horizontal");
+            vert = Input.GetAxis("Vertical");
+            Vector3 inputVector = cachedTransform.right * horiz + cachedTransform.forward * vert;
+
+            headTransform.localPosition = new Vector3(originalHeadHeight.x, Mathf.Clamp(currentHeight -= (isCrouched ? 2f : -2f) * Time.deltaTime, crouchHeight, originalHeadHeight.y), originalHeadHeight.z);
+
+
+
+            // SPRINT & SPRINT UI Section
+            if(groundCheckerScript.isGrounded) {
+                if(isSprinting && !isTired) {
+                    transform.parent.GetComponent<PlayerHandler>().stamina.Value -= 1 * Time.deltaTime;
+                }
+                else {
+                    transform.parent.GetComponent<PlayerHandler>().stamina.Value = Mathf.Clamp(transform.parent.GetComponent<PlayerHandler>().stamina.Value += staminaRecoveryRate * Time.deltaTime, 0, staminaDuration);
+                }
+
+                if(transform.parent.GetComponent<PlayerHandler>().stamina.Value <= 0) {
+                    source.PlayOneShot(breathClip);
+                }
+                if(transform.parent.GetComponent<PlayerHandler>().stamina.Value == staminaDuration) {
+                    isTired = false;
+                }
+
+                StaminaUpdate();
+                if((Input.GetKey(KeyCode.W) && groundCheckerScript.isGrounded && Input.GetKey(KeyCode.LeftShift) && !isTired && allowedToMove && !isCrouched) || sliding) {
+                    isSprinting = true;
+                    sprintActualMultiplier = sprintMultiplier;
+                }
+                else if((isTired || groundCheckerScript.isGrounded) || (!Input.GetKey(KeyCode.W) || !Input.GetKey(KeyCode.LeftShift))) // or is Grounded (we don't want to disable sprinting 
+                {
+                    isSprinting = false;
+                    sprintActualMultiplier = 1;
+                }
+
+                if(!sliding && allowedToCrouch && allowedToMove && (Input.GetKeyDown(crouchKey) || Input.GetKeyUp(crouchKey)) && !isSprinting && !afterlife) {
+                    isCrouched = !Input.GetKeyDown(crouchKey);
+                    Crouch(true);
+                }
+                // Start Slide
+                else if(!sliding && allowedToCrouch && allowedToMove && (Input.GetKeyDown(crouchKey) || Input.GetKeyUp(crouchKey))
+                    && isSprinting && groundCheckerScript.isGrounded && !slideOnCooldown && !afterlife) {
+
+                    sliding = true;
+                    slideDirection = cachedTransform.forward;
+                    horizontalVelocity = slideDirection * slideSpeed * speed;
+                    Crouch(false);
+                    playerAnimator.SetTrigger("Slide");
+                    armsAnimator.SetTrigger("Slide");
+                    allowedToCrouch = false;
+                    SlideEffectsServerRpc();
+                    transform.parent.GetComponent<PlayerHandler>().stamina.Value -= staminaConsumtionOnSlide;
+                    if(transform.parent.GetComponent<PlayerHandler>().stamina.Value < 0) transform.parent.GetComponent<PlayerHandler>().stamina.Value = 0;
+                }
+                // Sliding
+                if(sliding) {
+                    // Gradually lose momentum while sliding.
+                    Vector3 groundNormal = groundCheckerScript.GroundNormal;
+                    Vector3 slopeDirection = Vector3.ProjectOnPlane(Vector3.down, groundNormal).normalized;
+                    float slopeDot = Vector3.Dot(slideDirection, slopeDirection);
+
+                    float currentSlideDeceleration = slideDeceleration - (slopeDot * slopeEffect);
+
+                    horizontalVelocity = Vector3.MoveTowards(
+                        horizontalVelocity,
+                        Vector3.zero,
+                        currentSlideDeceleration * Time.deltaTime
+                    );
+
+                    // End the slide once momentum becomes sufficiently low.
+                    if(horizontalVelocity.magnitude <= slideEndSpeed) {
+                        //horizontalVelocity = Vector3.zero;
+                        sliding = false;
+                        Crouch(false);
+                        allowedToCrouch = true;
+                        StopSlideEffectsServerRpc();
+                    }
+                }
+                else {
+                    // Normal movement on the ground.
+                    Vector3 targetHorizontalVelocity =
+                    inputVector * sprintActualMultiplier * speed;
+
+                    horizontalVelocity = Vector3.MoveTowards(
+                        horizontalVelocity,
+                        targetHorizontalVelocity,
+                        groundAcceleration * Time.deltaTime
+                    );
+                }
+            }
+            else {
+                // Normal movement in the air.
+                Vector3 targetHorizontalVelocity =
+                    inputVector * sprintActualMultiplier * speed;
+
+                horizontalVelocity = Vector3.MoveTowards(
+                    horizontalVelocity,
+                    targetHorizontalVelocity,
+                    airAcceleration * Time.deltaTime
+                );
+            }
+            
+
+           
+        }
+
+        // Grounding
+        if(groundCheckerScript.isGrounded && verticalVelocity.y < 0f) {
+            verticalVelocity.y = -groundedStickForce;
+        }
+
+        // Jump
+        if(Input.GetButtonDown("Jump") && allowedToMove && groundCheckerScript.isGrounded) {
+            Jump();
+        }
+
+        // Gravity
+        verticalVelocity.y += gravityStrength * afterlifeFallAugment * Time.deltaTime;
+
+        // Final Movement
+        controller.Move((horizontalVelocity + verticalVelocity) * Time.deltaTime);
+
+        // Animations
         playerAnimator.SetFloat("Vertical", vert);
         playerAnimator.SetFloat("Horizontal", horiz);
-
-        if(inputVector.magnitude > 1) {
-            inputVector.Normalize();
-        }
-
-        playerAnimator.SetBool("Walking", horiz != 0 || vert != 0);
-        if(!sliding && allowedToMove)
-            controller.Move(inputVector * sprintActualMultiplier * speed * afterlifeSpeedAugment * Time.deltaTime);
-
-        // CROUCH Section
-        //cachedTransform.localScale = new Vector3(originalScale.x, Mathf.Clamp(currentHeight -= (isCrouched ? 2f : -2f) * Time.deltaTime, crouchHeight, originalScale.y), originalScale.z);
-        headTransform.localPosition = new Vector3(originalHeadHeight.x, Mathf.Clamp(currentHeight -= (isCrouched ? 2f : -2f) * Time.deltaTime, crouchHeight, originalHeadHeight.y), originalHeadHeight.z);
-
-        if(!sliding && allowedToCrouch && allowedToMove && (Input.GetKeyDown(crouchKey) || Input.GetKeyUp(crouchKey)) && !isSprinting && !afterlife) {
-            isCrouched = !Input.GetKeyDown(crouchKey);
-            Crouch();
-        }
-        else if(!sliding && allowedToCrouch && allowedToMove && (Input.GetKeyDown(crouchKey) || Input.GetKeyUp(crouchKey)) 
-            && isSprinting && groundCheckerScript.isGrounded && !slideOnCooldown && !afterlife) {
-            StartCoroutine(SlideRoutine());
-        }
-
-        // JUMP Section
-        if(groundCheckerScript.isGrounded && fallingVelocity.y < 0)
-            fallingVelocity.y = -2f;
-
-        if(Input.GetButtonDown("Jump") && allowedToMove && groundCheckerScript.isGrounded)
-            Jump();
-
-        fallingVelocity.y += gravity * afterlifeFallAugment * Time.deltaTime;
-
-        if(allowedToMove)
-            controller.Move(fallingVelocity * Time.deltaTime);
-
-
-        // SPRINT & SPRINT UI Section
-        if(isSprinting && !isTired) {
-            transform.parent.GetComponent<PlayerHandler>().stamina.Value -= 1 * Time.deltaTime;
-        }
-        else {
-            transform.parent.GetComponent<PlayerHandler>().stamina.Value = Mathf.Clamp(transform.parent.GetComponent<PlayerHandler>().stamina.Value += staminaRecoveryRate * Time.deltaTime, 0, staminaDuration);
-        }
-
-        if(transform.parent.GetComponent<PlayerHandler>().stamina.Value <= 0) {
-            source.PlayOneShot(breathClip);
-        }
-        if(transform.parent.GetComponent<PlayerHandler>().stamina.Value == staminaDuration) {
-            isTired = false;
-        }
-
-        StaminaUpdate();
-
-        if((Input.GetKey(KeyCode.W) && groundCheckerScript.isGrounded && Input.GetKey(KeyCode.LeftShift) && !isTired && allowedToMove && !isCrouched) || sliding) {
-            isSprinting = true;
-            sprintActualMultiplier = sprintMultiplier;
-        }
-        else if((isTired || groundCheckerScript.isGrounded) || (!Input.GetKey(KeyCode.W) || !Input.GetKey(KeyCode.LeftShift))) // or is Grounded (we don't want to disable sprinting 
-        {
-            isSprinting = false;
-            sprintActualMultiplier = 1;
-        }
         playerAnimator.SetBool("Sprinting", isSprinting);
+        armsAnimator.SetBool("Sprinting", isSprinting);
         playerAnimator.SetBool("Crouching", isCrouched);
-
-        if(sliding) {
-            Vector3 inputVectorSliding = cachedTransform.right * 0 + cachedTransform.forward * 1;
-            controller.Move(inputVectorSliding * slideSpeed * speed * Time.deltaTime);
-        }
-     
+        playerAnimator.SetBool("Walking", horiz != 0 || vert != 0);
     }
 
     // Called from inside this.Update();
@@ -260,8 +349,9 @@ public class PlayerMovement : NetworkBehaviour {
     }
 
     private IEnumerator SlideRoutine() {
-        //StartCoroutine(SlideCooldown());
+        StartCoroutine(SlideCooldown());
         playerAnimator.SetTrigger("Slide");
+        armsAnimator.SetTrigger("Slide");
         sliding = true;
 
         allowedToCrouch = false;
@@ -270,17 +360,19 @@ public class PlayerMovement : NetworkBehaviour {
 
         SlideEffectsServerRpc();
 
-        Crouch();
+        Crouch(false);
 
-        yield return new WaitForSeconds(2f);
+        yield return new WaitForSeconds(slideDuration);
         sliding = false;
         //isCrouched = false;
 
-        Crouch();
+        Crouch(false);
         StopSlideEffectsServerRpc();
         allowedToCrouch = true;
         //allowedToMove = true;
-        transform.parent.GetComponent<PlayerHandler>().stamina.Value = 0;
+        //transform.parent.GetComponent<PlayerHandler>().stamina.Value = 0;
+        transform.parent.GetComponent<PlayerHandler>().stamina.Value -= staminaConsumtionOnSlide;
+        if(transform.parent.GetComponent<PlayerHandler>().stamina.Value < 0) transform.parent.GetComponent<PlayerHandler>().stamina.Value = 0;
     }
 
     [ServerRpc]

@@ -16,7 +16,7 @@ public class AntiCrouch : MonoBehaviour {
         if(other.CompareTag("Player") && other.GetComponent<NetworkObject>().OwnerClientId == NetworkManager.Singleton.LocalClientId) {
             if(ready) other.GetComponent<PlayerMovement>().amountCrouchSpots++;
             ready = false;
-            if(!Input.GetKey(KeyCode.LeftControl) && !movementScript.isCrouched) movementScript.Crouch(); // Won't work for water now: Entering forces you to crouch. Add bool for water.
+            if(!Input.GetKey(KeyCode.LeftControl) && !movementScript.isCrouched) movementScript.Crouch(true); // Won't work for water now: Entering forces you to crouch. Add bool for water.
             movementScript.allowedToCrouch = false;
             //movementScript.isInVent = true;
             //movementScript.unreachable = true;
@@ -35,7 +35,7 @@ public class AntiCrouch : MonoBehaviour {
                 //if(forCabinet) gameObject.GetComponentInParent<NewCabinetUse>().playerInside = false;
 
                 if(!Input.GetKey(KeyCode.LeftControl) && movementScript.isCrouched) {
-                    movementScript.Crouch();
+                    movementScript.Crouch(true);
                 }
             }
         }

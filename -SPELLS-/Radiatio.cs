@@ -4,7 +4,7 @@ using UnityEngine;
 using Unity.Netcode;
 using UnityEngine.Animations;
 using UnityEngine.SceneManagement;
-public class Scanner : NetworkBehaviour  {
+public class Radiatio : NetworkBehaviour  {
 
     public bool allowedToScan = true;
     public AudioSource source;
@@ -17,6 +17,7 @@ public class Scanner : NetworkBehaviour  {
     public bool spawnedObj = false;
     // There will be 4 glyphs in total. 4th signifying strongest EMF.
     public GameObject[] magicCanvasGlyphs;
+    public GameObject magicCanvasExlamationPointGlyph;
     public GameObject particles, canvas;
     [SerializeField] private GameObject chainsGlowing, chainsNormal;
     /*
@@ -29,7 +30,10 @@ public class Scanner : NetworkBehaviour  {
      */
 
     public override void OnNetworkSpawn() {
+        toolController.amountOfRadiatioDetected.OnValueChanged += OnRadiatingCursesAmountChanged;
         toolController.defaultEMF.OnValueChanged += OnScannerChanged;
+
+        OnRadiatingCursesAmountChanged(0, toolController.amountOfRadiatioDetected.Value);
         OnScannerChanged(0, toolController.defaultEMF.Value);
 
         StartCoroutine(DelayedSpawning());
@@ -53,6 +57,7 @@ public class Scanner : NetworkBehaviour  {
                     canvas.transform.GetChild(0).GetChild(2).gameObject,
                         canvas.transform.GetChild(0).GetChild(3).gameObject};
 
+            magicCanvasExlamationPointGlyph = canvas.transform.GetChild(0).GetChild(4).gameObject;
             particles.GetComponent<DelayFollow>().target = magicFollowPoint;
             canvas.GetComponent<DelayFollow>().target = canvasFollowPoint;
 
@@ -148,6 +153,22 @@ public class Scanner : NetworkBehaviour  {
         }
     }
 
+    private void OnRadiatingCursesAmountChanged(int oldValue, int newValue) {
+        RadiatingCursesEffects(newValue);
+    }
+
+    private void RadiatingCursesEffects(int newValue) {
+        if(gameObject.activeInHierarchy && magicCanvasExlamationPointGlyph != null) {
+            if(newValue > 0) {
+                magicCanvasExlamationPointGlyph.SetActive(true);
+            }
+
+            else {
+                magicCanvasExlamationPointGlyph.SetActive(false);
+            }
+        }
+    }
+
     private IEnumerator WaitForNetworkSceneLoad() {
         if(!IsServer && SceneManager.GetActiveScene().isLoaded)
             yield break;
@@ -167,6 +188,29 @@ public class Scanner : NetworkBehaviour  {
         }
 
         NetworkManager.Singleton.SceneManager.OnSceneEvent -= OnSceneEvent;
+    }
+
+    private void OnTriggerEnter(Collider other) {
+        if(!IsOwner)
+            return;
+
+        if(other.CompareTag("EMFClue")) {
+            Debug.Log("Detected emf clue.");
+            //collidersInside.Add(other);
+            toolController.defaultEMF.Value = 7;
+        }
+    }
+
+    private void OnTriggerExit(Collider other) {
+        if(!IsOwner)
+            return;
+
+        if(other.CompareTag("EMFClue")) {
+            Debug.Log("Left emf clue.");
+
+            //collidersInside.Remove(other);
+            toolController.defaultEMF.Value = 0;
+        }
     }
 
 }

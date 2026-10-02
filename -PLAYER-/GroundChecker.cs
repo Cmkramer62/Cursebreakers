@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class GroundChecker : MonoBehaviour {
     public Transform groundCheck;
-    public float groundDistance = 0.4f, footstepVolume;
+    public float groundDistance = 0.4f, groundCheckRadius = 0.5f, footstepVolume;
     public LayerMask groundMask;
     public bool isGrounded = false, inAirFromJump = false;
 
@@ -26,6 +26,9 @@ public class GroundChecker : MonoBehaviour {
     public AudioClip[] crashingSounds;
     public float minimumAirTimeForAudio = 2f, crashTimeMultiplier = 1f;
     private float airTime = 0f;
+    public Vector3 GroundNormal { get; private set; } = Vector3.up;
+
+
     /*
      * Goal is to check the ground beneath the user.
      * Change sound of footsteps based on material
@@ -49,13 +52,22 @@ public class GroundChecker : MonoBehaviour {
         RaycastHit hit;
         bool priorState = isGrounded;
 
-        isGrounded = Physics.Raycast(
+        isGrounded = Physics.SphereCast(
             groundCheck.position,
+            groundCheckRadius,
             Vector3.down,
             out hit,
             groundDistance,
             groundMask
         );
+
+        // Ground Normal is the angle of the surface. Movement uses this for sliding.
+        if(isGrounded) {
+            GroundNormal = hit.normal;
+        }
+        else {
+            GroundNormal = Vector3.up;
+        }
 
         playerAnimator.SetBool("Grounded", isGrounded);
         armsAnimator.SetBool("Grounded", isGrounded);

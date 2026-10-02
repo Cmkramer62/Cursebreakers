@@ -27,6 +27,7 @@ public class ToolController : NetworkBehaviour {
     private CursedObject[] listOfAllCurses;
     public NetworkVariable<int> defaultEMF = new NetworkVariable<int>(0), 
         defaultTemp = new NetworkVariable<int>(60);
+    public NetworkVariable<int> amountOfRadiatioDetected = new NetworkVariable<int>(0);
     public float averageTemperature = -1;
 
     public Flashlight geistLightScript;
@@ -92,7 +93,7 @@ public class ToolController : NetworkBehaviour {
     #region Hand Toolbelt Functions
     [ServerRpc]
     public void CycleUpServerRpc() {
-        if(playerItemMeshes[3].activeSelf) playerItemMeshes[3].GetComponent<Scanner>().allowedToScan = false;
+        if(playerItemMeshes[3].activeSelf) playerItemMeshes[3].GetComponent<Radiatio>().allowedToScan = false;
         if(playerItemMeshes[5].activeSelf) playerItemMeshes[5].GetComponent<Thermometer>().allowedToScan = false;
         source.PlayOneShot(swapClip);
         bool found = false;
@@ -116,7 +117,7 @@ public class ToolController : NetworkBehaviour {
 
     [ServerRpc]
     public void CycleDownServerRpc() {
-        if(playerItemMeshes[3].activeSelf) playerItemMeshes[3].GetComponent<Scanner>().allowedToScan = false;
+        if(playerItemMeshes[3].activeSelf) playerItemMeshes[3].GetComponent<Radiatio>().allowedToScan = false;
         if(playerItemMeshes[5].activeSelf) playerItemMeshes[5].GetComponent<Thermometer>().allowedToScan = false;
         source.PlayOneShot(swapClip);
         bool found = false;
@@ -144,7 +145,7 @@ public class ToolController : NetworkBehaviour {
     public void CycleToServerRpc(int to) {
         if(heldIndex.Value == to) return;
 
-        if(playerItemMeshes[3].activeSelf) playerItemMeshes[3].GetComponent<Scanner>().allowedToScan = false;
+        if(playerItemMeshes[3].activeSelf) playerItemMeshes[3].GetComponent<Radiatio>().allowedToScan = false;
         if(playerItemMeshes[5].activeSelf) playerItemMeshes[5].GetComponent<Thermometer>().allowedToScan = false;
 
         source.PlayOneShot(swapClip);

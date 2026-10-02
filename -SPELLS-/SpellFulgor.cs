@@ -21,7 +21,10 @@ public class SpellFulgor : NetworkBehaviour {
     [SerializeField] private ParticleSystem auraFlashParticles;
     private GameObject fulgorShadow;
 
+
+
     // Sanity Jumpscare
+    public int minTimesToTriggerJumpscare = 3, maxTimesToTriggerJumpscare = 6;
     public int playerSawMeCount = 0;
     private float timer = 0f;
     [SerializeField] private LayerMask targetLayer;
@@ -131,7 +134,7 @@ public class SpellFulgor : NetworkBehaviour {
                 if(!fulgorShadow.GetComponent<FulgorShadow>().onCooldown && hit.collider.CompareTag("FulgorShadow")) {
                     playerSawMeCount++;
 
-                    if(playerSawMeCount >= Random.Range(3, 6)) {
+                    if(playerSawMeCount >= Random.Range(minTimesToTriggerJumpscare, maxTimesToTriggerJumpscare)) {
                         playerSawMeCount = 0;
                         // fulgor shadow is not seen this time, out in the world.
                         fulgorShadow.GetComponent<FulgorShadow>().StartCooldown();
