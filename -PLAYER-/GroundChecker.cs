@@ -26,8 +26,10 @@ public class GroundChecker : MonoBehaviour {
     public AudioClip[] crashingSounds;
     public float minimumAirTimeForAudio = 2f, crashTimeMultiplier = 1f;
     private float airTime = 0f;
+    private float maximumFallSpeed;
+    private bool hasCheckedGround;
     public Vector3 GroundNormal { get; private set; } = Vector3.up;
-
+    private PlayerMovement movementScript;
 
     /*
      * Goal is to check the ground beneath the user.
@@ -40,11 +42,21 @@ public class GroundChecker : MonoBehaviour {
             enabled = false;
             return;
         }
+
+        movementScript = transform.parent.GetComponent<PlayerMovement>();
     }
 
     private AudioClip GetRandomClip(AudioClip[] footstepList) {
         int Index = Random.Range(0, footstepList.Length);
         return footstepList[Index];
+    }
+
+    // Reset the tracker for how long the player has been in the air.
+    // Called by Movement, when wall-hopping.
+    public void ResetAirTime() {
+        airTime = 0;
+        maximumFallSpeed = 0f;
+        windSource.volume = 0f;
     }
 
     // Update is called once per frame
@@ -60,6 +72,8 @@ public class GroundChecker : MonoBehaviour {
             groundDistance,
             groundMask
         );
+        bool justLanded = hasCheckedGround && !priorState && isGrounded;
+        hasCheckedGround = true;
 
         // Ground Normal is the angle of the surface. Movement uses this for sliding.
         if(isGrounded) {
@@ -76,8 +90,9 @@ public class GroundChecker : MonoBehaviour {
         // AIRBORNE SFX
         // ==========================================
 
-        if(!isGrounded) {
+        if(!isGrounded && !movementScript.isWallSticking) {
             airTime += Time.deltaTime;
+            maximumFallSpeed = Mathf.Max(maximumFallSpeed, -movementScript.GetCurrentVelocity().y);
 
             // Begin fading in wind after 2 seconds
             if(airTime > minimumAirTimeForAudio) {
@@ -91,19 +106,29 @@ public class GroundChecker : MonoBehaviour {
         // LANDING SFX
         // ==========================================
 
-        if(!priorState && isGrounded) {
+        if(justLanded) {
             currentTag = hit.collider.tag;
 
             playerAnimator.SetBool("InAirFromJump", false);
+            if(airTime > minimumAirTimeForAudio) {
+                playerAnimator.SetInteger("FallImpact", 2);
+            }
+            else if(airTime > (minimumAirTimeForAudio / 2)) {
+                playerAnimator.SetInteger("FallImpact", 1);
+            }
+            else {
+                playerAnimator.SetInteger("FallImpact", 0);
+            }
 
             // ==========================================
             // CRASH SOUND
             // ==========================================
+            int crashIndex = 0;
 
             if(airTime > minimumAirTimeForAudio && crashingSounds.Length > 0) {
                 float crashVolume = Mathf.InverseLerp(minimumAirTimeForAudio, 8f, airTime * crashTimeMultiplier);
 
-                int crashIndex = Mathf.Clamp(
+                crashIndex = Mathf.Clamp(
                     Mathf.FloorToInt(crashVolume * crashingSounds.Length),
                     0,
                     crashingSounds.Length - 1
@@ -115,12 +140,24 @@ public class GroundChecker : MonoBehaviour {
                 );
             }
 
+            PlayerHandler cameraOwner = transform.parent.parent.GetComponent<PlayerHandler>();
+            if(cameraOwner != null && cameraOwner.cameraReference != null) {
+                float impactSpeed = Mathf.Max(maximumFallSpeed, -movementScript.GetCurrentVelocity().y);
+
+                if(crashIndex != crashingSounds.Length - 1) {
+                    cameraOwner.cameraReference.PlayLandingImpulse(impactSpeed);
+                }
+                else {
+                    cameraOwner.cameraReference.PlayGreatLandingImpulse();
+                }
+            }
 
             // Reset wind
             windSource.volume = 0f;
 
             // Reset airtime
             airTime = 0f;
+            maximumFallSpeed = 0f;
         }
 
 

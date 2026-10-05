@@ -27,7 +27,6 @@ public class PlayerMovement : NetworkBehaviour {
     public Transform groundCheck;
     public float amountCrouchSpots = 0f;
     public LayerMask groundMask;
-    public KeyCode crouchKey = KeyCode.LeftControl;
 
     [SerializeField] Animator playerAnimator, armsAnimator;
 
@@ -53,6 +52,27 @@ public class PlayerMovement : NetworkBehaviour {
     [SerializeField] private float groundedStickForce = 8f;
 
     // =================
+    // WALL HOP VARIABLES
+    // =================
+    [SerializeField] private float wallCastRadius = 0.18f;
+    [SerializeField] private float wallCastDistance = 0.35f;
+    [SerializeField] private float wallCastHeight = 1.1f;
+    [SerializeField] private float wallSlideDuration = 1f;
+    [SerializeField] private float wallSlideSpeed = 1.25f;
+    [SerializeField] private float wallHopOutwardSpeed = 6f;
+    [SerializeField] private float wallHopForwardSpeed = 6f;
+    [SerializeField] private float sideWallHopUpwardMultiplier = 1f;
+    [SerializeField] private float forwardWallHopUpwardMultiplier = 1f;
+    [SerializeField] private float maximumWallNormalY = 0.25f;
+    [HideInInspector] public bool isWallSticking;
+    private bool wallSlideUsedForCurrentContact;
+    private Vector3 currentWallNormal;
+    private bool currentWallIsSide;
+    private bool currentWallIsRightSide;
+    private float wallStickTimer;
+    private LayerMask wallMask;
+
+    // =================
     // SLIDE VARIABLES
     // =================
     [SerializeField] private bool slideConsumesAllStamina = false;
@@ -64,6 +84,20 @@ public class PlayerMovement : NetworkBehaviour {
     [SerializeField] private float uphillSlideDeceleration = 35f;
     [SerializeField] private float slideEndSpeed = 11f;
     [SerializeField] private float slopeEffect = 15f; // How much the degree of the slope effects the change in acceleration of a slide.
+    
+    // =================
+    // CROUCH VARIABLES
+    // =================
+    [SerializeField] private float crouchedControllerHeight = 1.2f;
+    [SerializeField] private float crouchSpeed = 4f;
+    [SerializeField] private LayerMask standClearanceMask = ~0;
+
+    private float standingControllerHeight;
+    private float targetControllerHeight;
+    private Vector3 standingControllerCenter;
+    private bool standUpRequested;
+    public KeyCode crouchKey = KeyCode.LeftControl;
+
 
     // =================
     // PRIVATE VARIABLES
@@ -76,6 +110,7 @@ public class PlayerMovement : NetworkBehaviour {
     private Transform cachedTransform;
     private Coroutine airRoutine;
     private float originalSpeed, crouchingSpeed, sprintActualMultiplier = 1f, sprintMultiplier = 3f;
+    
 
     private void Awake() {
 
@@ -83,6 +118,13 @@ public class PlayerMovement : NetworkBehaviour {
         cachedTransform = transform.parent.GetComponent<Transform>();
         originalScale = cachedTransform.localScale;
         originalHeadHeight = headTransform.localPosition;
+        currentHeight = originalHeadHeight.y;
+
+        int wallLayerIndex = LayerMask.NameToLayer("Wall");
+        int groundLayerIndex = LayerMask.NameToLayer("Ground");
+        wallMask = 0;
+        if(wallLayerIndex >= 0) wallMask |= 1 << wallLayerIndex;
+        if(groundLayerIndex >= 0) wallMask |= 1 << groundLayerIndex;
     }
 
     private void Start() {
@@ -92,6 +134,12 @@ public class PlayerMovement : NetworkBehaviour {
         if(lockCursor) {
             Cursor.lockState = CursorLockMode.Locked;
         }
+
+        standingControllerHeight = controller.height;
+        standingControllerCenter = controller.center;
+        targetControllerHeight = isCrouched
+            ? Mathf.Max(crouchedControllerHeight, controller.radius * 2f)
+            : standingControllerHeight;
     }
 
     public override void OnNetworkSpawn() {
@@ -140,12 +188,67 @@ public class PlayerMovement : NetworkBehaviour {
     }
 
     public void Crouch(bool affectSpeed) {
-        Debug.Log("Crouch called.");
+        bool shouldCrouch = !isCrouched;
+
+        if(!shouldCrouch && !HasStandingClearance()) {
+            standUpRequested = true;
+            return;
+        }
+
+        ApplyCrouchState(shouldCrouch, affectSpeed);
+    }
+
+    private void ApplyCrouchState(bool crouched, bool affectSpeed) {
+        if(isCrouched == crouched) return;
+
+        isCrouched = crouched;
+        standUpRequested = false;
+        if(affectSpeed) speed = crouched ? crouchingSpeed : originalSpeed;
+        SetControllerCrouched(crouched);
         CrouchEffectsServerRpc();
-        if(affectSpeed) speed = isCrouched ? originalSpeed : crouchingSpeed;
-        currentHeight = isCrouched ? crouchHeight : originalHeadHeight.y;
-        //enemyVisionScript.fieldOfViewAngle += isCrouched ? 30 : -30;
-        isCrouched = !isCrouched;
+    }
+
+    private bool HasStandingClearance() {
+        Vector3 worldCenter = controller.transform.TransformPoint(standingControllerCenter);
+        float scaleY = controller.transform.lossyScale.y;
+        float scaleXZ = Mathf.Max(controller.transform.lossyScale.x, controller.transform.lossyScale.z);
+        float radius = controller.radius * scaleXZ;
+        float height = Mathf.Max(standingControllerHeight * scaleY, radius * 2f);
+        float halfSegment = Mathf.Max(0f, height * 0.5f - radius);
+        Vector3 capsuleBottom = worldCenter - controller.transform.up * halfSegment;
+        Vector3 capsuleTop = worldCenter + controller.transform.up * halfSegment;
+
+        Collider[] overlaps = Physics.OverlapCapsule(
+            capsuleBottom,
+            capsuleTop,
+            radius,
+            standClearanceMask,
+            QueryTriggerInteraction.Ignore
+        );
+
+        for(int i = 0; i < overlaps.Length; i++) {
+            Transform hitTransform = overlaps[i].transform;
+            if(hitTransform == controller.transform || hitTransform.IsChildOf(controller.transform)) continue;
+            return false;
+        }
+
+        return true;
+    }
+
+    private void SetControllerCrouched(bool crouched) {
+        targetControllerHeight = crouched
+            ? Mathf.Max(crouchedControllerHeight, controller.radius * 2f)
+            : standingControllerHeight;
+    }
+
+    private void UpdateControllerHeight() {
+        controller.height = Mathf.MoveTowards(
+            controller.height,
+            targetControllerHeight,
+            crouchSpeed * Time.deltaTime
+        );
+        controller.center = standingControllerCenter
+            - Vector3.up * ((standingControllerHeight - controller.height) * 0.5f);
     }
 
     [ServerRpc]
@@ -159,14 +262,102 @@ public class PlayerMovement : NetworkBehaviour {
     }
 
     private void Jump() {
-        int spellHeldIndex = transform.parent.GetComponent<ToolController>().heldIndex.Value;
         verticalVelocity.y = Mathf.Sqrt( jumpHeight * -2f * afterlifeJumpAugment * gravityStrength );
+        PlayJumpEffects();
+    }
 
-        source.PlayOneShot( afterlife ? ghostJump : jumpClip[Random.Range(0, jumpClip.Length)] );
+    private bool TryFindWall(out Vector3 wallNormal, out bool isSideWall, out bool isRightSide) {
+        wallNormal = Vector3.zero;
+        isSideWall = false;
+        isRightSide = false;
 
+        Vector3 forward = Vector3.ProjectOnPlane(cachedTransform.forward, Vector3.up).normalized;
+        Vector3 right = Vector3.ProjectOnPlane(cachedTransform.right, Vector3.up).normalized;
+        Vector3 castOrigin = controller.bounds.center + Vector3.up * (wallCastHeight - controller.height * 0.5f);
+        Vector3[] directions = { forward, right, -right };
+        RaycastHit hit;
+
+        // Check the front first, then either side. This gives corner contacts a stable priority.
+        for(int i = 0; i < directions.Length; i++) {
+            if(Physics.SphereCast(castOrigin, wallCastRadius, directions[i], out hit, wallCastDistance, wallMask, QueryTriggerInteraction.Ignore)
+                && Mathf.Abs(hit.normal.y) <= maximumWallNormalY) {
+                wallNormal = hit.normal;
+                isSideWall = i != 0;
+                isRightSide = i == 1;
+                return true;
+            }
+        }
+
+        // Sphere casts can miss a surface when the cast sphere already overlaps it.
+        Collider[] nearbyColliders = Physics.OverlapSphere(castOrigin, wallCastRadius, wallMask, QueryTriggerInteraction.Ignore);
+        float bestDirectionScore = 0.5f;
+        for(int i = 0; i < nearbyColliders.Length; i++) {
+            Vector3 closestPoint = nearbyColliders[i].ClosestPoint(castOrigin);
+            Vector3 normal = castOrigin - closestPoint;
+            if(normal.sqrMagnitude < 0.0001f) continue;
+
+            normal.Normalize();
+            if(Mathf.Abs(normal.y) > maximumWallNormalY) continue;
+
+            Vector3 towardWall = -normal;
+            for(int directionIndex = 0; directionIndex < directions.Length; directionIndex++) {
+                float directionScore = Vector3.Dot(directions[directionIndex], towardWall);
+                if(directionScore > bestDirectionScore) {
+                    bestDirectionScore = directionScore;
+                    wallNormal = normal;
+                    isSideWall = directionIndex != 0;
+                    isRightSide = directionIndex == 1;
+                }
+            }
+        }
+
+        return wallNormal != Vector3.zero;
+    }
+
+    private void StartWallHop() {
+        Vector3 outward = Vector3.ProjectOnPlane(currentWallNormal, Vector3.up).normalized;
+        horizontalVelocity = outward * wallHopOutwardSpeed;
+        if(currentWallIsSide) {
+            Vector3 forwardAlongWall = Vector3.ProjectOnPlane(cachedTransform.forward, outward).normalized;
+            if(Vector3.Dot(forwardAlongWall, cachedTransform.forward) < 0f) forwardAlongWall = -forwardAlongWall;
+            // A 45 degree launch between the wall's outward normal and forward travel along it.
+            horizontalVelocity = outward * wallHopOutwardSpeed + forwardAlongWall * wallHopForwardSpeed;
+        }
+
+        float upwardMultiplier = currentWallIsSide ? sideWallHopUpwardMultiplier : forwardWallHopUpwardMultiplier;
+        verticalVelocity.y = Mathf.Sqrt(jumpHeight * -2f * afterlifeJumpAugment * gravityStrength) * upwardMultiplier;
+        isWallSticking = false;
+        wallStickTimer = 0f;
+
+        // Reuse the normal jump presentation without overwriting the wall-hop launch velocity.
+        PlayJumpEffects();
+        if(currentWallIsSide) {
+            // The clip name follows the direction of travel: a hop from a right wall moves left.
+            playerAnimator.ResetTrigger("Jump");
+            playerAnimator.SetTrigger(currentWallIsRightSide ? "WallHopRight" : "WallHopLeft");
+
+            armsAnimator.ResetTrigger("Jump");
+            armsAnimator.SetTrigger(currentWallIsRightSide ? "WallHopRight" : "WallHopLeft");
+        }
+        else {
+            playerAnimator.ResetTrigger("Jump");
+            playerAnimator.SetTrigger("WallHopFront");
+
+            armsAnimator.ResetTrigger("Jump");
+            armsAnimator.SetTrigger("WallHopFront");
+        }
+    }
+
+    private void PlayJumpEffects() {
+        PlayerHandler cameraOwner = transform.parent.GetComponent<PlayerHandler>();
+        if(cameraOwner != null && cameraOwner.cameraReference != null) {
+            cameraOwner.cameraReference.PlayJumpImpulse();
+        }
+
+        int spellHeldIndex = transform.parent.GetComponent<ToolController>().heldIndex.Value;
+        source.PlayOneShot(afterlife ? ghostJump : jumpClip[Random.Range(0, jumpClip.Length)]);
         playerAnimator.SetTrigger("Jump");
         playerAnimator.SetBool("InAirFromJump", true);
-
         if(spellHeldIndex == 0 || spellHeldIndex == 3 || spellHeldIndex == 4 || spellHeldIndex == 7) armsAnimator.SetTrigger("Jump");
         armsAnimator.SetBool("Grounded", false);
         if(airRoutine != null) StopCoroutine(airRoutine);
@@ -183,6 +374,30 @@ public class PlayerMovement : NetworkBehaviour {
 
     public bool SlidingState() { return sliding; }
 
+    /// <summary>Returns the current world-space movement velocity for ragdoll handoff.</summary>
+    public Vector3 GetCurrentVelocity() {
+        return horizontalVelocity + verticalVelocity;
+    }
+
+    /// <summary>Clears saved movement momentum and transient movement states after ragdoll recovery.</summary>
+    public void ResetMovementVelocity() {
+        horizontalVelocity = Vector3.zero;
+        verticalVelocity = Vector3.zero;
+        slideDirection = Vector3.zero;
+        sliding = false;
+        allowedToCrouch = true;
+        isSprinting = false;
+        isWallSticking = false;
+        wallStickTimer = 0f;
+        wallSlideUsedForCurrentContact = false;
+        StopSlideEffectsServerRpc();
+
+        if(isCrouched) {
+            standUpRequested = true;
+            if(HasStandingClearance()) ApplyCrouchState(false, true);
+        }
+    }
+
     public float GetRemainingStam() {
         return transform.parent.GetComponent<PlayerHandler>().stamina.Value / staminaDuration;
     }
@@ -195,6 +410,12 @@ public class PlayerMovement : NetworkBehaviour {
 
         if(!playerAlive) return;
 
+        // Keep a released crouch request pending until the standing capsule fits.
+        if(standUpRequested && HasStandingClearance()) {
+            ApplyCrouchState(false, true);
+        }
+        UpdateControllerHeight();
+
         // =========================
         // MOVEMENT / JUMP / GRAVITY
         // =========================
@@ -206,7 +427,9 @@ public class PlayerMovement : NetworkBehaviour {
             vert = Input.GetAxis("Vertical");
             Vector3 inputVector = cachedTransform.right * horiz + cachedTransform.forward * vert;
 
-            headTransform.localPosition = new Vector3(originalHeadHeight.x, Mathf.Clamp(currentHeight -= (isCrouched ? 2f : -2f) * Time.deltaTime, crouchHeight, originalHeadHeight.y), originalHeadHeight.z);
+            float targetHeadHeight = isCrouched ? crouchHeight : originalHeadHeight.y;
+            currentHeight = Mathf.MoveTowards(currentHeight, targetHeadHeight, crouchSpeed * Time.deltaTime);
+            headTransform.localPosition = new Vector3(originalHeadHeight.x, currentHeight, originalHeadHeight.z);
 
 
 
@@ -238,7 +461,6 @@ public class PlayerMovement : NetworkBehaviour {
                 }
 
                 if(!sliding && allowedToCrouch && allowedToMove && (Input.GetKeyDown(crouchKey) || Input.GetKeyUp(crouchKey)) && !isSprinting && !afterlife) {
-                    isCrouched = !Input.GetKeyDown(crouchKey);
                     Crouch(true);
                 }
                 // Start Slide
@@ -308,18 +530,110 @@ public class PlayerMovement : NetworkBehaviour {
            
         }
 
+        // Wall contact is evaluated before this frame's controller move so it can affect movement immediately.
+        bool hasGroundContact = groundCheckerScript.isGrounded || controller.isGrounded;
+        if(hasGroundContact) {
+            isWallSticking = false;
+            wallSlideUsedForCurrentContact = false;
+            wallStickTimer = 0f;
+        }
+        else {
+            bool hasWallContact = TryFindWall(out Vector3 detectedWallNormal, out bool detectedWallIsSide, out bool detectedWallIsRightSide);
+
+            if(hasWallContact) {
+                currentWallNormal = detectedWallNormal;
+                currentWallIsSide = detectedWallIsSide;
+                currentWallIsRightSide = detectedWallIsRightSide;
+
+                if(!wallSlideUsedForCurrentContact && !isWallSticking) {
+                    isWallSticking = true;
+                    wallSlideUsedForCurrentContact = true;
+                    wallStickTimer = wallSlideDuration;
+
+                    PlayerHandler cameraOwner = transform.parent.GetComponent<PlayerHandler>();
+                    if(cameraOwner != null && cameraOwner.cameraReference != null) {
+                        if(!currentWallIsSide) cameraOwner.cameraReference.PlayWallGrabFrontImpulse();
+                        else if(currentWallIsRightSide) cameraOwner.cameraReference.PlayWallGrabRightImpulse();
+                        else cameraOwner.cameraReference.PlayWallGrabLeftImpulse();
+                    }
+                }
+            }
+            else {
+                isWallSticking = false;
+                wallSlideUsedForCurrentContact = false;
+            }
+        }
+
+        if(isWallSticking) {
+            if(!currentWallIsSide) {
+                playerAnimator.SetBool("WallHangFront", true);
+                playerAnimator.SetBool("WallRunningRight", false);
+                playerAnimator.SetBool("WallRunningLeft", false);
+
+                armsAnimator.SetBool("WallHangFront", true);
+                armsAnimator.SetBool("WallRunningRight", false);
+                armsAnimator.SetBool("WallRunningLeft", false);
+            }
+            else if(currentWallIsRightSide) {
+                playerAnimator.SetBool("WallHangFront", false);
+                playerAnimator.SetBool("WallRunningRight", true);
+                playerAnimator.SetBool("WallRunningLeft", false);
+
+                armsAnimator.SetBool("WallHangFront", false);
+                armsAnimator.SetBool("WallRunningRight", true);
+                armsAnimator.SetBool("WallRunningLeft", false);
+            }
+            else {
+                playerAnimator.SetBool("WallHangFront", false);
+                playerAnimator.SetBool("WallRunningLeft", true);
+                playerAnimator.SetBool("WallRunningRight", false);
+
+                armsAnimator.SetBool("WallHangFront", false);
+                armsAnimator.SetBool("WallRunningLeft", true);
+                armsAnimator.SetBool("WallRunningRight", false);
+            }
+        }
+        else {
+            playerAnimator.SetBool("WallHangFront", false);
+            playerAnimator.SetBool("WallRunningLeft", false);
+            playerAnimator.SetBool("WallRunningRight", false);
+
+            armsAnimator.SetBool("WallHangFront", false);
+            armsAnimator.SetBool("WallRunningLeft", false);
+            armsAnimator.SetBool("WallRunningRight", false);
+        }
+        if(Input.GetButtonDown("Jump") && allowedToMove && hasGroundContact) {
+            isWallSticking = false;
+            wallSlideUsedForCurrentContact = false;
+            Jump();
+        }
+        else if(isWallSticking && Input.GetButtonDown("Jump") && allowedToMove) {
+            StartWallHop();
+            groundCheck.GetComponent<GroundChecker>().ResetAirTime();
+        }
+
+        if(isWallSticking) {
+            wallStickTimer -= Time.deltaTime;
+            if(wallStickTimer <= 0f) {
+                isWallSticking = false;
+            }
+            else {
+                // Keep existing along-wall momentum, but prevent air input from driving into the wall.
+                horizontalVelocity = Vector3.ProjectOnPlane(horizontalVelocity, currentWallNormal);
+                // Preserve jump ascent; apply the controlled wall slide only after upward momentum ends.
+                if(verticalVelocity.y <= 0f) verticalVelocity.y = -wallSlideSpeed;
+            }
+        }
+
         // Grounding
-        if(groundCheckerScript.isGrounded && verticalVelocity.y < 0f) {
+        if(hasGroundContact && verticalVelocity.y < 0f) {
             verticalVelocity.y = -groundedStickForce;
         }
 
-        // Jump
-        if(Input.GetButtonDown("Jump") && allowedToMove && groundCheckerScript.isGrounded) {
-            Jump();
-        }
-
         // Gravity
-        verticalVelocity.y += gravityStrength * afterlifeFallAugment * Time.deltaTime;
+        if(!isWallSticking || verticalVelocity.y > 0f) {
+            verticalVelocity.y += gravityStrength * afterlifeFallAugment * Time.deltaTime;
+        }
 
         // Final Movement
         controller.Move((horizontalVelocity + verticalVelocity) * Time.deltaTime);
@@ -330,6 +644,7 @@ public class PlayerMovement : NetworkBehaviour {
         playerAnimator.SetBool("Sprinting", isSprinting);
         armsAnimator.SetBool("Sprinting", isSprinting);
         playerAnimator.SetBool("Crouching", isCrouched);
+        playerAnimator.SetBool("Sliding", sliding);
         playerAnimator.SetBool("Walking", horiz != 0 || vert != 0);
     }
 
@@ -348,32 +663,6 @@ public class PlayerMovement : NetworkBehaviour {
         }
     }
 
-    private IEnumerator SlideRoutine() {
-        StartCoroutine(SlideCooldown());
-        playerAnimator.SetTrigger("Slide");
-        armsAnimator.SetTrigger("Slide");
-        sliding = true;
-
-        allowedToCrouch = false;
-        //allowedToMove = false;
-        //isCrouched = true;
-
-        SlideEffectsServerRpc();
-
-        Crouch(false);
-
-        yield return new WaitForSeconds(slideDuration);
-        sliding = false;
-        //isCrouched = false;
-
-        Crouch(false);
-        StopSlideEffectsServerRpc();
-        allowedToCrouch = true;
-        //allowedToMove = true;
-        //transform.parent.GetComponent<PlayerHandler>().stamina.Value = 0;
-        transform.parent.GetComponent<PlayerHandler>().stamina.Value -= staminaConsumtionOnSlide;
-        if(transform.parent.GetComponent<PlayerHandler>().stamina.Value < 0) transform.parent.GetComponent<PlayerHandler>().stamina.Value = 0;
-    }
 
     [ServerRpc]
     private void SlideEffectsServerRpc() {

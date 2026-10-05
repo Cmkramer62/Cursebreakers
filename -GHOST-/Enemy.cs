@@ -9,6 +9,10 @@ public class Enemy : NetworkBehaviour {
     public LayerMask groundLayer, playerLayer;
     public float health, walkPointMin, walkPointRange, timeBetweenAttacks, attackRange, walkSpeed, runSpeed, invisSpeed, chaseMeter = 100f, rotationSpeed = 5f;
 
+    [Header("Ragdoll hit")]
+    [Tooltip("Impulse in ghost-local space: X is sideways, Y is upward, and Z is forward.")]
+    [SerializeField] private Vector3 ghostRagdollImpulse = new Vector3(0f, 2f, 8f);
+
     public NetworkVariable<int> aggressionCharges = new NetworkVariable<int>(0);
 
     [SerializeField] private int damage, invisibilityOdds = 3, pauseChance = 4, deAggroCooldown = 10;
@@ -554,7 +558,18 @@ public class Enemy : NetworkBehaviour {
                 monsterSource.pitch = 1;
                 monsterSource.PlayOneShot(attackClip, 0.5f);
                 //Debug.Log("Hit");
-                targetPlayerAttacked.GetComponent<Death>().LoseLife(true);
+                Death targetDeath = targetPlayerAttacked.GetComponent<Death>();
+                if(hit.collider.GetComponentInParent<Death>() == targetDeath) {
+                    // A nonfatal ghost hit triggers the shared ragdoll reaction before life loss.
+                    if(targetDeath.lives.Value > 1) {
+                        RagdollController ragdoll = targetPlayerAttacked.GetComponent<RagdollController>();
+                        if(ragdoll != null) {
+                            Vector3 worldImpulse = cachedTransform.TransformDirection(ghostRagdollImpulse);
+                            ragdoll.TriggerRagdollForAllClients(worldImpulse);
+                        }
+                    }
+                    targetDeath.LoseLife(true);
+                }
             }
             //InvertVisibility();
             aggressionCharges.Value--;

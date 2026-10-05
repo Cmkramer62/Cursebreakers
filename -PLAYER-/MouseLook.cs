@@ -4,36 +4,52 @@ using UnityEngine;
 
 public class MouseLook : MonoBehaviour {
 
-    public float mouseSensitivity = 100f;
+    [Range(0.1f, 4f)] public float mouseSensitivity = 2f;
+    [Range(0f, 2f)] public float cameraSmoothTime = 0.04f;
+
     public Transform playerBody, cameraParent;
-    public float xRotation = 0f;
     public bool allowedToLook = true, playerAlive = true;
     [HideInInspector] public Animator cameraAnimator;
 
-    // Start is called before the first frame update
+    // Up and Down
+    private float targetPitch;
+    private float currentPitch;
+    private float pitchVelocity;
+
+    // Left and Right
+    private float targetCameraYaw;
+    private float currentCameraYaw;
+    private float yawVelocity;
+
     void Start() {
-        //Cursor.lockState = CursorLockMode.Locked;
+        if(cameraParent != null) {
+            targetCameraYaw = currentCameraYaw = cameraParent.localEulerAngles.y;
+        }
     }
 
     // Update is called once per frame
     void Update() {
-        if(playerBody != null && allowedToLook && playerAlive) {
-            float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
-            float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity * Time.deltaTime;
+        if(playerBody == null || !allowedToLook || !playerAlive)
+            return;
 
-            xRotation -= mouseY;
-            xRotation = Mathf.Clamp(xRotation, -90f, 90f);
+        float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity;
+        float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity;
 
-            transform.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
-            // rotate the camera vertically. Pitch only.
-            playerBody.Rotate(Vector3.up * mouseX); // rotation should be controlled by the anim?
-            cameraParent.Rotate(Vector3.up * mouseX);
+        playerBody.Rotate(Vector3.up * mouseX);
 
-            //float angle = Mathf.DeltaAngle(playerBody.parent.eulerAngles.y, cameraParent.eulerAngles.y);
-            // Optional: normalize to -1 to 1
-            //float normalized = Mathf.Clamp(angle / 90f, -90f, 90f);
-            //cameraAnimator.SetFloat("InputAngle", angle);
-        }
+        targetCameraYaw += mouseX;
+        targetPitch = Mathf.Clamp(targetPitch - mouseY, -90f, 90f);
+    }
 
+    void LateUpdate() {
+        if(playerBody == null || !allowedToLook || !playerAlive)
+            return;
+
+        currentCameraYaw = Mathf.SmoothDampAngle(currentCameraYaw, targetCameraYaw, ref yawVelocity, cameraSmoothTime);
+
+        currentPitch = Mathf.SmoothDampAngle(currentPitch, targetPitch, ref pitchVelocity, cameraSmoothTime);
+
+        cameraParent.localRotation = Quaternion.Euler(0f, currentCameraYaw, 0f);
+        transform.localRotation = Quaternion.Euler(currentPitch, 0f, 0f);
     }
 }
