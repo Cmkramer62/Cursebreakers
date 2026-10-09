@@ -644,7 +644,7 @@ public class PlayerMovement : NetworkBehaviour {
         playerAnimator.SetBool("Sprinting", isSprinting);
         armsAnimator.SetBool("Sprinting", isSprinting);
         playerAnimator.SetBool("Crouching", isCrouched);
-        playerAnimator.SetBool("Sliding", sliding);
+       // playerAnimator.SetBool("Sliding", sliding);
         playerAnimator.SetBool("Walking", horiz != 0 || vert != 0);
     }
 

@@ -40,6 +40,8 @@ public class Enemy : NetworkBehaviour {
     public NetworkVariable<NetworkObjectReference> playerLastSeen = new NetworkVariable<NetworkObjectReference>();
     public NetworkVariable<float> veloNetwork = new NetworkVariable<float>(0f);
 
+    [SerializeField] private Transform lookAtTarget, defaultLookTarget;
+
     #region private vars
     private NavMeshAgent agent;
     public List<GameObject> listOfPlayers = new List<GameObject>(); //{get; private set;}
@@ -160,9 +162,15 @@ public class Enemy : NetworkBehaviour {
         }
         if(playersVisible.Count > 0) {
             // Now this is the closest from among them:
-            return ClosestPlayer(playersVisible);
+
+            GameObject closestVisTrans = ClosestPlayer(playersVisible);
+
+            lookAtTarget.transform.position = new Vector3(closestVisTrans.transform.position.x, closestVisTrans.transform.position.y + 1.8f, closestVisTrans.transform.position.z);
+
+            return closestVisTrans;
         }
         else {
+            lookAtTarget.transform.position = defaultLookTarget.position;
             return ClosestPlayer(listOfPlayers);
         }
     }

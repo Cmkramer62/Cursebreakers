@@ -79,6 +79,7 @@ public class CurseGameManager : NetworkBehaviour {
             ghostReference.GetComponent<NetworkObject>().Spawn();
             ghostReference.GetComponent<Enemy>().musicSource = curseManagerClientScript.musicSource;
             ghostReference.GetComponent<Enemy>().allowedToMove.Value = !dontMoveGhost;
+            SetGhostLookVFXClientRpc();
         }
 
         for (int i = 0; i < curseManagerClientScript.spawnPoints.Count; i++) {
@@ -97,6 +98,11 @@ public class CurseGameManager : NetworkBehaviour {
                 else curseSpawnBuffer++;
             }
         }
+    }
+
+    [ClientRpc]
+    private void SetGhostLookVFXClientRpc() {
+        GameObject.FindAnyObjectByType<GhostVisionController>().ghost = ghostReference.transform.Find("VFX Position");
     }
 
     private IEnumerator PlaceGhostWhenReady() {

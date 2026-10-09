@@ -64,7 +64,7 @@ public class GhostRandomizer : NetworkBehaviour {
     //public GameObject[] enviroParticles, horns;
     [SerializeField] private GameObject algorClueEmitter, radiatioClueEmitter;
     public RuntimeAnimatorController floatingController;
-    public bool searchWithSound = false;
+    public bool searchWithSound = false, materialOverride = false;
 
     public CurseGameManager serverGameManagerScript;
     public CursedObject goalCurse;
@@ -124,12 +124,16 @@ public class GhostRandomizer : NetworkBehaviour {
 
     // Called by EITHER. Runs when code changes, or on network spawn.
     public void ApplyRandomization(GhostAppearance generatedCode) {
-        //Debug.Log("Applying randomization: " + generatedCode.body + " " + generatedCode.eyes);
         debugAppearance = generatedCode;
         ghostBodies[generatedCode.body].SetActive(true);
-        //deathScript.realGhostChild = ghostBodies[index];
         ghostScript.animator = ghostBodies[generatedCode.body].GetComponent<Animator>();
 
+        ApplyClues();
+
+        if(materialOverride)
+            return;
+
+        // Sets the materials of the ghost.
         if(generatedCode.body == 0) SetGownLongHair(generatedCode);
         else if(generatedCode.body == 1) SetGownShortHair(generatedCode);
         else if(generatedCode.body == 2) SetNakedLongHair(generatedCode);
@@ -138,8 +142,6 @@ public class GhostRandomizer : NetworkBehaviour {
         else if(generatedCode.body == 5) SetRobe(generatedCode);
         else if(generatedCode.body == 6) SetVeil(generatedCode);
         else SetVictorian(generatedCode);
-
-        ApplyClues();
     }
 
    // [ClientRpc]

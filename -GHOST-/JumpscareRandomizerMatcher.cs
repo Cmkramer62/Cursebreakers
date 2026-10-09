@@ -10,6 +10,7 @@ using UnityEngine;
 public class JumpscareRandomizerMatcher : MonoBehaviour {
 
     public GameObject[] ghostBodies;
+    public bool overrideMaterials = false;
 
     #region MeshLists
     public SkinnedMeshRenderer[] gownLongHair, gownShortHair, nakedLongHair, nakedShortHair, nakedBald, robe, veil, victorian;
@@ -29,7 +30,8 @@ public class JumpscareRandomizerMatcher : MonoBehaviour {
             ghostRandomizerScript = FindObjectOfType<GhostRandomizer>();
             yield return null;
         }
-        MimicMaterialLists();
+            MimicMaterialLists();
+        
         ApplyRandomization(ghostRandomizerScript.generatedRanString.Value);
         ghostRandomizerScript.generatedRanString.OnValueChanged += OnGenChanged;
 
@@ -59,6 +61,8 @@ public class JumpscareRandomizerMatcher : MonoBehaviour {
     public void ApplyRandomization(GhostAppearance generatedCode) {
         //ghostBodies[generatedCode.body].SetActive(true);
         GetComponentInParent<Death>().jumpscareGhostBodyIndex = generatedCode.body;
+        if(!overrideMaterials)
+            return;
 
         if(generatedCode.body == 0) SetGownLongHair(generatedCode);
         else if(generatedCode.body == 1) SetGownShortHair(generatedCode);
