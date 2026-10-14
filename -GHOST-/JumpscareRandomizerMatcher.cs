@@ -61,7 +61,7 @@ public class JumpscareRandomizerMatcher : MonoBehaviour {
     public void ApplyRandomization(GhostAppearance generatedCode) {
         //ghostBodies[generatedCode.body].SetActive(true);
         GetComponentInParent<Death>().jumpscareGhostBodyIndex = generatedCode.body;
-        if(!overrideMaterials)
+        if(overrideMaterials)
             return;
 
         if(generatedCode.body == 0) SetGownLongHair(generatedCode);

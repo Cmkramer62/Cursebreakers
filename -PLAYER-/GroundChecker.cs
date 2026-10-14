@@ -38,10 +38,10 @@ public class GroundChecker : MonoBehaviour {
     //Types: Concrete, Metal, Wood, Snow, Vent, Water, Tile
 
     void Start() {
-        if(!gameObject.transform.parent.parent.GetComponent<PlayerHandler>().IsOwner) {
-            enabled = false;
-            return;
-        }
+       // if(!gameObject.transform.parent.parent.GetComponent<PlayerHandler>().IsOwner) {
+        //    enabled = false;
+       //   return;
+       // }
 
         movementScript = transform.parent.GetComponent<PlayerMovement>();
     }
@@ -81,6 +81,18 @@ public class GroundChecker : MonoBehaviour {
         }
         else {
             GroundNormal = Vector3.up;
+        }
+
+        // ==========================================
+        // GROUND TAG AND GROUND SFX
+        // ==========================================
+
+        if(isGrounded) {
+            currentTag = hit.collider.tag;
+        }
+
+        if(!gameObject.transform.parent.parent.GetComponent<PlayerHandler>().IsOwner) {
+            return;
         }
 
         playerAnimator.SetBool("Grounded", isGrounded);
@@ -161,14 +173,7 @@ public class GroundChecker : MonoBehaviour {
         }
 
 
-        // ==========================================
-        // GROUND TAG AND GROUND SFX
-        // ==========================================
-
-        if(isGrounded) {
-            currentTag = hit.collider.tag;
-            //playingFromClips = AssignList();
-        }
+        
     }
 
     public void UpdateClips() {

@@ -52,13 +52,8 @@ public class GameSpawnManager : NetworkBehaviour {
             }
         };
 
-       // playerObj.GetComponent<CharacterController>().enabled = false;
         Transform spawn = GetSpawnPoint(clientId);
-        //playerObj.transform.SetPositionAndRotation(spawn.position,spawn.rotation);
         playerObj.GetComponent<PlayerHandler>().SetSpawnPositionClientRpc(spawn.position, spawn.rotation, rpcParams);
-
-        //playerObj.GetComponent<CharacterController>().enabled = true;
-
     }
 
 

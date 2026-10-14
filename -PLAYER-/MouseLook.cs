@@ -21,6 +21,16 @@ public class MouseLook : MonoBehaviour {
     private float currentCameraYaw;
     private float yawVelocity;
 
+
+    [Header("Remote Head Look")]
+    public Transform visualHead;
+    [SerializeField] private float maxHeadYaw = 60f;
+    [SerializeField] private float headTurnSpeed = 180f;
+    private float desiredHeadYaw;
+    private Quaternion headInitialLocalRotation;
+    private float currentHeadYaw;
+    private float headYawVelocity;
+
     void Start() {
         if(cameraParent != null) {
             targetCameraYaw = currentCameraYaw = cameraParent.localEulerAngles.y;
@@ -39,6 +49,9 @@ public class MouseLook : MonoBehaviour {
 
         targetCameraYaw += mouseX;
         targetPitch = Mathf.Clamp(targetPitch - mouseY, -90f, 90f);
+
+        // Head Tracking Amount Calculation
+        CalculateDesiredHeadYaw();
     }
 
     void LateUpdate() {
@@ -51,5 +64,64 @@ public class MouseLook : MonoBehaviour {
 
         cameraParent.localRotation = Quaternion.Euler(0f, currentCameraYaw, 0f);
         transform.localRotation = Quaternion.Euler(currentPitch, 0f, 0f);
+
+        ApplyHeadRotation();
     }
+
+
+    public void SetVisualHead(Transform head) {
+        visualHead = head;
+
+        if(visualHead != null) {
+            headInitialLocalRotation = visualHead.localRotation;
+            currentHeadYaw = 0f;
+        }
+    }
+
+    private void ApplyHeadRotation() {
+        if(visualHead == null)
+            return;
+
+        currentHeadYaw = Mathf.SmoothDamp(
+            currentHeadYaw,
+            desiredHeadYaw,
+            ref headYawVelocity,
+            0.08f
+        );
+
+        visualHead.localRotation =
+            headInitialLocalRotation *
+            Quaternion.Euler(0f, currentHeadYaw, 0f);
+    }
+
+    private void CalculateDesiredHeadYaw() {
+        if(visualHead == null || playerBody == null)
+            return;
+
+        // Get the camera's horizontal viewing direction.
+        Vector3 lookDirection = transform.forward;
+        lookDirection.y = 0f;
+
+        if(lookDirection.sqrMagnitude < 0.001f)
+            return;
+
+        // Calculate the camera's yaw relative to the body.
+        float cameraWorldYaw =
+            Quaternion.LookRotation(lookDirection).eulerAngles.y;
+
+        desiredHeadYaw = Mathf.DeltaAngle(
+            playerBody.eulerAngles.y,
+            cameraWorldYaw
+        );
+
+        // Restrict the head's horizontal range.
+        desiredHeadYaw = Mathf.Clamp(
+            desiredHeadYaw,
+            -maxHeadYaw,
+            maxHeadYaw
+        );
+
+        Debug.Log($"Desired head yaw: {desiredHeadYaw:F1}");
+    }
+
 }

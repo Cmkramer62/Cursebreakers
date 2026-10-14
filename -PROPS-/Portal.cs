@@ -18,13 +18,13 @@ public class Portal : NetworkBehaviour {
 
     [SerializeField] private float teleportSpawnHeight = 10f;
 
-    private bool used = false;
-    private float charge = 0.0f;
+    public bool used = false;
+    public float charge = 0.0f;
     [HideInInspector] public float animspeedA = .5f, animspeedB = .4f;
     private Animator fadeAnimator;
     //public GameObject gameManager
     public GameObject playerReference;
-    private bool inside = false;
+    public bool inside = false;
 
     public override void OnNetworkSpawn() {
         //gameManager = GameObject.Find("Game Manager");
@@ -39,10 +39,6 @@ public class Portal : NetworkBehaviour {
     // Update is called once per frame
     void Update() {
 
-        if(!IsOwner) {
-            return;
-        }
-
         if(!used && inside) {
             charge += 1 * Time.deltaTime;
         }
@@ -50,45 +46,66 @@ public class Portal : NetworkBehaviour {
             charge -= 1 * Time.deltaTime;
         }
 
+        if(!invisible) {
+            sparksA.gravityModifier = -4f * charge;
+            sparksB.gravityModifier = -.5f * charge;
+        }
+
+        if(playerReference == null || !playerReference.TryGetComponent<NetworkObject>(out var netObj))
+            return;
+
+        if(netObj.OwnerClientId != NetworkManager.Singleton.LocalClientId)
+            return;
+
         if(charge >= 1f) {
             Teleport(playerReference);
             //charge = 0f;
             inside = false;
         }
 
-        if(!invisible) {
-            sparksA.gravityModifier = -4f * charge;
-            sparksB.gravityModifier = -.5f * charge;
-        }
+
     }
 
     private void OnTriggerEnter(Collider other) {
-        if(!IsOwner) {
+        if(!other.CompareTag("Player") || !other.GetComponent<Death>())
+            return; 
+        
+        if(!other.TryGetComponent<NetworkObject>(out var netObj))
             return;
+
+        if(netObj.OwnerClientId != NetworkManager.Singleton.LocalClientId)
+            return;
+
+        // This is the local player's object.
+
+        if(!invisible) {
+            source.PlayOneShot(enterClip, 1f);
         }
-        if(!used && other.CompareTag("Player") && other.GetComponent<Death>()) {
-            if(!invisible) {
-                source.PlayOneShot(enterClip, 1f);
-            }
-            playerReference = other.gameObject;
-            inside = true;
-            if(instantTeleport) {
-                charge = 1f;
-            }
+        playerReference = other.gameObject;
+        inside = true;
+        if(instantTeleport) {
+            charge = 1f;
         }
     }
 
     private void OnTriggerExit(Collider other) {
-        if(!IsOwner) {
+        if(!other.CompareTag("Player") || !other.GetComponent<Death>())
             return;
+
+        if(!other.TryGetComponent<NetworkObject>(out var netObj))
+            return;
+
+        if(netObj.OwnerClientId != NetworkManager.Singleton.LocalClientId)
+            return;
+
+        // This is the local player's object.
+
+        if(!invisible) {
+            source.PlayOneShot(leaveClip, 1f);
         }
-        if(other.CompareTag("Player") && other.GetComponent<Death>()) {
-            if(!invisible) {
-                source.PlayOneShot(leaveClip, 1f);
-            }
-            inside = false;
-            used = false;
-        }
+        inside = false;
+        used = false;
+        
     }
 
     public void Teleport(GameObject player) {
@@ -117,7 +134,9 @@ public class Portal : NetworkBehaviour {
 
         if(!invisible) {
             fadeAnimator.Play("FadeFromWarp");
-            if(teleportSpawnHeight > 1) player.GetComponent<PlayerHandler>().TurnOnSpawnParticles();
+            // non local only method being called in a local only context. (Here, we are only running if this is my client machine. The turn on spawn should be called 
+            // on other players, not me, on my machine.) Even though they are the ones triggering the portal, not me.
+            if(teleportSpawnHeight > 1) player.GetComponent<PlayerHandler>().TurnOnSpawnParticlesServerRpc();
             yield return new WaitForSeconds(animspeedB);
         }
 

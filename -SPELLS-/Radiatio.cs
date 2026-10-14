@@ -170,7 +170,7 @@ public class Radiatio : NetworkBehaviour  {
     }
 
     private IEnumerator WaitForNetworkSceneLoad() {
-        if(!IsServer && SceneManager.GetActiveScene().isLoaded)
+        if((!IsServer || !IsOwner) && SceneManager.GetActiveScene().isLoaded)
             yield break;
 
         bool sceneLoaded = false;

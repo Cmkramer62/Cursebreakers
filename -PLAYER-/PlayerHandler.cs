@@ -24,10 +24,12 @@ public class PlayerHandler : NetworkBehaviour {
     public CameraFollow cameraReference;
     public ParticleSystem channelParticles, spawnParticles;
     [HideInInspector] public bool spawnParticlesPlaying = false;
+    private float spawnParticlesStartTime;
+    [SerializeField] private float spawnParticlesGracePeriod = 0.15f;
 
     public override void OnNetworkSpawn() {
         // Whether owner or not, turn on the spawning particles (beam of light).
-        TurnOnSpawnParticles();
+        TurnOnSpawnParticlesServerRpc();
 
         if(!IsOwner) {
             rotationMatchingScriptCamhead.enabled = false;
@@ -59,18 +61,33 @@ public class PlayerHandler : NetworkBehaviour {
     }
 
     private void Update() {
-        if(spawnParticlesPlaying) {
-            // turn off them if grounded is true.
-            if(GetComponentInChildren<GroundChecker>().isGrounded) {
-                spawnParticles.Stop();
-            }
+        if(!spawnParticlesPlaying)
+            return;
+
+        // Allow the networked transform and ground checker to catch up.
+        if(Time.time - spawnParticlesStartTime < spawnParticlesGracePeriod)
+            return;
+
+        if(GetComponentInChildren<GroundChecker>().isGrounded) {
+            spawnParticles.Stop();
+            spawnParticlesPlaying = false;
         }
     }
 
-    public void TurnOnSpawnParticles() {
+    [ServerRpc]
+    public void TurnOnSpawnParticlesServerRpc() {
+        Debug.Log("Spawn Particle server.");
+        TurnOnSpawnParticlesClientRpc();
+    }
+
+    [ClientRpc]
+    public void TurnOnSpawnParticlesClientRpc() {
+        Debug.Log("Spawn Particle recieved.");
         if(!IsOwner) {
+            Debug.Log("Spawn Particle recieved and working.");
             spawnParticles.Play();
             spawnParticlesPlaying = true;
+            spawnParticlesStartTime = Time.time;
         }
     }
 
@@ -87,6 +104,10 @@ public class PlayerHandler : NetworkBehaviour {
         cameraReference.transform.GetChild(3).GetComponent<HeadBob>().playerMovement = playerMovementScript;
         cameraReference.GetComponent<MouseLook>().playerBody = playerMovementScript.transform.parent;
         cameraReference.GetComponent<MouseLook>().cameraAnimator = animatorRef;
+
+        // Head Look Tracking
+        Transform headBone = animatorRef.GetBoneTransform(HumanBodyBones.Head);
+        cameraReference.GetComponent<MouseLook>().SetVisualHead(headBone);
 
         rotationMatchingScriptCamhead.goFollow = cameraReference.gameObject;
         rotationMatchingScriptToolbelt.goFollow = cameraReference.gameObject;

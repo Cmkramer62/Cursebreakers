@@ -40,7 +40,23 @@ public class Enemy : NetworkBehaviour {
     public NetworkVariable<NetworkObjectReference> playerLastSeen = new NetworkVariable<NetworkObjectReference>();
     public NetworkVariable<float> veloNetwork = new NetworkVariable<float>(0f);
 
-    [SerializeField] private Transform lookAtTarget, defaultLookTarget;
+    // The player the ghost is currently looking at.
+    // Written by the server, read by all clients.
+    private NetworkVariable<NetworkObjectReference> lookTargetPlayer =
+        new NetworkVariable<NetworkObjectReference>(
+            default,
+            NetworkVariableReadPermission.Everyone,
+            NetworkVariableWritePermission.Server
+        );
+
+    [SerializeField] private Transform lookAtTarget;
+    [SerializeField] private Transform defaultLookTarget;
+
+    [SerializeField] private float lookSmoothTime = 0.25f;
+    [SerializeField] private float lookHeightOffset = 1.8f;
+
+    private Vector3 lookVelocity;
+    private Transform resolvedLookTarget;
 
     #region private vars
     private NavMeshAgent agent;
@@ -54,6 +70,7 @@ public class Enemy : NetworkBehaviour {
     //private List<ConeLOSDetector> playerVision;
 
     public List<GameObject> playersVisible = new List<GameObject>();
+    private GameObject closestPlayer;
     #endregion
 
     // This is called by CurseGameManager, moves the ghost to its spawn position.
@@ -99,6 +116,16 @@ public class Enemy : NetworkBehaviour {
         cachedTransform = gameObject.transform;
         walkSpeedOG = walkSpeed;
 
+        if(IsClient) {
+            GhostVisionController vision =
+                FindAnyObjectByType<GhostVisionController>();
+
+            if(vision != null) {
+                vision.ghost = transform.Find("VFX Position");
+                Debug.Log("Ghost VFX reference assigned on client!");
+            }
+        }
+
         if(IsServer) {
             RefreshPlayerList();
             GetComponent<ConeLOSDetector>().SetMyList();
@@ -112,11 +139,12 @@ public class Enemy : NetworkBehaviour {
         invisible.OnValueChanged += (_, newState) => {
             InvertVisibility(newState);
         };
-
+        /* Do you want the ghost to start out as invisible? If so give it some aggro charges too.
         if(IsServer) {
             invisible.Value = true;
         }
         InvertVisibility(invisible.Value);
+        */
     }
 
     private void OnDestroy() {
@@ -152,56 +180,121 @@ public class Enemy : NetworkBehaviour {
     }
 
     // Returns the closest player in ghost's vision.
-    // If the ghost can't see anyone, returns the player that is closest.
+    // If the ghost can't see anyone, returns the closest of all players in the game.
     public GameObject SeenAndClosestPlayer() {
+
         playersVisible = new List<GameObject>();
+
         foreach(GameObject player in listOfPlayers) {
             if(player.GetComponent<Death>().lives.Value > 0 && coneDetector.SeeParticularTarget(player.transform)) {
                 playersVisible.Add(player);
             }
         }
+
+        // Closest player from people we can see.
         if(playersVisible.Count > 0) {
-            // Now this is the closest from among them:
-
             GameObject closestVisTrans = ClosestPlayer(playersVisible);
-
-            lookAtTarget.transform.position = new Vector3(closestVisTrans.transform.position.x, closestVisTrans.transform.position.y + 1.8f, closestVisTrans.transform.position.z);
-
+            SetLookTargetPlayer(closestVisTrans);
             return closestVisTrans;
         }
+        // Cannot see anyone. But this is the closest player in the game.
         else {
-            lookAtTarget.transform.position = defaultLookTarget.position;
+            //MoveLookAtTarget(defaultLookTarget.position);
+            SetLookTargetPlayer(null);
             return ClosestPlayer(listOfPlayers);
         }
     }
 
+    private void SetLookTargetPlayer(GameObject player) {
+        if(!IsServer)
+            return;
+
+        if(player == null) {
+            lookTargetPlayer.Value = default;
+            return;
+        }
+
+        NetworkObject playerNetworkObject =
+            player.GetComponent<NetworkObject>();
+
+        if(playerNetworkObject == null ||
+            !playerNetworkObject.IsSpawned) {
+            lookTargetPlayer.Value = default;
+            return;
+        }
+
+        lookTargetPlayer.Value =
+            new NetworkObjectReference(playerNetworkObject);
+    }
+
+    private void UpdateHeadLookTarget() {
+        //Debug.Log("Updating Head");
+        Transform desiredTarget = defaultLookTarget;
+
+        if(lookTargetPlayer.Value.TryGet(
+                out NetworkObject targetNetworkObject)) {
+            desiredTarget = targetNetworkObject.transform;
+        }
+
+        Vector3 targetPosition = desiredTarget.position;
+
+        // Only add the head-height offset when tracking a player.
+        if(desiredTarget != defaultLookTarget) {
+            targetPosition += Vector3.up * lookHeightOffset;
+        }
+
+        lookAtTarget.position = Vector3.SmoothDamp(
+            lookAtTarget.position,
+            targetPosition,
+            ref lookVelocity,
+            lookSmoothTime,
+            Mathf.Infinity,
+            Time.deltaTime
+        );
+    }
+
+    private void MoveLookAtTarget(Vector3 targetPosition) {
+        lookAtTarget.transform.position = Vector3.SmoothDamp(
+            lookAtTarget.transform.position,
+            targetPosition,
+            ref lookVelocity,
+            lookSmoothTime
+        );
+    }
+
     // Update is called once per frame
     private void Update() {
+        if(IsClient && IsSpawned)
+            UpdateHeadLookTarget();
+
         if(allowedToMove.Value) {
             if(animator.gameObject.activeInHierarchy) animator.SetFloat("Velocity", veloNetwork.Value);
             if(shadowAnimator.gameObject.activeInHierarchy) shadowAnimator.SetFloat("Velocity", veloNetwork.Value);
             if(fulgorShadowAnimator.gameObject.activeInHierarchy) fulgorShadowAnimator.SetFloat("Velocity", veloNetwork.Value);
         }
 
-        if(!IsServer) return;
+        if(!IsServer)
+            return;
+
+        closestPlayer = SeenAndClosestPlayer();
 
         if(allowedToMove.Value) {
-            var myTarget = SeenAndClosestPlayer();
-            bool playerSeen = coneDetector.aTargetVisible && !myTarget.GetComponentInChildren<PlayerMovement>().isHiding && normalAggro.Value && myTarget.GetComponent<Death>().lives.Value > 0;// && //!player.GetComponent<PlayerMovement>().isHiding;
+
+            bool ableToSeePlayer = coneDetector.aTargetVisible && 
+                !closestPlayer.GetComponentInChildren<PlayerMovement>().isHiding && 
+                    normalAggro.Value && 
+                        closestPlayer.GetComponent<Death>().lives.Value > 0;
+
             bool playerInAttackRange = Physics.CheckSphere(cachedTransform.position, attackRange, playerLayer) && normalAggro.Value;
 
-            //Debug.Log("GHOST= Player:" + myTarget.name + myTarget.transform.position.x + " LOS:" + coneDetector.aTargetVisible + " NOTHIDE:" +
-                //!myTarget.GetComponentInChildren<PlayerMovement>().isHiding + " AGGRO: " + normalAggro.Value + " RANGE:" + playerInAttackRange);
-
-            // If I can't see you and you're not in melee range
-            if(!playerSeen && !playerInAttackRange) {
+            // If ghost can't see any player and there's no one in melee range:
+            if(!ableToSeePlayer && !playerInAttackRange) {
                 if(chaseMeter == 100f || invisible.Value || !normalAggro.Value) {
                     if(currentMode == Mode.chasing) {
                         AudioController.FadeToAnother(this, musicSource, 4, normalMusicClip, .1f);
                         walkPointSet = false;
                         aggressionCharges.Value--;
                         if(aggressionCharges.Value < 0) aggressionCharges.Value = 0;
-                        //Debug.Log("Lowering from escaping a chase.");
                     }
                     ModePatrolling();
                     if(currentChaseDuration > longestChaseDuration) {
@@ -221,7 +314,7 @@ public class Enemy : NetworkBehaviour {
             }
 
             // If I'm not invis and I see you and you're NOT in melee range
-            else if(normalAggro.Value && !invisible.Value && playerSeen && !playerInAttackRange) {
+            else if(normalAggro.Value && !invisible.Value && ableToSeePlayer && !playerInAttackRange) {
                 if(currentMode != Mode.chasing && !waitingForScream) {
                     if(GetComponent<ConeLOSDetector>().visibilityOverride) chaseMeter = 30f;
                     else chaseMeter = 80f;
@@ -240,14 +333,14 @@ public class Enemy : NetworkBehaviour {
                     //}
                     // deathScript.GetComponent<CurseGameManager>().timeSpotted++;
                     if(playerLastSeen.Value.TryGet(out NetworkObject networkObject)) {
-                        networkObject.transform.position = myTarget.transform.position;
+                        networkObject.transform.position = closestPlayer.transform.position;
                     }
                 }
                 else if(currentMode == Mode.chasing) {
                     chaseMeter -= 1f * Time.deltaTime;
                     if(chaseMeter < 0f) chaseMeter = 0f;
                     if(playerLastSeen.Value.TryGet(out NetworkObject networkObject)) {
-                        networkObject.transform.position = myTarget.transform.position;
+                        networkObject.transform.position = closestPlayer.transform.position;
                     }
                 }
 
@@ -256,7 +349,7 @@ public class Enemy : NetworkBehaviour {
 
             // If I'm not invis and I see you and you're within melee range //OR if I'm not invis and I can't see you but you ARE in melee range AND hiding
             else if(normalAggro.Value && ((!invisible.Value && playerInAttackRange && chaseMeter != 100f))) {
-                AttackPlayer(myTarget);
+                AttackPlayer(closestPlayer);
                 StartCoroutine(DeAggroTimer());
             }
 
@@ -266,7 +359,7 @@ public class Enemy : NetworkBehaviour {
             //}
 
             if(waitingForScream) {
-                Vector3 direction = myTarget.transform.position - cachedTransform.position;
+                Vector3 direction = closestPlayer.transform.position - cachedTransform.position;
                 direction.y = 0f; // ignore vertical difference
 
                 if(direction.sqrMagnitude < 0.0001f)
@@ -377,25 +470,11 @@ public class Enemy : NetworkBehaviour {
                 walkPoint = point;
                 walkPointSet = true;
 
-                /*
-                 * int i = 0; 0 = 0% chance.
-                 * event raises by 1. 1 = 25% chance. 2 = 50% chance.
-                 * 
-                 * 
-                 */
-
-                // Go invis, but only if not close to player and it's not the ritual.
-                /*
-                if(!GetComponent<ConeLOSDetector>().visibilityOverride && ((Random.Range(0, invisibilityOdds) != 0 && !invisible) || 
-                    (Random.Range(0, invisibilityOdds) == 0 && invisible && Vector3.Distance(playerTransform.position, cachedTransform.position) > walkPointRange * 0.5f)) ) {
-                    InvertVisibility();
-                }*/
                 // INVIS -> VISI.... If It's not the purification, AND we're invis, AND the eventCharges are greater than 0, AND we're not close to the player
                 if(!GetComponent<ConeLOSDetector>().visibilityOverride && invisible.Value && aggressionCharges.Value > 0 && Vector3.Distance(ClosestPlayer().transform.position, cachedTransform.position) > walkPointRange * 0.5f) {
-                    //eventCharge--;
-                    //if(eventCharge < 0) eventCharge = 0;
-                    //Debug.Log("lowering from going Visible.");
+
                     InvertVisibilityServerRpc();
+
                     // foreach player withing radius walk point range, flicker their lanterns.
                     if(Vector3.Distance(ClosestPlayer().transform.position, cachedTransform.position) < walkPointRange) {
                         ClosestPlayer().GetComponentInChildren<PlayerMovement>().lanternReference.StartFlickerPeriod(2f);
@@ -405,18 +484,21 @@ public class Enemy : NetworkBehaviour {
                 else if(!invisible.Value && !GetComponent<ConeLOSDetector>().visibilityOverride && aggressionCharges.Value <= 0) {
                     InvertVisibilityServerRpc();
                 }
-                // else only go VISI -> INVIS when hitting a player
-                //else if(!GetComponent<ConeLOSDetector>().visibilityOverride && invisible && eventCharge > 0) {
+                else if(!invisible.Value && Random.Range(0, pauseChance) == 0) {
+                    StartCoroutine(PausingPatrol());
+                }
 
-                //}
-                else if(!invisible.Value && Random.Range(0, pauseChance) == 0) StartCoroutine(PausingPatrol());
-
+                // Freezing Breath VFX
+                /* DEPRECATED. No more Ice breath, only invisible ice crystals. May re-open for cold maps!!! Don't need Vector3.Distance then, unless want it as hint.
                 Transform mainCameraTransform = ClosestCamera().transform;
 
-                if(freezingAura.Value && Vector3.Distance(mainCameraTransform.position, cachedTransform.position) < walkPointRange * 1.75f && !mainCameraTransform.GetChild(0).GetComponent<ParticleSystem>().isPlaying)
+                if(freezingAura.Value && Vector3.Distance(mainCameraTransform.position, cachedTransform.position) < walkPointRange * 1.75f && !mainCameraTransform.GetChild(0).GetComponent<ParticleSystem>().isPlaying) {
                     mainCameraTransform.GetChild(0).GetComponent<ParticleSystem>().Play();
-                else if(freezingAura.Value && Vector3.Distance(mainCameraTransform.position, cachedTransform.position) > walkPointRange * 1.75f && mainCameraTransform.GetChild(0).GetComponent<ParticleSystem>().isPlaying)
+                }
+                else if(freezingAura.Value && Vector3.Distance(mainCameraTransform.position, cachedTransform.position) > walkPointRange * 1.75f && mainCameraTransform.GetChild(0).GetComponent<ParticleSystem>().isPlaying) {
                     mainCameraTransform.GetChild(0).GetComponent<ParticleSystem>().Stop();
+                }
+                */
             }
         }
         else {
@@ -447,26 +529,32 @@ public class Enemy : NetworkBehaviour {
     }
 
     private void ModeChase() {
-        var currentChasee = SeenAndClosestPlayer();
 
         currentMode = Mode.chasing;
-        if(currentChasee.GetComponentInChildren<PlayerMovement>().isHiding) {
+
+        // If the closest visible or closest global player is now hiding:
+        if(closestPlayer.GetComponentInChildren<PlayerMovement>().isHiding) {
+            // Move to the last seen player??
             if(playerLastSeen.Value.TryGet(out NetworkObject networkObject)) {
                 agent.SetDestination(networkObject.transform.position);
             }
         }
-        else agent.SetDestination(currentChasee.transform.position);
-        if(currentChasee.gameObject.GetComponentInChildren<PlayerMovement>().isHiding) {
+        else {
+            agent.SetDestination(closestPlayer.transform.position);
+        }
+
+        if(closestPlayer.GetComponentInChildren<PlayerMovement>().isHiding) {
             if(playerLastSeen.Value.TryGet(out NetworkObject networkObject)) {
                 walkPoint = networkObject.transform.position;
             }
         }
-        else walkPoint = currentChasee.transform.position;
+        else {
+            walkPoint = closestPlayer.transform.position;
+        }
+
         walkPointSet = true;
-        // animator.SetFloat("Velocity", 11);
         agent.speed = runSpeed;
-        agent.isStopped = false; // Add this line
-        
+        agent.isStopped = false;
     }
 
     public void IncreaseCharges() {
@@ -658,4 +746,5 @@ public class Enemy : NetworkBehaviour {
         //walkPointSet = true;
         return navHit.position;
     }
+
 }
