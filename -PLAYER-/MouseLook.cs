@@ -22,7 +22,7 @@ public class MouseLook : MonoBehaviour {
     private float yawVelocity;
 
 
-    [Header("Remote Head Look")]
+    public float LookYaw => transform.eulerAngles.y;
     public Transform visualHead;
     [SerializeField] private float maxHeadYaw = 60f;
     [SerializeField] private float headTurnSpeed = 180f;
@@ -64,34 +64,6 @@ public class MouseLook : MonoBehaviour {
 
         cameraParent.localRotation = Quaternion.Euler(0f, currentCameraYaw, 0f);
         transform.localRotation = Quaternion.Euler(currentPitch, 0f, 0f);
-
-        ApplyHeadRotation();
-    }
-
-
-    public void SetVisualHead(Transform head) {
-        visualHead = head;
-
-        if(visualHead != null) {
-            headInitialLocalRotation = visualHead.localRotation;
-            currentHeadYaw = 0f;
-        }
-    }
-
-    private void ApplyHeadRotation() {
-        if(visualHead == null)
-            return;
-
-        currentHeadYaw = Mathf.SmoothDamp(
-            currentHeadYaw,
-            desiredHeadYaw,
-            ref headYawVelocity,
-            0.08f
-        );
-
-        visualHead.localRotation =
-            headInitialLocalRotation *
-            Quaternion.Euler(0f, currentHeadYaw, 0f);
     }
 
     private void CalculateDesiredHeadYaw() {

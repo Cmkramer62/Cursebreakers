@@ -106,8 +106,9 @@ public class PlayerHandler : NetworkBehaviour {
         cameraReference.GetComponent<MouseLook>().cameraAnimator = animatorRef;
 
         // Head Look Tracking
-        Transform headBone = animatorRef.GetBoneTransform(HumanBodyBones.Head);
-        cameraReference.GetComponent<MouseLook>().SetVisualHead(headBone);
+        GetComponent<PlayerVisualLook>().SetLocalMouseLook(
+            cameraReference.GetComponent<MouseLook>()
+        );
 
         rotationMatchingScriptCamhead.goFollow = cameraReference.gameObject;
         rotationMatchingScriptToolbelt.goFollow = cameraReference.gameObject;
