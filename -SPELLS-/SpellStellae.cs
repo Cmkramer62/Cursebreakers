@@ -38,6 +38,15 @@ public class SpellStellae : NetworkBehaviour {
     public GameObject luxSpell, stellaeParticlesParent;
     public HashSet<Collider> collidersInside = new HashSet<Collider>();
 
+    // ============
+    // Light Mode Variables
+    // ============
+
+    [SerializeField] private Color luxColor, stellaeColor;
+    [SerializeField] private float luxLightIntensity, stellaeLightIntensity = 2.8f;
+    [SerializeField] private float luxLightRange, stellaeLightRange = 11.6f;
+    [SerializeField] private Material luxMaterial, stellaeMaterial;
+
     public override void OnNetworkSpawn() {
         stellaeBeamShooting.OnValueChanged += OnFlashlightChanged;
         stellaeCharging.OnValueChanged += StellaeChargingEffects; 
@@ -94,23 +103,29 @@ public class SpellStellae : NetworkBehaviour {
     }
 
     private void OnEnable() {
-        // Set Follow point of the Lux Light to be target transform.
-        // Change Lux light color.
-        if(spawnedLightInstance != null) {
-            spawnedLightInstance.GetComponent<DelayFollow>().target = magicFollowPoint;
-            //spawnedLightInstance.GetComponent<DelayFollow>().SetNewValues(380f, 1200f, 7.2f, 100.8f);
-            spawnedLightInstance.GetComponent<DelayFollow>().SetNewValues(554f, 1f, 15f, 150f, 1500f);
-
-            spawnedLightInstance.transform.GetChild(0).gameObject.SetActive(true);
-            spawnedLightInstance.transform.GetChild(1).GetComponent<ParticleSystem>().Play();
-        }
+        SetLightToStellaeMode();
     }
 
+    
     private void OnDisable() {
         if(stellaeBeamParticles != null && stellaeBeamParticles.isPlaying) {
             stellaeBeamParticles.Stop();
         }
 
+        SetLightToLuxMode();
+
+        if(!IsOwner)
+            return;
+
+        foreach(var thing in collidersInside) {
+            thing.GetComponent<StellaeClue>().PlayerWithAlgorLeft();
+        }
+        collidersInside.Clear();
+        ChangeChargingServerRpc(false);
+    }
+
+    // Sets the light to have following presets of Lux. And targeting the left side.
+    private void SetLightToLuxMode() {
         if(spawnedLightInstance != null) {
             spawnedLightInstance.GetComponent<DelayFollow>().target = luxTransformPoint;
             //spawnedLightInstance.GetComponent<DelayFollow>().SetNewValues(76.8f, 1200f, 22.5f, 20f);
@@ -120,16 +135,34 @@ public class SpellStellae : NetworkBehaviour {
                 spawnedLightInstance.transform.GetChild(1).GetComponent<ParticleSystem>().Stop();
                 spawnedLightInstance.transform.GetChild(2).GetComponent<ParticleSystem>().Play();
             }
+            var mainLight = spawnedLightInstance.GetComponentInChildren<Light>();
+            mainLight.range = luxLightRange;
+            mainLight.color = luxColor;
+            mainLight.intensity = luxLightIntensity;
+            mainLight.GetComponent<MeshRenderer>().material = luxMaterial;
         }
-
-        if(!IsOwner)
-            return;
-
-        foreach(var thing in collidersInside) {
-            thing.GetComponent<AlgorClue>().PlayerWithAlgorLeft();
-        }
-        collidersInside.Clear();
     }
+
+    // Set the light to have the following presets of Stellae. And targeting the right side.
+    private void SetLightToStellaeMode() {
+        // Set Follow point of the Lux Light to be target transform.
+        // Change Lux light color.
+        if(spawnedLightInstance != null) {
+            spawnedLightInstance.GetComponent<DelayFollow>().target = magicFollowPoint;
+            //spawnedLightInstance.GetComponent<DelayFollow>().SetNewValues(380f, 1200f, 7.2f, 100.8f);
+            spawnedLightInstance.GetComponent<DelayFollow>().SetNewValues(600f, 600f, 25f, 150f, 1500f);
+
+            spawnedLightInstance.transform.GetChild(0).gameObject.SetActive(true);
+            spawnedLightInstance.transform.GetChild(1).GetComponent<ParticleSystem>().Play();
+
+            var mainLight = spawnedLightInstance.GetComponentInChildren<Light>();
+            mainLight.range = stellaeLightRange;
+            mainLight.color = stellaeColor;
+            mainLight.intensity = stellaeLightIntensity;
+            mainLight.GetComponent<MeshRenderer>().material = stellaeMaterial;
+        }
+    }
+
 
     private void OnFlashlightChanged(bool oldValue, bool newValue) {
         ApplyFlashlightEffects(newValue);
@@ -220,11 +253,22 @@ public class SpellStellae : NetworkBehaviour {
         if(other.CompareTag("StellaeClue")) {
             collidersInside.Add(other);
             other.GetComponent<StellaeClue>().PlayerWithAlgorEntered();
-           // other.GetComponent<StellaeClue>().thermometerScript = this;
+            other.GetComponent<StellaeClue>().stellaeScript = this;
 
             if(collidersInside.Count > 0) {
-                ChangeChargingServerRpc(true);
+                StartCoroutine(StellaeSuckRoutine());
             }
+        }
+    }
+
+    public void RemoveAtCollider(Collider other) {
+        collidersInside.Remove(other);
+    }
+
+    private IEnumerator StellaeSuckRoutine() {
+        yield return new WaitForSeconds(2f);
+        if(collidersInside.Count > 0) {
+            ChangeChargingServerRpc(true);
         }
     }
 
@@ -233,7 +277,7 @@ public class SpellStellae : NetworkBehaviour {
             return;
 
         if(other.CompareTag("StellaeClue")) {
-            collidersInside.Remove(other);
+            RemoveAtCollider(other);
             other.GetComponent<StellaeClue>().PlayerWithAlgorLeft();
             
             if(collidersInside.Count == 0) {

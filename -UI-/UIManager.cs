@@ -188,7 +188,7 @@ public class UIManager : MonoBehaviour {
             geistlightScript.GetComponent<LookAtWithDelay>().targetObject = geistlightScript.defaultLookPoint.transform; //.working = false;
         }
         
-        if(geistlightScript.collidersInside.Count > 0) {
+        if(geistlightScript.stellaeAbsorbParticles.isPlaying) {
             geistlightScript.staminaRemaining = Mathf.Clamp(geistlightScript.staminaRemaining += geistlightScript.sprintRecoveryDec * Time.deltaTime, 0, geistlightScript.sprintDuration);
         }
 

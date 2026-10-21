@@ -100,7 +100,7 @@ public class AlgorClueEmitter : MonoBehaviour {
             Quaternion.FromToRotation(Vector3.up, hit.normal);
 
         var crystalReference = Instantiate(crystalPrefabs[prefabIndex], spawnPosition, spawnRotation);
-        prefabIndex = Mathf.Clamp(prefabIndex + 1, 0, 3);
+        prefabIndex = (prefabIndex + 1) % crystalPrefabs.Length;
 
         crystalReference.GetComponent<AlgorClue>().duration = duration;
         crystalReference.GetComponent<AlgorClue>().emitterScript = this;

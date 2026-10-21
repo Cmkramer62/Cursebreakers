@@ -37,6 +37,7 @@ public class StellaeClue : NetworkBehaviour {
     [SerializeField] private AudioClip[] iceFormingClips; // ice ambient sheen jingle?
     public bool played = false;
     private Coroutine audioLerpingRoutine;
+    public SpellStellae stellaeScript;
 
     // Start is called before the first frame update
     public override void OnNetworkSpawn() {
@@ -49,6 +50,11 @@ public class StellaeClue : NetworkBehaviour {
     private IEnumerator LifecycleTimer() {
         yield return new WaitForSeconds(duration);
         emitterScript.RemoveLastCrystal();
+        
+        if(stellaeScript != null) {
+            // (The player may not have come into contact with this clue ever.)
+            stellaeScript.RemoveAtCollider(GetComponent<Collider>());
+        }
         NetworkObject.Despawn();
     }
 
@@ -80,18 +86,18 @@ public class StellaeClue : NetworkBehaviour {
                 );
             }
 
+            IncreaseGrowth();
+
             // Don't grow until fully charged.
             if(charge.Value < maxCharge)
                 return;
 
             if(!played) {
-                Debug.Log("Playing Ice.");
-                played = true;
                 source.Play();
-
                 particles.Play();
+                played = true;
             }
-            IncreaseGrowth();
+
         }
         else {
             if(IsServer && charge.Value > 0) {

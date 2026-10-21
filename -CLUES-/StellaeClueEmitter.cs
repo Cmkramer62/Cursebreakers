@@ -4,6 +4,8 @@ using UnityEngine;
 using Unity.Netcode;
 
 public class StellaeClueEmitter : MonoBehaviour {
+    [SerializeField] private int startDelayMin = 0, startDelayMax = 0;
+
     [Header("Footsteps")]
     [SerializeField] private GameObject[] footstepPrefabs;
     private int prefabIndex = 0;
@@ -41,7 +43,7 @@ public class StellaeClueEmitter : MonoBehaviour {
 
     private IEnumerator EmitFootsteps() {
         if(!initialDelayDone) {
-            yield return new WaitForSeconds(Random.Range(10, 35));
+            yield return new WaitForSeconds(Random.Range(startDelayMin, startDelayMax));
             initialDelayDone = true;
         }
         // Only spawn if the amount of crystals out is less than the allowed amount.
@@ -89,8 +91,8 @@ public class StellaeClueEmitter : MonoBehaviour {
         Quaternion spawnRotation =
             Quaternion.FromToRotation(Vector3.up, hit.normal);
 
-        var crystalReference = Instantiate(footstepPrefabs[0], spawnPosition, spawnRotation);
-        //prefabIndex = Mathf.Clamp(prefabIndex + 1, 0, 3);
+        var crystalReference = Instantiate(footstepPrefabs[prefabIndex], spawnPosition, spawnRotation);
+        prefabIndex = (prefabIndex + 1) % footstepPrefabs.Length;
 
         crystalReference.GetComponent<StellaeClue>().duration = duration;
         crystalReference.GetComponent<StellaeClue>().emitterScript = this;
