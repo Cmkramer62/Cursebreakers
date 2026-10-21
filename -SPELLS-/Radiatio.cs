@@ -16,10 +16,12 @@ public class Radiatio : NetworkBehaviour  {
 
     public bool spawnedObj = false;
     // There will be 4 glyphs in total. 4th signifying strongest EMF.
-    public GameObject[] magicCanvasGlyphs;
+    public List<GameObject> magicCanvasGlyphs = new List<GameObject>();
     public GameObject magicCanvasExlamationPointGlyph;
     public GameObject particles, canvas;
     [SerializeField] private GameObject chainsGlowing, chainsNormal;
+    private int priorEMFLevel = -1;
+
     /*
      * On a tick, set the scanner's lights to be what the value of defaultEMF is in the Tool Controller.
      * 
@@ -51,13 +53,18 @@ public class Radiatio : NetworkBehaviour  {
 
             //Debug.Log($"Created particles: {particles.name}, ID: {particles.GetInstanceID()}");
             //Debug.Log($"Created canvas: {canvas.name}, ID: {canvas.GetInstanceID()}");
-
+            /*
             magicCanvasGlyphs = new GameObject[4] {canvas.transform.GetChild(0).GetChild(0).gameObject,
                 canvas.transform.GetChild(0).GetChild(1).gameObject,
                     canvas.transform.GetChild(0).GetChild(2).gameObject,
                         canvas.transform.GetChild(0).GetChild(3).gameObject};
+            */
 
-            magicCanvasExlamationPointGlyph = canvas.transform.GetChild(0).GetChild(4).gameObject;
+            for(int i = 0; i < 8; i++) {
+                magicCanvasGlyphs.Add(canvas.transform.GetChild(0).GetChild(i).gameObject);
+            } 
+
+            magicCanvasExlamationPointGlyph = canvas.transform.GetChild(0).GetChild(8).gameObject;
             particles.GetComponent<DelayFollow>().target = magicFollowPoint;
             canvas.GetComponent<DelayFollow>().target = canvasFollowPoint;
 
@@ -140,10 +147,10 @@ public class Radiatio : NetworkBehaviour  {
     void ScannerEffects(int newValue) {
         if(gameObject.activeInHierarchy) {
             //Debug.Log("Scanner new: " + newValue);
-            int newAmount = (newValue / 2) + (newValue % 2);
+            //int newAmount = (newValue / 2) + (newValue % 2);
 
-            for(int i = 0; i < magicCanvasGlyphs.Length; i++) {
-                magicCanvasGlyphs[i].SetActive(i < newAmount);
+            for(int i = 0; i < magicCanvasGlyphs.Count; i++) {
+                magicCanvasGlyphs[i].SetActive(i < newValue);
             }
             if(newValue != 0) {
                 source.pitch = .8f;
@@ -197,7 +204,8 @@ public class Radiatio : NetworkBehaviour  {
         if(other.CompareTag("EMFClue")) {
             Debug.Log("Detected emf clue.");
             //collidersInside.Add(other);
-            toolController.defaultEMF.Value = 7;
+            priorEMFLevel = toolController.defaultEMF.Value;
+            toolController.defaultEMF.Value = other.GetComponent<RadiatioClue>().emfLevel.Value;
         }
     }
 
@@ -209,7 +217,7 @@ public class Radiatio : NetworkBehaviour  {
             Debug.Log("Left emf clue.");
 
             //collidersInside.Remove(other);
-            toolController.defaultEMF.Value = 0;
+            toolController.defaultEMF.Value = priorEMFLevel;
         }
     }
 

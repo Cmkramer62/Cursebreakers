@@ -11,9 +11,20 @@ public class HubManager : MonoBehaviour {
     [SerializeField] private TextMeshProUGUI levelSelectionNotifyText, errorCodeText;
     [SerializeField] private GameObject startButton;
 
+    [SerializeField] private GameObject titleUI, mainSelectionUI;
+    private bool started = false;
+
     private void Start() {
         MultiplayerManager.Instance.OnStringChanged += OnErrorCodeChanged;
 
+    }
+
+    private void Update() {
+        if(!started && Input.anyKeyDown) {
+            titleUI.SetActive(false);
+            mainSelectionUI.SetActive(true);
+            started = true;
+        }
     }
 
     private void OnErrorCodeChanged(string newCode) {

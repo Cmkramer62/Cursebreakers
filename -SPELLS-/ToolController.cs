@@ -30,7 +30,7 @@ public class ToolController : NetworkBehaviour {
     public NetworkVariable<int> amountOfRadiatioDetected = new NetworkVariable<int>(0);
     public float averageTemperature = -1;
 
-    public Flashlight geistLightScript;
+    public SpellStellae geistLightScript;
     public SpellFulgor cameraScript;
     public Thermometer thermometerScript;
     [SerializeField] private PlayerHandler playerHandlerScript;

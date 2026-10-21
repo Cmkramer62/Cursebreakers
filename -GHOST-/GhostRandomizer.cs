@@ -62,7 +62,7 @@ public class GhostRandomizer : NetworkBehaviour {
     public GameObject ghostGeistParticles;
     public Bell bellScript;
     //public GameObject[] enviroParticles, horns;
-    [SerializeField] private GameObject algorClueEmitter, radiatioClueEmitter;
+    [SerializeField] private GameObject algorClueEmitter, radiatioClueEmitter, stellaeClueEmitter;
     public RuntimeAnimatorController floatingController;
     public bool searchWithSound = false, materialOverride = false;
 
@@ -185,12 +185,12 @@ public class GhostRandomizer : NetworkBehaviour {
 
         // Stellae (Footprints) Clue Activation
         if(curseToEmit == (int)CursedObject.CurseType.StellaeTrait) {
-
+            stellaeClueEmitter.SetActive(true);
         }
 
         // Radiatio (Radiation) Clue Activation
         else if(curseToEmit == (int)CursedObject.CurseType.RadiatioTrait) {
-            radiatioClueEmitter.SetActive(true);
+            radiatioClueEmitter.GetComponent<RadiatioClueEmitter>().StartRealEMF();
         }
 
         // Fulgor (Ghost Shadow) Clue Activation

@@ -12,7 +12,7 @@ public class UIManager : MonoBehaviour {
     public static UIManager Instance;
 
     [SerializeField] private InteractRaycast raycastScript;
-    public Flashlight geistlightScript;
+    public SpellStellae geistlightScript;
     private PlayerMovement movementScript;
     private ToolController toolbeltScript;
     private Death deathScript;
@@ -136,7 +136,7 @@ public class UIManager : MonoBehaviour {
      * Register Player is called by the flashlight/player manager upon Network Spawn.
      * It simply registers itself to this client-side script.
      */
-    public void RegisterGeistlight(Flashlight geistlightScript) {
+    public void RegisterGeistlight(SpellStellae geistlightScript) {
         //Debug.Log("Registered local player to UI");
 
         // Example hookup
@@ -185,25 +185,33 @@ public class UIManager : MonoBehaviour {
 
         }
         else {
-            geistlightScript.staminaRemaining = Mathf.Clamp(geistlightScript.staminaRemaining += geistlightScript.sprintRecoveryDec * Time.deltaTime, 0, geistlightScript.sprintDuration);
             geistlightScript.GetComponent<LookAtWithDelay>().targetObject = geistlightScript.defaultLookPoint.transform; //.working = false;
+        }
+        
+        if(geistlightScript.collidersInside.Count > 0) {
+            geistlightScript.staminaRemaining = Mathf.Clamp(geistlightScript.staminaRemaining += geistlightScript.sprintRecoveryDec * Time.deltaTime, 0, geistlightScript.sprintDuration);
         }
 
         float sprintRemainingPercent = geistlightScript.staminaRemaining / geistlightScript.sprintDuration;
         if(useSprintBar) geistlightUIMeterBar.rectTransform.sizeDelta = new Vector2(sprintRemainingPercent * 175, geistlightUIMeterBar.rectTransform.sizeDelta.y);//sprintBar.transform.localScale = new Vector3(sprintRemainingPercent, 1f, 1f);
 
+        
         if(geistlightScript.staminaRemaining <= 0) {
             geistlightScript.isTired = true;
-            geistlightUIMeterBar.color = Color.red;
+            //geistlightUIMeterBar.color = Color.red;
             //source.PlayOneShot(turnOnClip);
 
         }
+        else {
+            geistlightScript.isTired = false;
+        }
+        /*
         if(geistlightScript.staminaRemaining == geistlightScript.sprintDuration) {
             geistlightScript.isTired = false;
             if(hideBarWhenFull && useSprintBar) { geistlightUICanvasGroup.alpha -= 3 * Time.deltaTime; }
             if(useSprintBar) geistlightUIMeterBar.color = geistlightBarDefaultColor;
         }
-        
+        */
     }
 
     public void StaminaUIUpdate() {

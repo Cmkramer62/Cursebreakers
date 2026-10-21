@@ -23,6 +23,10 @@ public class MouseLook : MonoBehaviour {
 
 
     public float LookYaw => transform.eulerAngles.y;
+    public float LookPitch => Mathf.DeltaAngle(
+        0f,
+        transform.localEulerAngles.x
+    );
     public Transform visualHead;
     [SerializeField] private float maxHeadYaw = 60f;
     [SerializeField] private float headTurnSpeed = 180f;

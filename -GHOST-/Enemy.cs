@@ -139,12 +139,12 @@ public class Enemy : NetworkBehaviour {
         invisible.OnValueChanged += (_, newState) => {
             InvertVisibility(newState);
         };
-        /* Do you want the ghost to start out as invisible? If so give it some aggro charges too.
+        // Do you want the ghost to start out as invisible? If so give it some aggro charges too.
         if(IsServer) {
             invisible.Value = true;
         }
         InvertVisibility(invisible.Value);
-        */
+        
     }
 
     private void OnDestroy() {

@@ -1,31 +1,62 @@
+
+
+
+
 using UnityEngine;
 
 public class DelayFollow : MonoBehaviour {
-    public Transform target;      // The object to follow
-    [SerializeField] private float smoothTime = 0.3f; // Approximate time to reach target
-    [SerializeField] private float maxLagDistance = 2f;
+    public Transform target;
+
+    [SerializeField] private float followStrength = 8f;
+    [SerializeField] private float distanceStrength = 3f;
+    [SerializeField] private float backwardFollowStrength = 40f;
+    [SerializeField] private float damping = 5f;
+    [SerializeField] private float maxSpeed = 30f;
 
     private Vector3 _currentVelocity;
 
+    public void SetNewValues(float newFollowStrength, float newDistanceStrength, float newDamping, float newMaxSpeed, float newBackStrength) {
+        followStrength = newFollowStrength;
+        distanceStrength = newDistanceStrength;
+        damping = newDamping;
+        maxSpeed = newMaxSpeed;
+        backwardFollowStrength = newBackStrength;
+    }
     private void LateUpdate() {
-        if(target == null) return;
+        if(target == null) {
+            _currentVelocity = Vector3.zero;
+            return;
+        }
 
-        // Smoothly interpolates the position over smoothTime
-        transform.position = Vector3.SmoothDamp(
-            transform.position,
-            target.position,
-            ref _currentVelocity,
-            smoothTime
+        float deltaTime = Time.deltaTime;
+        if(deltaTime <= 0f) return;
+
+        Vector3 offset = target.position - transform.position;
+
+        // Express the offset in the target's local space.
+        Vector3 localOffset = target.InverseTransformDirection(offset);
+
+        // Normal follow force, with additional strength at greater distances.
+        float strength = followStrength + offset.magnitude * distanceStrength;
+
+        Vector3 acceleration = offset * strength;
+
+        // Add extra force only when the glyph is behind the target.
+        if(localOffset.z > 0f) {
+            acceleration += target.forward *
+                            (localOffset.z * backwardFollowStrength);
+        }
+
+        // Dampen existing velocity to reduce oscillation.
+        acceleration -= _currentVelocity * damping;
+
+        _currentVelocity += acceleration * deltaTime;
+
+        _currentVelocity = Vector3.ClampMagnitude(
+            _currentVelocity,
+            maxSpeed
         );
 
-        // Clamp the maximum distance behind the target.
-        Vector3 offset = transform.position - target.position;
-
-        if(offset.sqrMagnitude > maxLagDistance * maxLagDistance) {
-            transform.position = target.position + offset.normalized * maxLagDistance;
-
-            // Optional: prevent the stored velocity from causing overshoot.
-            _currentVelocity = Vector3.zero;
-        }
+        transform.position += _currentVelocity * deltaTime;
     }
 }
