@@ -33,8 +33,10 @@ public class StellaeClue : NetworkBehaviour {
 
 
     // SOUND Section
-    [SerializeField] private AudioSource source;
+    [SerializeField] private AudioSource source, sourceClueEmit;
+    [SerializeField] private AudioClip clueAppearClip;
     [SerializeField] private AudioClip[] iceFormingClips; // ice ambient sheen jingle?
+    [SerializeField] private float appearVolume = 1f, windEnergyVolume = 1f;
     public bool played = false;
     private Coroutine audioLerpingRoutine;
     public SpellStellae stellaeScript;
@@ -93,6 +95,8 @@ public class StellaeClue : NetworkBehaviour {
                 return;
 
             if(!played) {
+                sourceClueEmit.PlayOneShot(clueAppearClip, appearVolume);
+                source.volume = windEnergyVolume;
                 source.Play();
                 particles.Play();
                 played = true;
@@ -128,10 +132,10 @@ public class StellaeClue : NetworkBehaviour {
 
         if(played) {
             particles.Stop();
+            AudioController.FadeOutAudio(this, source, 1);
         }
 
         played = false;
-        //AudioController.FadeOutAudio(this, source, 1);
         float currentScale = projector.fadeFactor;
 
         float newScale = Mathf.MoveTowards(

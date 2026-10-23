@@ -20,8 +20,6 @@ public class SpellStellae : NetworkBehaviour {
 
     public GameObject flashlightUI, defaultLookPoint;
 
-    public AudioSource source;
-    public AudioClip magicSoundClip;
     public Light lightsource;
 
     public float sprintDuration, staminaRemaining, sprintRecoveryDec;
@@ -41,11 +39,17 @@ public class SpellStellae : NetworkBehaviour {
     // ============
     // Light Mode Variables
     // ============
-
     [SerializeField] private Color luxColor, stellaeColor;
     [SerializeField] private float luxLightIntensity, stellaeLightIntensity = 2.8f;
     [SerializeField] private float luxLightRange, stellaeLightRange = 11.6f;
     [SerializeField] private Material luxMaterial, stellaeMaterial;
+    private Light lightReference;
+
+    // ============
+    // Audio Variables
+    // ============
+    [SerializeField] private AudioSource sourceMainEnergy, sourceCharging, sourceOneShots;
+    [SerializeField] private AudioClip fullyChargedClip, noEnergyClip;
 
     public override void OnNetworkSpawn() {
         stellaeBeamShooting.OnValueChanged += OnFlashlightChanged;
@@ -87,6 +91,9 @@ public class SpellStellae : NetworkBehaviour {
         constraint.SetSources(sources);
         constraint.enabled = true;
         constraint.constraintActive = true;
+
+        gameObject.SetActive(false);
+
     }
 
     public override void OnNetworkDespawn() {
@@ -135,11 +142,12 @@ public class SpellStellae : NetworkBehaviour {
                 spawnedLightInstance.transform.GetChild(1).GetComponent<ParticleSystem>().Stop();
                 spawnedLightInstance.transform.GetChild(2).GetComponent<ParticleSystem>().Play();
             }
-            var mainLight = spawnedLightInstance.GetComponentInChildren<Light>();
-            mainLight.range = luxLightRange;
-            mainLight.color = luxColor;
-            mainLight.intensity = luxLightIntensity;
-            mainLight.GetComponent<MeshRenderer>().material = luxMaterial;
+            if(lightReference == null) lightReference = spawnedLightInstance.GetComponentInChildren<Light>();
+
+            lightReference.range = luxLightRange;
+            lightReference.color = luxColor;
+            lightReference.intensity = luxLightIntensity;
+            lightReference.GetComponent<MeshRenderer>().material = luxMaterial;
         }
     }
 
@@ -155,11 +163,12 @@ public class SpellStellae : NetworkBehaviour {
             spawnedLightInstance.transform.GetChild(0).gameObject.SetActive(true);
             spawnedLightInstance.transform.GetChild(1).GetComponent<ParticleSystem>().Play();
 
-            var mainLight = spawnedLightInstance.GetComponentInChildren<Light>();
-            mainLight.range = stellaeLightRange;
-            mainLight.color = stellaeColor;
-            mainLight.intensity = stellaeLightIntensity;
-            mainLight.GetComponent<MeshRenderer>().material = stellaeMaterial;
+            if(lightReference == null) lightReference = spawnedLightInstance.GetComponentInChildren<Light>();
+
+            lightReference.range = stellaeLightRange;
+            lightReference.color = stellaeColor;
+            lightReference.intensity = stellaeLightIntensity;
+            lightReference.GetComponent<MeshRenderer>().material = stellaeMaterial;
         }
     }
 
@@ -188,8 +197,8 @@ public class SpellStellae : NetworkBehaviour {
                 toolController.GeistlightAnimation(true);
             }
 
-            if(source != null) {
-                AudioController.FadeInAudio(this, source, 0.5f, 0.35f);
+            if(sourceMainEnergy != null) {
+                AudioController.FadeInAudio(this, sourceMainEnergy, 0.5f, 0.35f);
             }
         }
         else {
@@ -201,8 +210,8 @@ public class SpellStellae : NetworkBehaviour {
                 toolController.GeistlightAnimation(false);
             }
 
-            if(source != null) {
-                AudioController.FadeOutAudio(this, source, 0.5f);
+            if(sourceMainEnergy != null) {
+                AudioController.FadeOutAudio(this, sourceMainEnergy, 0.5f);
             }
         }
     }
@@ -211,16 +220,16 @@ public class SpellStellae : NetworkBehaviour {
         if(newValue) {
             stellaeAbsorbParticles.Play();
 
-           // if(source != null) {
-            //    AudioController.FadeInAudio(this, source, 0.5f, 0.35f);
-           // }
+            if(sourceCharging != null) {
+                AudioController.FadeInAudio(this, sourceCharging, 0.5f, 0.35f);
+            }
         }
         else {
             stellaeAbsorbParticles.Stop();
 
-           // if(source != null) {
-           //     AudioController.FadeOutAudio(this, source, 0.5f);
-           // }
+            if(sourceCharging != null) {
+                AudioController.FadeOutAudio(this, sourceCharging, 0.5f);
+            }
         }
     }
 
@@ -231,6 +240,11 @@ public class SpellStellae : NetworkBehaviour {
     }
 
     private void Update() {
+
+        // We don't start charging if entering a clue with full charge. But if the player expends, while inside, this catches that and charges.
+        if(!stellaeCharging.Value && stellaeBeamShooting.Value && collidersInside.Count > 0 && staminaRemaining != sprintDuration)
+            StartCoroutine(StellaeSuckRoutine());
+
         if(!IsOwner) {
             return;
         }
@@ -243,7 +257,33 @@ public class SpellStellae : NetworkBehaviour {
         // Turn off when F is released or the player becomes tired.
         else if( (Input.GetKeyUp(KeyCode.F) && stellaeBeamShooting.Value) || (isTired && stellaeBeamShooting.Value) ) {
             SetFlashlightServerRpc(false);
+            if(isTired && stellaeBeamShooting.Value) {
+                PlayOutOfEnergyServerRpc();
+            }
         }
+        else if(Input.GetKeyDown(KeyCode.F) && isTired && !stellaeBeamShooting.Value) {
+            PlayOutOfEnergyServerRpc();
+        }
+    }
+
+    [ServerRpc]
+    private void PlayOutOfEnergyServerRpc() {
+        PlayOutOfEnergyClientRpc();
+    }
+
+    [ClientRpc]
+    private void PlayOutOfEnergyClientRpc() {
+        if(!sourceOneShots.isPlaying) sourceOneShots.PlayOneShot(noEnergyClip);
+    }
+
+    [ServerRpc]
+    public void PlayFullEnergyServerRpc() {
+        PlayFullEnergyClientRpc();
+    }
+
+    [ClientRpc]
+    private void PlayFullEnergyClientRpc() {
+        if(!sourceOneShots.isPlaying) sourceOneShots.PlayOneShot(fullyChargedClip);
     }
 
     private void OnTriggerEnter(Collider other) {
@@ -256,13 +296,19 @@ public class SpellStellae : NetworkBehaviour {
             other.GetComponent<StellaeClue>().stellaeScript = this;
 
             if(collidersInside.Count > 0) {
-                StartCoroutine(StellaeSuckRoutine());
+                if(staminaRemaining != sprintDuration)
+                    StartCoroutine(StellaeSuckRoutine());
             }
         }
     }
 
     public void RemoveAtCollider(Collider other) {
         collidersInside.Remove(other);
+        other.GetComponent<StellaeClue>().PlayerWithAlgorLeft();
+
+        if(collidersInside.Count == 0) {
+            ChangeChargingServerRpc(false);
+        }
     }
 
     private IEnumerator StellaeSuckRoutine() {
@@ -278,16 +324,11 @@ public class SpellStellae : NetworkBehaviour {
 
         if(other.CompareTag("StellaeClue")) {
             RemoveAtCollider(other);
-            other.GetComponent<StellaeClue>().PlayerWithAlgorLeft();
-            
-            if(collidersInside.Count == 0) {
-                ChangeChargingServerRpc(false);
-            }
         }
     }
 
     [ServerRpc]
-    private void ChangeChargingServerRpc(bool state) {
+    public void ChangeChargingServerRpc(bool state) {
         stellaeCharging.Value = state;
     }
 }

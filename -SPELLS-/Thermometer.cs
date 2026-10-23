@@ -15,6 +15,8 @@ public class Thermometer : NetworkBehaviour {
     [SerializeField] private Renderer rend;
     [SerializeField] private Light crystalLight;
     [SerializeField] private ParticleSystem iceParticles;
+
+    [SerializeField] private Color roomTempColor, freezingColor;//= 6F0F00, 20006F ;
     private Material tempMaterial;
     public HashSet<Collider> collidersInside = new HashSet<Collider>();
 
@@ -46,11 +48,11 @@ public class Thermometer : NetworkBehaviour {
         // -20 = blue, 60 = red
         float t = Mathf.InverseLerp(-20f, 60f, level);
 
-        // 240° = blue, 360° = red
-        float hue = Mathf.Lerp(240f, 360f, t);
-        float hue01 = (hue % 360f) / 360f;
-
-        Color temperatureColor = Color.HSVToRGB(hue01, 1f, 1f);
+        Color temperatureColor = Color.Lerp(
+            freezingColor,
+            roomTempColor,
+            t
+        );
 
         // Light
         crystalLight.color = temperatureColor;

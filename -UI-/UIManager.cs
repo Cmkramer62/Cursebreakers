@@ -212,6 +212,10 @@ public class UIManager : MonoBehaviour {
             if(useSprintBar) geistlightUIMeterBar.color = geistlightBarDefaultColor;
         }
         */
+        if(geistlightScript.staminaRemaining == geistlightScript.sprintDuration && geistlightScript.stellaeCharging.Value) {
+            geistlightScript.ChangeChargingServerRpc(false);
+            geistlightScript.PlayFullEnergyServerRpc();
+        }
     }
 
     public void StaminaUIUpdate() {
