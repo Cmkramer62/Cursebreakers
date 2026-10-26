@@ -7,7 +7,17 @@ public class HolyWater : NetworkBehaviour {
 
 
     public NetworkVariable<bool> active = new NetworkVariable<bool>(false);
-    public ParticleSystem steamParticle;
+    public ParticleSystem steamParticle, sprayParticle;
+    public Animator chaliceAnimator;
+    [SerializeField] private GameObject holyWaterProjectilePrefab;
+    [SerializeField] private Transform waterSpawnPoint;
+
+    [SerializeField] private float throwForce = 8f;
+    [SerializeField] private float upwardForce = 2f;
+
+    // AUDIO
+    [SerializeField] private AudioSource source;
+    [SerializeField] private AudioClip[] waterSplashClips;
 
     public void OnEnable() {
         if(IsServer) transform.parent.parent.parent.GetComponent<ToolController>().CheckHolyWater();
@@ -39,4 +49,57 @@ public class HolyWater : NetworkBehaviour {
         else steamParticle.Stop();
     }
 
+
+    private void Update() {
+        if(!IsOwner) {
+            return;
+        }
+
+        // Activate while holding F, provided the player isn't tired.
+        if(Input.GetKeyDown(KeyCode.F)) {
+            // Splash Water
+            ThrowHolyWaterServerRpc();
+        }
+    }
+
+    [ServerRpc]
+    private void ThrowHolyWaterServerRpc() {
+        // Visuals.
+        ThrowHolyWaterClientRpc();
+
+        // Physics detection.
+        ThrowHolyWater();
+        // How to detect if it touches a blood spot?
+    }
+
+    [ClientRpc]
+    private void ThrowHolyWaterClientRpc() {
+        // animation of chalice.
+        // sound effects.
+        // spawn water particles. They have collision enabled.
+        sprayParticle.Play();
+        chaliceAnimator.Play("Holy Water Throw Anim");
+        //source.pitch = Random.Range(.9f, 1.1f);
+        //source.PlayOneShot(waterSplashClips[Random.Range(0, waterSplashClips.Length)]);
+    }
+
+    private void ThrowHolyWater() {
+        if(!IsServer)
+            return;
+
+        GameObject projectile = Instantiate(
+            holyWaterProjectilePrefab,
+            waterSpawnPoint.position,
+            waterSpawnPoint.rotation
+        );
+
+        Rigidbody rb = projectile.GetComponent<Rigidbody>();
+
+        Vector3 launchDirection =
+            waterSpawnPoint.forward + Vector3.up * (upwardForce / throwForce);
+
+        launchDirection.Normalize();
+
+        rb.AddForce(launchDirection * throwForce, ForceMode.Impulse);
+    }
 }

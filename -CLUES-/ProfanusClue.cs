@@ -5,6 +5,7 @@ using Unity.Netcode;
 using UnityEngine.Rendering.Universal;
 
 public class ProfanusClue : NetworkBehaviour {
+    public NetworkVariable<bool> profaneBlood = new NetworkVariable<bool>(false);
 
     [HideInInspector] public ProfanusClueEmitter emitterScript;
     [HideInInspector] public int duration;
@@ -13,10 +14,12 @@ public class ProfanusClue : NetworkBehaviour {
     [SerializeField] private bool kill = false;
 
     // SOUND Section
-    [SerializeField] private AudioSource source, sourceClueEmit;
-    [SerializeField] private AudioClip clueAppearClip;
-    [SerializeField] private AudioClip[] iceFormingClips;
-    [SerializeField] private float appearVolume = 1f, windEnergyVolume = 1f;
+    [SerializeField] private AudioSource source;
+    [SerializeField] private AudioClip hissingClip;
+
+    // VFX
+    [SerializeField] private ParticleSystem steamParticles;
+
     public bool played = false;
     private Coroutine audioLerpingRoutine;
 
@@ -39,11 +42,6 @@ public class ProfanusClue : NetworkBehaviour {
         NetworkObject.Despawn();
     }
 
-    private void Awake() {
-        source.clip = iceFormingClips[Random.Range(0, iceFormingClips.Length)];
-        source.pitch = Random.Range(.85f, 1.1f);
-    }
-
     public void PlayerWithAlgorEntered() {
         playersWithAlgorPresent.Value++;
     }
@@ -52,6 +50,25 @@ public class ProfanusClue : NetworkBehaviour {
         playersWithAlgorPresent.Value--;
     }
 
-
+    public void ApplyHolyWater() {
+        if(profaneBlood.Value) {
+            Debug.Log("HOLY REACT.");
+            ApplyHolyEffectsServerRpc();
+        }
+        else {
+            Debug.Log("HOLY REACT but not profane.");
+        }
+    }
    
+    [ServerRpc]
+    private void ApplyHolyEffectsServerRpc() {
+        ApplyHolyEffectsClientRpc();
+    }
+
+    [ClientRpc]
+    private void ApplyHolyEffectsClientRpc() {
+        steamParticles.Play();
+        source.pitch = Random.Range(.9f, 1.1f);
+        source.PlayOneShot(hissingClip);
+    }
 }

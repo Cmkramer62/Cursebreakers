@@ -62,7 +62,7 @@ public class GhostRandomizer : NetworkBehaviour {
     public GameObject ghostGeistParticles;
     public Bell bellScript;
     //public GameObject[] enviroParticles, horns;
-    [SerializeField] private GameObject algorClueEmitter, radiatioClueEmitter, stellaeClueEmitter;
+    [SerializeField] private GameObject algorClueEmitter, radiatioClueEmitter, stellaeClueEmitter, profanusClueEmitter;
     public RuntimeAnimatorController floatingController;
     public bool searchWithSound = false, materialOverride = false;
 
@@ -206,7 +206,7 @@ public class GhostRandomizer : NetworkBehaviour {
 
         // Profanus (Steaming Blood) Clue Activation
         else if(curseToEmit == (int)CursedObject.CurseType.ProfanusTrait) {
-
+            profanusClueEmitter.GetComponent<ProfanusClueEmitter>().profaneBlood = true;
         }
 
         // Evocare (???) No Clue Activation?

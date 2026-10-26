@@ -4,7 +4,11 @@ using UnityEngine;
 using Unity.Netcode;
 
 public class ProfanusClueEmitter : MonoBehaviour {
+
+
     [SerializeField] private int startDelayMin = 0, startDelayMax = 0;
+    public bool profaneBlood = false;
+    [SerializeField] private int maxOddsOfBloodBeingProfane = 3; // 3=50%, 4=75%..
 
     [Header("Blood")]
     [SerializeField] private GameObject[] footstepPrefabs;
@@ -37,6 +41,24 @@ public class ProfanusClueEmitter : MonoBehaviour {
 
     private bool initialDelayDone = false;
 
+    public void ForceProfaneBloodEmission() {
+        StartCoroutine(EmitProfaneBlood());
+    }
+
+    // Emitting the real EMF Clue. Only one on the whole map.
+    private IEnumerator EmitProfaneBlood() {
+        yield return new WaitForSeconds(Random.Range(10, 35));
+
+        RandomizeRayDirection();
+        // One Ray.
+        Vector3 rayOrigins = transform.position;
+
+        int emfClueLifetime = 9999;
+        if(Physics.Raycast(rayOrigins, transform.forward, out RaycastHit hit, raycastDistance, targetLayer)) {
+            SpawnFootstep(hit, emfClueLifetime, true);
+        }
+    }
+
     private void OnEnable() {
         StartCoroutine(EmitBlood());
     }
@@ -53,13 +75,14 @@ public class ProfanusClueEmitter : MonoBehaviour {
             Vector3 rayOrigins = TransformVariance(transform.position);
             int iceCrystalsLifetime = Random.Range(minDuration, maxDuration);
             // CHANGE TO RAYCAST IN SPHERICAL, ANY DIRECTION. Throwing holy water, so it's okay if the blood is on the ceiling.
+            bool makeProfane = profaneBlood && (Random.Range(0, maxOddsOfBloodBeingProfane) == 0);
             if(Physics.Raycast(
                 rayOrigins,
                 transform.forward,
                 out RaycastHit hit,
                 raycastDistance,
                 targetLayer)) {
-                SpawnFootstep(hit, iceCrystalsLifetime);
+                SpawnFootstep(hit, iceCrystalsLifetime, makeProfane);
             }
 
         }
@@ -82,7 +105,7 @@ public class ProfanusClueEmitter : MonoBehaviour {
         spawnedFootsteps.RemoveAt(0);
     }
 
-    private void SpawnFootstep(RaycastHit hit, int duration) {
+    private void SpawnFootstep(RaycastHit hit, int duration, bool realOne) {
         // Move the footstep high above the surface to projet normally.
         Vector3 spawnPosition = hit.point + hit.normal * surfaceOffset;
 
@@ -96,6 +119,7 @@ public class ProfanusClueEmitter : MonoBehaviour {
 
         bloodReference.GetComponent<ProfanusClue>().duration = duration;
         bloodReference.GetComponent<ProfanusClue>().emitterScript = this;
+        bloodReference.GetComponent<ProfanusClue>().profaneBlood.Value = realOne;
         bloodReference.GetComponent<NetworkObject>().Spawn();
 
         spawnedFootsteps.Add(bloodReference);
