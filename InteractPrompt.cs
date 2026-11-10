@@ -74,3 +74,4 @@ public class InteractPrompt : MonoBehaviour {
 
     }
 }
+

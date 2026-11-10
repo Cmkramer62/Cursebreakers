@@ -23,6 +23,7 @@ public class GroundChecker : MonoBehaviour {
     public bool afterlife = false;
 
     public AudioSource windSource;
+    public AudioClip landSound;
     public AudioClip[] crashingSounds;
     public float minimumAirTimeForAudio = 2f, crashTimeMultiplier = 1f;
     private float airTime = 0f;
@@ -30,6 +31,7 @@ public class GroundChecker : MonoBehaviour {
     private bool hasCheckedGround;
     public Vector3 GroundNormal { get; private set; } = Vector3.up;
     private PlayerMovement movementScript;
+    private PlayerSoundsManager playerSoundsManager;
 
     /*
      * Goal is to check the ground beneath the user.
@@ -44,6 +46,7 @@ public class GroundChecker : MonoBehaviour {
        // }
 
         movementScript = transform.parent.GetComponent<PlayerMovement>();
+        playerSoundsManager = transform.parent.GetComponentInParent<PlayerSoundsManager>();
     }
 
     private AudioClip GetRandomClip(AudioClip[] footstepList) {
@@ -102,7 +105,7 @@ public class GroundChecker : MonoBehaviour {
         // AIRBORNE SFX
         // ==========================================
 
-        if(!isGrounded && !movementScript.isWallSticking) {
+        if(!isGrounded && !movementScript.isWallSticking && !movementScript.isLedgeHanging) {
             airTime += Time.deltaTime;
             maximumFallSpeed = Mathf.Max(maximumFallSpeed, -movementScript.GetCurrentVelocity().y);
 
@@ -111,6 +114,14 @@ public class GroundChecker : MonoBehaviour {
                 float windLerp = Mathf.InverseLerp(minimumAirTimeForAudio, 4f, airTime);
                 windSource.volume = Mathf.Lerp(0f, 2f, windLerp);
             }
+        }
+        else if(!justLanded) {
+            // Reset wind
+            windSource.volume = 0f;
+
+            // Reset airtime
+            airTime = 0f;
+            maximumFallSpeed = 0f;
         }
 
 
@@ -132,6 +143,8 @@ public class GroundChecker : MonoBehaviour {
                 playerAnimator.SetInteger("FallImpact", 0);
             }
 
+            playerSoundsManager.PlaySound(PlayerSoundsManager.PlayerSound.LandGrunt);
+
             // ==========================================
             // CRASH SOUND
             // ==========================================
@@ -150,6 +163,9 @@ public class GroundChecker : MonoBehaviour {
                     crashingSounds[crashIndex],
                     crashVolume
                 );
+            }
+            else if(airTime > minimumAirTimeForAudio / 2 && crashingSounds.Length > 0) {
+                footSource.PlayOneShot(landSound, 1);
             }
 
             PlayerHandler cameraOwner = transform.parent.parent.GetComponent<PlayerHandler>();
@@ -205,3 +221,4 @@ public class GroundChecker : MonoBehaviour {
         else return tileStepClips; // This default can be different for each level.
     }
 }
+

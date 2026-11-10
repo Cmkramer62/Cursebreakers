@@ -16,6 +16,7 @@ public class CameraFollow : MonoBehaviour {
     }
 
     private class ActiveImpulse {
+        public ImpulseProfile profile;
         public Vector3 position;
         public Vector3 rotation;
         public float duration;
@@ -52,6 +53,7 @@ public class CameraFollow : MonoBehaviour {
     [SerializeField, Min(0f)] private float landingSpeedForFullStrength = 14f;
     [SerializeField, Range(0f, 1f)] private float minimumLandingStrength = 0.18f;
     [SerializeField, Min(0f)] private float cameraShakeScale = 1f;
+    private float settingsCameraShakeScale = 1f;
 
     [Header("Earthquake")]
     [SerializeField, Min(0f)] private float earthquakePosition = 0.045f;
@@ -72,11 +74,17 @@ public class CameraFollow : MonoBehaviour {
         target = newTarget;
     }
 
+    /// <summary>Applies the player comfort setting, where 1 preserves authored shake and 0 disables it.</summary>
+    public void SetSettingsCameraShakeScale(float scale) {
+        settingsCameraShakeScale = Mathf.Clamp01(scale);
+    }
+
     /// <summary>Adds a camera-local impulse. Repeated events stack and decay independently.</summary>
     public void AddImpulse(ImpulseProfile profile, float strength = 1f) {
         if(profile == null || strength <= 0f || cameraShakeScale <= 0f) return;
 
         activeImpulses.Add(new ActiveImpulse {
+            profile = profile,
             position = profile.position * strength * cameraShakeScale,
             rotation = profile.rotation * strength * cameraShakeScale,
             duration = Mathf.Max(0.05f, profile.duration),
@@ -100,6 +108,16 @@ public class CameraFollow : MonoBehaviour {
 
     public void PlayWallGrabFrontImpulse() {
         AddImpulse(wallGrabFrontImpulse);
+    }
+
+    /// <summary>Removes any wall-grab camera motion still playing when a ledge hang begins.</summary>
+    public void CancelWallGrabImpulses() {
+        for(int i = activeImpulses.Count - 1; i >= 0; i--) {
+            ImpulseProfile profile = activeImpulses[i].profile;
+            if(profile == wallGrabFrontImpulse || profile == wallGrabLeftImpulse || profile == wallGrabRightImpulse) {
+                activeImpulses.RemoveAt(i);
+            }
+        }
     }
 
     /// <summary>Scales the landing response from a soft touch-down to a hard fall.</summary>
@@ -172,6 +190,9 @@ public class CameraFollow : MonoBehaviour {
             ) * earthquakeRotation * earthquakeIntensity * cameraShakeScale;
         }
 
+        localPositionOffset *= settingsCameraShakeScale;
+        localRotationOffset *= settingsCameraShakeScale;
+
         // Apply after the follow pose so camera shake never accumulates or fights camera tracking.
         transform.position += transform.right * localPositionOffset.x
             + transform.up * localPositionOffset.y
@@ -184,3 +205,4 @@ public class CameraFollow : MonoBehaviour {
         }
     }
 }
+

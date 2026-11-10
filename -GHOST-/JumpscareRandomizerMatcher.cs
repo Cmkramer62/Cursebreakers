@@ -196,3 +196,4 @@ public class JumpscareRandomizerMatcher : MonoBehaviour {
     }
     #endregion
 }
+

@@ -151,7 +151,7 @@ public class CursedObject : NetworkBehaviour {
                     //toolControllerScript.defaultEMF.Value = emfLevel;
                     toolControllerScript.amountOfRadiatioDetected.Value++;
                 }
-                else if(toolControllerScript.defaultEMF.Value != 7) {
+                else if(toolControllerScript.realEMFLevel.Value != 7) {
                     //toolControllerScript.defaultEMF.Value = Random.Range(0, 6);
                 }
 
@@ -190,7 +190,7 @@ public class CursedObject : NetworkBehaviour {
                     toolControllerScript.amountOfRadiatioDetected.Value--;
                 }
                 // If this isn't an EMF and they're not currently in a real EMF, set value to 0;
-                else if(toolControllerScript.defaultEMF.Value != 7) {
+                else if(toolControllerScript.realEMFLevel.Value != 7) {
                     //toolControllerScript.defaultEMF.Value = 0;
                 }
 
@@ -244,3 +244,4 @@ public class CursedObject : NetworkBehaviour {
     }
 
 }
+

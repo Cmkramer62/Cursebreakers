@@ -94,12 +94,12 @@ public class Tutorial : MonoBehaviour {
             currentState = TutorialState.Crouch;
             StartNextTutorial();
         }
-        else if(currentState == TutorialState.Crouch && Input.GetKeyDown(KeyCode.LeftControl)) {
+        else if(currentState == TutorialState.Crouch && KeyBindingManager.GetKeyDown(GameAction.Crouch)) {
             Increment();
             currentState = TutorialState.Jump;
             StartNextTutorial();
         }
-        else if(currentState == TutorialState.Jump && Input.GetKeyDown(KeyCode.Space)) {
+        else if(currentState == TutorialState.Jump && KeyBindingManager.GetKeyDown(GameAction.Jump)) {
             IncrementDoor();
             StartNextTutorial();
             index++; // We are doing one more because of the door hint.
@@ -120,13 +120,13 @@ public class Tutorial : MonoBehaviour {
             }
         }
         else if(currentState == TutorialState.TabTraitsAndClues && finishedPings) {
-            if(Input.GetKeyDown(KeyCode.Tab)) checkedInventory = true;
-            if(checkedInventory == true && Input.GetKeyDown(KeyCode.Tab)) {
+            if(KeyBindingManager.GetKeyDown(GameAction.Pause)) checkedInventory = true;
+            if(checkedInventory == true && KeyBindingManager.GetKeyDown(GameAction.Pause)) {
                 IncrementDoor();
                 currentState = TutorialState.TabTools;
             }
         }
-        else if(currentState == TutorialState.TabTools && checkedInventory == true && Input.GetKeyDown(KeyCode.Tab) && tabInitial) {
+        else if(currentState == TutorialState.TabTools && checkedInventory == true && KeyBindingManager.GetKeyDown(GameAction.Pause) && tabInitial) {
             IncrementDoor();
             currentState = TutorialState.Tools;
         }
@@ -153,3 +153,4 @@ public class Tutorial : MonoBehaviour {
     }
 
 }
+

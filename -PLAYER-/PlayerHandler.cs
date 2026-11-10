@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Unity.Netcode;
+using UnityEngine.SceneManagement;
 
 public class PlayerHandler : NetworkBehaviour {
 
@@ -26,6 +27,7 @@ public class PlayerHandler : NetworkBehaviour {
     [HideInInspector] public bool spawnParticlesPlaying = false;
     private float spawnParticlesStartTime;
     [SerializeField] private float spawnParticlesGracePeriod = 0.15f;
+    private Coroutine sceneBindingRoutine;
 
     public override void OnNetworkSpawn() {
         // Whether owner or not, turn on the spawning particles (beam of light).
@@ -38,8 +40,26 @@ public class PlayerHandler : NetworkBehaviour {
         }
         Debug.Log("Player OnNetworkSpawn");
 
-        ghostScript = GameObject.FindAnyObjectByType<Enemy>();
-        StartCoroutine(FindCamera());
+        SceneManager.sceneLoaded += OnSceneLoaded;
+        BeginSceneBinding(SceneManager.GetActiveScene());
+    }
+
+    public override void OnNetworkDespawn() {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+        if(sceneBindingRoutine != null) {
+            StopCoroutine(sceneBindingRoutine);
+            sceneBindingRoutine = null;
+        }
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode) {
+        if(IsOwner) BeginSceneBinding(scene);
+    }
+
+    private void BeginSceneBinding(Scene scene) {
+        if(sceneBindingRoutine != null) StopCoroutine(sceneBindingRoutine);
+        cameraReference = null;
+        sceneBindingRoutine = StartCoroutine(BindSceneReferences(scene));
     }
 
     public void SetSpawnPosition(Vector3 position) {
@@ -93,11 +113,30 @@ public class PlayerHandler : NetworkBehaviour {
 
 
 
-    private IEnumerator FindCamera() {
-        while(cameraReference == null) {
-            cameraReference = FindObjectOfType<CameraFollow>();
-            yield return null;
+    private IEnumerator BindSceneReferences(Scene scene) {
+        CameraFollow sceneCamera = null;
+        float elapsed = 0f;
+        while(sceneCamera == null && scene.IsValid() && scene.isLoaded && elapsed < 5f) {
+            CameraFollow[] cameras = FindObjectsOfType<CameraFollow>(true);
+            foreach(CameraFollow candidate in cameras) {
+                if(candidate.gameObject.scene == scene) {
+                    sceneCamera = candidate;
+                    break;
+                }
+            }
+            if(sceneCamera == null) {
+                elapsed += Time.unscaledDeltaTime;
+                yield return null;
+            }
         }
+
+        if(sceneCamera == null) {
+            Debug.LogWarning($"No CameraFollow found in loaded scene '{scene.name}' for local player.");
+            sceneBindingRoutine = null;
+            yield break;
+        }
+
+        cameraReference = sceneCamera;
 
         cameraReference.SetTarget(cameraHolder);
         cameraReference.GetComponent<PingCreator>().playerScript = playerMovementScript;
@@ -113,9 +152,27 @@ public class PlayerHandler : NetworkBehaviour {
         rotationMatchingScriptCamhead.goFollow = cameraReference.gameObject;
         rotationMatchingScriptToolbelt.goFollow = cameraReference.gameObject;
 
+        ghostScript = null;
+        elapsed = 0f;
+        string hubSceneName = MultiplayerManager.Instance != null ? MultiplayerManager.Instance.hubSceneName : "Hub 1";
+        while(scene.name != hubSceneName && ghostScript == null && elapsed < 5f && scene.IsValid() && scene.isLoaded) {
+            Enemy[] enemies = FindObjectsOfType<Enemy>(true);
+            foreach(Enemy candidate in enemies) {
+                if(candidate.gameObject.scene == scene) {
+                    ghostScript = candidate;
+                    break;
+                }
+            }
+            if(ghostScript == null) {
+                elapsed += Time.unscaledDeltaTime;
+                yield return null;
+            }
+        }
+
         if(ghostScript != null) {
             playerMovementScript.enemyVisionScript = ghostScript.GetComponent<ConeLOSDetector>();
-            playerMovementScript.enemyVisionScript.AddTarget(playerMovementScript.transform);
+            if(playerMovementScript.enemyVisionScript != null)
+                playerMovementScript.enemyVisionScript.AddTarget(playerMovementScript.transform);
             ghostScript.GetComponent<GhostRandomizer>().deathScript = GetComponent<Death>();
         }
         Cursor.lockState = CursorLockMode.Locked;
@@ -128,5 +185,7 @@ public class PlayerHandler : NetworkBehaviour {
         }
 
         flashlightScript.raycastScript = cameraReference.GetComponent<InteractRaycast>();
+        sceneBindingRoutine = null;
     }
 }
+

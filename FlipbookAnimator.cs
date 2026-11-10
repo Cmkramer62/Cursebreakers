@@ -37,3 +37,4 @@ public class FlipbookAnimator : MonoBehaviour {
         CancelInvoke();
     }
 }
+

@@ -60,3 +60,4 @@ public class FulgorShadow : MonoBehaviour {
         onCooldown = false;
     }
 }
+

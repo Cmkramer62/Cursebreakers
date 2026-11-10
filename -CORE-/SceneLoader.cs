@@ -15,7 +15,7 @@ public class SceneLoader : MonoBehaviour {
     public Slider slider;
     private AudioClip clip;
     public int levelNumber = -1;
-    public Inventory inventoryScript;
+    //public Inventory inventoryScript;
     public AudioSource[] sourcesToFade;
     public SaveDataHandler saveSystem;
     public AudioMixer masterMixer;
@@ -46,7 +46,7 @@ public class SceneLoader : MonoBehaviour {
     public void LoadScene(int sceneNumber) {
         //if(sceneNumber == 3) saveSystem.SetLevel(0);
         StartLoadingScreen();
-        inventoryScript.SaveData();
+        //inventoryScript.SaveData();
         PlayerPrefs.SetInt("levelNumber", sceneNumber);
         StartCoroutine(LoadAsynchronously(sceneNumber));
     }
@@ -131,3 +131,4 @@ public class SceneLoader : MonoBehaviour {
     }
 
 }
+

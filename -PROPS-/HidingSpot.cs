@@ -34,7 +34,7 @@ public class HidingSpot : NetworkBehaviour {
     void Update() {
         // if the your id is equal to the stored id, then we listen to you.
         if(MatchesPlayer(NetworkManager.Singleton.LocalClientId)
-            && !hidingAnimOnCooldown && hidingHere.Value && Input.GetKeyDown(KeyCode.E)) {
+            && !hidingAnimOnCooldown && hidingHere.Value && KeyBindingManager.GetKeyDown(GameAction.Interact)) {
            
             Unhide();
         }
@@ -168,3 +168,4 @@ public class HidingSpot : NetworkBehaviour {
     #endregion
 
 }
+

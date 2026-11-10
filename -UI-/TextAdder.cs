@@ -52,3 +52,4 @@ public class TextAdder : MonoBehaviour {
         text.text = "";
     }
 }
+

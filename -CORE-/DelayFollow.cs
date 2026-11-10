@@ -60,3 +60,4 @@ public class DelayFollow : MonoBehaviour {
         transform.position += _currentVelocity * deltaTime;
     }
 }
+

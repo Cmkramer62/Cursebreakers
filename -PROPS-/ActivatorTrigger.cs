@@ -57,3 +57,4 @@ public class ActivatorTrigger : MonoBehaviour {
         return false;
     }
 }
+

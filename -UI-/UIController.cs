@@ -47,3 +47,4 @@ public class UIController : MonoBehaviour {
         // Update lives UI
     }
 }
+

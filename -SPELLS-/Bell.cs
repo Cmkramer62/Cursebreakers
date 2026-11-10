@@ -17,6 +17,7 @@ public class Bell : NetworkBehaviour {
     private Enemy ghostScript;
     public bool ghostSearchWithSound = false;
     public int ghostSoundOdds = 3;
+    public HashSet<Collider> collidersInside = new HashSet<Collider>();
 
     public override void OnNetworkSpawn() {
         gameObject.SetActive(false);
@@ -24,12 +25,16 @@ public class Bell : NetworkBehaviour {
 
     private void OnDisable() {
         bellOnCooldown = false;
+
+        if(IsOwner)
+            collidersInside.Clear();
+
     }
 
     void Update() {
         if(!IsOwner) return;
 
-        if(Input.GetKeyDown(KeyCode.F)) {
+        if(KeyBindingManager.GetKeyDown(GameAction.UseAbility)) {
             RingBellServerRpc();
         }
     }
@@ -52,6 +57,10 @@ public class Bell : NetworkBehaviour {
 
         if(ghostScript != null && ghostSearchWithSound && !ghostScript.invisible.Value)
             ghostScript.walkPoint = gameObject.transform.parent.parent.parent.transform.GetChild(1).transform.position;
+
+        foreach(Collider clue in collidersInside) {
+            clue.GetComponent<EvocareClue>().TriggerWhisper();
+        }
     }
 
     [ClientRpc]
@@ -68,6 +77,29 @@ public class Bell : NetworkBehaviour {
         transform.parent.parent.parent.GetComponent<ToolController>().BellAnimation();
     }
 
+    private void OnTriggerEnter(Collider other) {
+        if(!IsOwner)
+            return;
+
+        if(other.CompareTag("EvocareClue")) {
+            collidersInside.Add(other);
+            other.GetComponent<EvocareClue>().bellScript = this;
+        }
+    }
+
+    private void OnTriggerExit(Collider other) {
+        if(!IsOwner)
+            return;
+
+        if(other.CompareTag("EvocareClue")) {
+            RemoveAlgorClue(other);
+        }
+    }
+
+    public void RemoveAlgorClue(Collider other) {
+        collidersInside.Remove(other);
+    }
+
     private IEnumerator BellCooldownTimer() {
         yield return new WaitForSeconds(bellCooldownTime);
         bellOnCooldown = false;
@@ -79,3 +111,4 @@ public class Bell : NetworkBehaviour {
         }
     }
 }
+

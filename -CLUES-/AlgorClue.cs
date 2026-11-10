@@ -43,10 +43,14 @@ public class AlgorClue : NetworkBehaviour {
     private Coroutine audioLerpingRoutine;
     [HideInInspector] public Thermometer thermometerScript;
 
+    public NetworkVariable<bool> realCrystal = new NetworkVariable<bool>();
+    public NetworkVariable<int> fakeTemp = new NetworkVariable<int>(0);
+
     // Start is called before the first frame update
     public override void OnNetworkSpawn() {
         if(IsServer) {
             StartCoroutine(LifecycleTimer());
+            fakeTemp.Value = Random.Range(-20, 10);
         }
     }
 
@@ -98,6 +102,9 @@ public class AlgorClue : NetworkBehaviour {
     private void Update() {
         charging = playersWithAlgorPresent.Value > 0;
 
+        if(!realCrystal.Value)
+            return;
+
         if(charging && !kill) {
             // Build charge on the server.
             if(IsServer && charge.Value < MaxCharge) {
@@ -123,7 +130,7 @@ public class AlgorClue : NetworkBehaviour {
             if(IsServer && charge.Value > 0) {
                 charge.Value = Mathf.Max(charge.Value - chargeRate * Time.deltaTime, 0);
             }
-            // No longer charging — shrink back to zero.
+            // No longer charging ï¿½ shrink back to zero.
             ShrinkGrowth();
         }
     }
@@ -199,3 +206,4 @@ public class AlgorClue : NetworkBehaviour {
     // if tracker is 0 or lower, hide.
     // Even if particle is playing while revealed, it will Hide(stop particle) and die, as it should.
 }
+

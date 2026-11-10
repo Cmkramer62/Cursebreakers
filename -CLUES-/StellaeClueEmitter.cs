@@ -136,3 +136,4 @@ public class StellaeClueEmitter : MonoBehaviour {
         transform.rotation = Quaternion.LookRotation(direction);
     }
 }
+

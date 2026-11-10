@@ -35,6 +35,7 @@ public class AlgorClueEmitter : MonoBehaviour {
     [SerializeField] private List<GameObject> spawnedCrystals = new List<GameObject>();
 
     private bool initialDelayDone = false;
+    public bool releaseRealCrystals = false;
 
     private void OnEnable() {
         StartCoroutine(EmitCrystals());
@@ -102,6 +103,7 @@ public class AlgorClueEmitter : MonoBehaviour {
         var crystalReference = Instantiate(crystalPrefabs[prefabIndex], spawnPosition, spawnRotation);
         prefabIndex = (prefabIndex + 1) % crystalPrefabs.Length;
 
+        crystalReference.GetComponent<AlgorClue>().realCrystal.Value = releaseRealCrystals;
         crystalReference.GetComponent<AlgorClue>().duration = duration;
         crystalReference.GetComponent<AlgorClue>().emitterScript = this;
         crystalReference.GetComponent<NetworkObject>().Spawn();

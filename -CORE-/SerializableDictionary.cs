@@ -35,3 +35,4 @@ public class SerializableDictionary<TKey, TValue> : Dictionary<TKey, TValue>, IS
     }
 
 }
+

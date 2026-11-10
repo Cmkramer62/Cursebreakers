@@ -107,9 +107,9 @@ public class RadiatioClueEmitter : MonoBehaviour {
         else if(realEMFCLUE == null) {
             // The realEMFClue has not spawned yet or does not exist for this game session.
             // In which case, the clues are leading to the ghostEmitter/ghost.
-            float distance = Vector3.Distance(spawnPosition, transform.position);
-            int level = 8 - Mathf.Clamp(Mathf.CeilToInt((distance / maxDistance) * 7), 1, 7);
-            EMFclueReference.GetComponent<RadiatioClue>().emfLevel.Value = level;
+           // float distance = Vector3.Distance(spawnPosition, transform.position);
+            //int level = 8 - Mathf.Clamp(Mathf.CeilToInt((distance / maxDistance) * 7), 1, 7);
+            EMFclueReference.GetComponent<RadiatioClue>().emfLevel.Value = Random.Range(0, 8);
         }
         else {
             // The realEMFClue has been spawned. The clues are leading to the real one.
@@ -140,3 +140,4 @@ public class RadiatioClueEmitter : MonoBehaviour {
         transform.rotation = Quaternion.LookRotation(direction);
     }
 }
+

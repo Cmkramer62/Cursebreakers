@@ -5,6 +5,7 @@ using UnityEngine.UI;
 using UnityEngine.Audio;
 using TMPro;
 using Unity.Netcode;
+using UnityEngine.SceneManagement;
 
 public class PlayerMovement : NetworkBehaviour {
     
@@ -31,11 +32,6 @@ public class PlayerMovement : NetworkBehaviour {
     [SerializeField] Animator playerAnimator, armsAnimator;
 
     public ConeLOSDetector enemyVisionScript;
-    #region SOUND VARIABLES
-    public AudioSource source;
-    public AudioClip breathClip, crouchClip, ghostJump, slideClip;
-    public AudioClip[] jumpClip;
-    #endregion
 
     public LightFlickerNonNetworked lanternReference;
 
@@ -73,6 +69,31 @@ public class PlayerMovement : NetworkBehaviour {
     private LayerMask wallMask;
 
     // =================
+    // LEDGE GRAB VARIABLES
+    // =================
+    [SerializeField] private LayerMask ledgeMask;
+    [SerializeField] private float ledgeCheckDistance = 0.65f;
+    [SerializeField] private float ledgeDetectionHeight = 1.25f;
+    [SerializeField] private float minimumLedgeHeight = 0.95f;
+    [SerializeField] private float maximumLedgeHeight = 1.65f;
+    [SerializeField] private float ledgeHangDrop = 1.35f;
+    [SerializeField] private float ledgeHangOffset = 0.08f;
+    [SerializeField] private float ledgeClimbDuration = 0.7f;
+    [SerializeField] private float ledgeClimbForwardOffset = 0.2f;
+    [SerializeField] private float ledgeClimbHeightOffset = 0.35f;
+    [HideInInspector] public bool isLedgeHanging;
+    private bool isLedgeClimbing;
+    private Collider currentLedgeCollider;
+    private Vector3 currentLedgeNormal;
+    private Collider ledgeRegrabBlockedCollider;
+    private Collider ignoredLedgeCollider;
+    private Vector3 ledgeHangCenter;
+    private Vector3 ledgeClimbLiftCenter;
+    private Vector3 ledgeClimbTargetCenter;
+    private float ledgeClimbTimer;
+    private bool ignoredLedgeCollisionDuringClimb;
+
+    // =================
     // SLIDE VARIABLES
     // =================
     [SerializeField] private bool slideConsumesAllStamina = false;
@@ -96,7 +117,6 @@ public class PlayerMovement : NetworkBehaviour {
     private float targetControllerHeight;
     private Vector3 standingControllerCenter;
     private bool standUpRequested;
-    public KeyCode crouchKey = KeyCode.LeftControl;
 
 
     // =================
@@ -110,7 +130,7 @@ public class PlayerMovement : NetworkBehaviour {
     private Transform cachedTransform;
     private Coroutine airRoutine;
     private float originalSpeed, crouchingSpeed, sprintActualMultiplier = 1f, sprintMultiplier = 3f;
-    
+    public PlayerSoundsManager playerSoundsManager;
 
     private void Awake() {
 
@@ -125,6 +145,8 @@ public class PlayerMovement : NetworkBehaviour {
         wallMask = 0;
         if(wallLayerIndex >= 0) wallMask |= 1 << wallLayerIndex;
         if(groundLayerIndex >= 0) wallMask |= 1 << groundLayerIndex;
+
+        playerSoundsManager = GetComponentInParent<PlayerSoundsManager>();
     }
 
     private void Start() {
@@ -144,21 +166,30 @@ public class PlayerMovement : NetworkBehaviour {
 
     public override void OnNetworkSpawn() {
         if(!IsOwner) return;
-
-        StartCoroutine(FindUIManager());
+        SceneManager.sceneLoaded += OnSceneLoaded;
+        StartCoroutine(RegisterWithSceneUI(SceneManager.GetActiveScene()));
     }
 
-    // The OnNetworkSpawn occurs before the scene has fully loaded. So we wait until it has, and find what we need.
-    private IEnumerator FindUIManager() {
-        var uiManagerInstance = UIManager.Instance;
-        while(uiManagerInstance == null) {
-            uiManagerInstance = UIManager.Instance;
-            yield return null;
-        }
+    public override void OnNetworkDespawn() {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
 
-        // Pass this self to the client-side UI Manager so it can handle the UI of this.
-        UIManager.Instance.RegisterPlayer(this);
-        UIManager.Instance.RegisterToolController(transform.parent.GetComponent<ToolController>());
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode) {
+        if(IsOwner) StartCoroutine(RegisterWithSceneUI(scene));
+    }
+
+    private IEnumerator RegisterWithSceneUI(Scene scene) {
+        UIManager uiManager = null;
+        while(uiManager == null && scene.IsValid() && scene.isLoaded) {
+            foreach(UIManager candidate in FindObjectsOfType<UIManager>(true)) {
+                if(candidate.gameObject.scene == scene) { uiManager = candidate; break; }
+            }
+            if(uiManager == null) yield return null;
+        }
+        if(uiManager == null) yield break;
+
+        uiManager.RegisterPlayer(this);
+        uiManager.RegisterToolController(transform.parent.GetComponent<ToolController>());
 
         feathersVFXA.Stop();
         feathersVFXB.Stop();
@@ -205,7 +236,7 @@ public class PlayerMovement : NetworkBehaviour {
         standUpRequested = false;
         if(affectSpeed) speed = crouched ? crouchingSpeed : originalSpeed;
         SetControllerCrouched(crouched);
-        CrouchEffectsServerRpc();
+        playerSoundsManager.PlaySound(PlayerSoundsManager.PlayerSound.CrouchSFX);
     }
 
     private bool HasStandingClearance() {
@@ -251,19 +282,9 @@ public class PlayerMovement : NetworkBehaviour {
             - Vector3.up * ((standingControllerHeight - controller.height) * 0.5f);
     }
 
-    [ServerRpc]
-    private void CrouchEffectsServerRpc() {
-        CrouchEffectsClientRpc();
-    }
-
-    [ClientRpc]
-    private void CrouchEffectsClientRpc() {
-        source.PlayOneShot(crouchClip);
-    }
-
     private void Jump() {
         verticalVelocity.y = Mathf.Sqrt( jumpHeight * -2f * afterlifeJumpAugment * gravityStrength );
-        PlayJumpEffects();
+        PlayJumpEffects(false);
     }
 
     private bool TryFindWall(out Vector3 wallNormal, out bool isSideWall, out bool isRightSide) {
@@ -314,6 +335,233 @@ public class PlayerMovement : NetworkBehaviour {
         return wallNormal != Vector3.zero;
     }
 
+    private bool TryFindLedge(out RaycastHit ledgeHit, out float ledgeTopHeight) {
+        ledgeHit = default;
+        ledgeTopHeight = 0f;
+
+        Vector3 forward = Vector3.ProjectOnPlane(cachedTransform.forward, Vector3.up).normalized;
+        if(forward.sqrMagnitude < 0.001f || ledgeMask.value == 0) return false;
+
+        // Do not immediately catch the same marker again after climbing or releasing.
+        // Clear this block after the player moves beyond the detector's reach.
+        bool blockRecentLedge = false;
+        if(ledgeRegrabBlockedCollider != null) {
+            Vector3 closestPoint = ledgeRegrabBlockedCollider.ClosestPoint(controller.bounds.center);
+            Vector3 horizontalOffset = Vector3.ProjectOnPlane(controller.bounds.center - closestPoint, Vector3.up);
+            float clearDistance = ledgeCheckDistance + controller.radius * 2f;
+            blockRecentLedge = horizontalOffset.magnitude <= clearDistance;
+            if(!blockRecentLedge) {
+                SetLedgeMarkerCollisionIgnored(false);
+                ledgeRegrabBlockedCollider = null;
+            }
+        }
+
+        Bounds bounds = controller.bounds;
+        Vector3 castOrigin = new Vector3(bounds.center.x, bounds.min.y + ledgeDetectionHeight, bounds.center.z);
+        if(!Physics.SphereCast(castOrigin, wallCastRadius, forward, out ledgeHit, ledgeCheckDistance, ledgeMask, QueryTriggerInteraction.Collide)) return false;
+        if(blockRecentLedge && ledgeHit.collider == ledgeRegrabBlockedCollider) return false;
+
+        // Marker colliders should face the approach direction and have their top aligned with the walkable ledge surface.
+        if(Vector3.Dot(ledgeHit.normal, -forward) < 0.5f) return false;
+        ledgeTopHeight = ledgeHit.collider.bounds.max.y;
+        float heightAboveFeet = ledgeTopHeight - bounds.min.y;
+        return heightAboveFeet >= minimumLedgeHeight && heightAboveFeet <= maximumLedgeHeight;
+    }
+
+    private void BeginLedgeHang(RaycastHit ledgeHit, float ledgeTopHeight) {
+        currentLedgeCollider = ledgeHit.collider;
+        currentLedgeNormal = ledgeHit.normal;
+        Vector3 forward = Vector3.ProjectOnPlane(cachedTransform.forward, Vector3.up).normalized;
+        Vector3 outward = Vector3.ProjectOnPlane(ledgeHit.normal, Vector3.up).normalized;
+        float scaledRadius = controller.radius * Mathf.Max(controller.transform.lossyScale.x, controller.transform.lossyScale.z);
+
+        ledgeHangCenter = ledgeHit.point + outward * (scaledRadius + ledgeHangOffset);
+        ledgeHangCenter.y = ledgeTopHeight - ledgeHangDrop + controller.height * controller.transform.lossyScale.y * 0.5f;
+        ledgeClimbTargetCenter = ledgeHit.point - forward * (scaledRadius + ledgeClimbForwardOffset);
+        ledgeClimbTargetCenter.y = ledgeTopHeight + controller.height * controller.transform.lossyScale.y * 0.5f + ledgeClimbHeightOffset;
+        ledgeClimbLiftCenter = ledgeHangCenter;
+        ledgeClimbLiftCenter.y = ledgeClimbTargetCenter.y;
+
+        horizontalVelocity = Vector3.zero;
+        verticalVelocity = Vector3.zero;
+        isWallSticking = false;
+        if(playerAnimator != null) {
+            playerAnimator.SetBool("WallHangFront", false);
+            playerAnimator.SetBool("WallRunningRight", false);
+            playerAnimator.SetBool("WallRunningLeft", false);
+        }
+        if(armsAnimator != null) {
+            armsAnimator.SetBool("WallHangFront", false);
+            armsAnimator.SetBool("WallRunningRight", false);
+            armsAnimator.SetBool("WallRunningLeft", false);
+        }
+        isLedgeHanging = true;
+        isLedgeClimbing = false;
+        isSprinting = false;
+        sliding = false;
+        allowedToCrouch = true;
+        slideDirection = Vector3.zero;
+        StopSlideEffectsServerRpc();
+        if(isCrouched) {
+            standUpRequested = true;
+            if(HasStandingClearance()) ApplyCrouchState(false, true);
+        }
+        controller.Move(ledgeHangCenter - controller.bounds.center);
+        SetLedgeAnimatorState(true);
+
+        playerSoundsManager.PlaySound(PlayerSoundsManager.PlayerSound.LedgeGrabSFX);
+    }
+
+    private void UpdateLedgeHang() {
+        if(currentLedgeCollider == null) {
+            ReleaseLedge();
+            return;
+        }
+
+        if(isLedgeClimbing) {
+            ledgeClimbTimer += Time.deltaTime;
+            float duration = Mathf.Max(0.01f, ledgeClimbDuration);
+            float progress = Mathf.Clamp01(ledgeClimbTimer / duration);
+            Vector3 nextCenter;
+            if(progress < 0.4f) {
+                // Lift the capsule above the ledge before moving it forward, clearing the vertical face.
+                nextCenter = Vector3.Lerp(ledgeHangCenter, ledgeClimbLiftCenter, progress / 0.4f);
+            }
+            else {
+                float forwardProgress = (progress - 0.4f) / 0.6f;
+                nextCenter = Vector3.Lerp(ledgeClimbLiftCenter, ledgeClimbTargetCenter, forwardProgress);
+            }
+            controller.Move(nextCenter - controller.bounds.center);
+
+            if(progress >= 1f) {
+                isLedgeHanging = false;
+                isLedgeClimbing = false;
+                ledgeRegrabBlockedCollider = currentLedgeCollider;
+                currentLedgeCollider = null;
+                horizontalVelocity = Vector3.zero;
+                verticalVelocity.y = -groundedStickForce;
+                SetLedgeAnimatorState(false);
+            }
+            return;
+        }
+
+        // Keep the player attached to the marker while the hanging animation plays.
+        controller.Move(ledgeHangCenter - controller.bounds.center);
+        bool dropRequested = KeyBindingManager.GetKeyDown(GameAction.Crouch) || KeyBindingManager.GetKeyUp(GameAction.Crouch)
+            || KeyBindingManager.GetKeyDown(GameAction.MoveBackward);
+        if(dropRequested) {
+            ReleaseLedge();
+            return;
+        }
+
+        if(KeyBindingManager.GetKeyDown(GameAction.Jump) && HasLedgeClimbClearance()) {
+            isLedgeClimbing = true;
+            ledgeClimbTimer = 0f;
+            SetLedgeHangingAnimation(false);
+            SetLedgeMarkerCollisionIgnored(true);
+            SetLedgeClimbTrigger();
+
+            playerSoundsManager.PlaySound(PlayerSoundsManager.PlayerSound.LedgeClimbSFX);
+        }
+    }
+
+    private bool HasLedgeClimbClearance() {
+        float scaleY = controller.transform.lossyScale.y;
+        float scaleXZ = Mathf.Max(controller.transform.lossyScale.x, controller.transform.lossyScale.z);
+        float radius = controller.radius * scaleXZ;
+        float height = Mathf.Max(standingControllerHeight * scaleY, radius * 2f);
+        float halfSegment = Mathf.Max(0f, height * 0.5f - radius);
+        Vector3 standingCenter = ledgeClimbTargetCenter - Vector3.up * ledgeClimbHeightOffset;
+        Vector3 capsuleBottom = standingCenter - controller.transform.up * halfSegment;
+        Vector3 capsuleTop = standingCenter + controller.transform.up * halfSegment;
+
+        Collider[] overlaps = Physics.OverlapCapsule(
+            capsuleBottom,
+            capsuleTop,
+            radius,
+            standClearanceMask,
+            QueryTriggerInteraction.Ignore
+        );
+
+        for(int i = 0; i < overlaps.Length; i++) {
+            Transform hitTransform = overlaps[i].transform;
+            if(hitTransform == controller.transform || hitTransform.IsChildOf(controller.transform)) continue;
+            if(overlaps[i] == currentLedgeCollider) continue;
+            return false;
+        }
+        return true;
+    }
+
+    private void SetLedgeMarkerCollisionIgnored(bool ignored) {
+        if(ignored) {
+            if(currentLedgeCollider != null && controller != null) {
+                Physics.IgnoreCollision(controller, currentLedgeCollider, true);
+                ignoredLedgeCollider = currentLedgeCollider;
+                ignoredLedgeCollisionDuringClimb = true;
+            }
+        }
+        else {
+            if(ignoredLedgeCollider != null && controller != null) {
+                Physics.IgnoreCollision(controller, ignoredLedgeCollider, false);
+            }
+            ignoredLedgeCollider = null;
+            ignoredLedgeCollisionDuringClimb = false;
+        }
+    }
+
+    private void ReleaseLedge() {
+        if(ignoredLedgeCollisionDuringClimb) SetLedgeMarkerCollisionIgnored(false);
+        ledgeRegrabBlockedCollider = currentLedgeCollider;
+        isLedgeHanging = false;
+        isLedgeClimbing = false;
+        currentLedgeCollider = null;
+        horizontalVelocity = Vector3.zero;
+        verticalVelocity.y = -wallSlideSpeed;
+        allowedToCrouch = true;
+        if(isCrouched) {
+            standUpRequested = true;
+            if(HasStandingClearance()) ApplyCrouchState(false, true);
+        }
+        SetLedgeAnimatorState(false);
+    }
+
+    private void SetLedgeHangingAnimation(bool hanging) {
+        if(playerAnimator != null) playerAnimator.SetBool("LedgeHanging", hanging);
+        if(armsAnimator != null) armsAnimator.SetBool("LedgeHanging", hanging);
+    }
+
+    private void SetLedgeAnimatorState(bool hanging) {
+        SetLedgeHangingAnimation(hanging);
+
+        PlayerHandler playerHandler = GetComponentInParent<PlayerHandler>();
+        if(hanging && playerHandler != null && playerHandler.cameraReference != null) {
+            playerHandler.cameraReference.CancelWallGrabImpulses();
+        }
+
+        MouseLook mouseLook = playerHandler != null && playerHandler.cameraReference != null
+            ? playerHandler.cameraReference.GetComponent<MouseLook>()
+            : null;
+        if(mouseLook != null) {
+            Vector3 facingDirection = hanging ? -currentLedgeNormal : Vector3.zero;
+            mouseLook.SetLedgeHangLook(hanging, facingDirection);
+        }
+    }
+
+    private void SetLedgeClimbTrigger() {
+        if(playerAnimator != null) playerAnimator.SetBool("LedgeClimb", true);
+        if(armsAnimator != null) armsAnimator.SetBool("LedgeClimb", true);
+
+        StartCoroutine(LedgeClimbDone());
+    }
+
+    private IEnumerator LedgeClimbDone() {
+        yield return new WaitForSeconds(.5f);
+        if(playerAnimator != null) playerAnimator.SetBool("LedgeClimb", false);
+        if(armsAnimator != null) armsAnimator.SetBool("LedgeClimb", false);
+
+        
+    }
+
     private void StartWallHop() {
         Vector3 outward = Vector3.ProjectOnPlane(currentWallNormal, Vector3.up).normalized;
         horizontalVelocity = outward * wallHopOutwardSpeed;
@@ -330,7 +578,7 @@ public class PlayerMovement : NetworkBehaviour {
         wallStickTimer = 0f;
 
         // Reuse the normal jump presentation without overwriting the wall-hop launch velocity.
-        PlayJumpEffects();
+        PlayJumpEffects(true);
         if(currentWallIsSide) {
             // The clip name follows the direction of travel: a hop from a right wall moves left.
             playerAnimator.ResetTrigger("Jump");
@@ -348,14 +596,23 @@ public class PlayerMovement : NetworkBehaviour {
         }
     }
 
-    private void PlayJumpEffects() {
+    private void PlayJumpEffects(bool wallJump) {
         PlayerHandler cameraOwner = transform.parent.GetComponent<PlayerHandler>();
         if(cameraOwner != null && cameraOwner.cameraReference != null) {
             cameraOwner.cameraReference.PlayJumpImpulse();
         }
 
         int spellHeldIndex = transform.parent.GetComponent<ToolController>().heldIndex.Value;
-        source.PlayOneShot(afterlife ? ghostJump : jumpClip[Random.Range(0, jumpClip.Length)]);
+        //source.PlayOneShot(afterlife ? ghostJump : jumpClip[Random.Range(0, jumpClip.Length)]);
+
+        if(afterlife) {
+            playerSoundsManager.PlaySound(PlayerSoundsManager.PlayerSound.GhostJumpSFX);
+        }
+        else {
+            playerSoundsManager.PlaySound(PlayerSoundsManager.PlayerSound.JumpSFX);
+            playerSoundsManager.PlaySound(wallJump ? PlayerSoundsManager.PlayerSound.WallJumpGrunt : PlayerSoundsManager.PlayerSound.JumpGrunt);
+        }
+
         playerAnimator.SetTrigger("Jump");
         playerAnimator.SetBool("InAirFromJump", true);
         if(spellHeldIndex == 0 || spellHeldIndex == 3 || spellHeldIndex == 4 || spellHeldIndex == 7) armsAnimator.SetTrigger("Jump");
@@ -390,6 +647,11 @@ public class PlayerMovement : NetworkBehaviour {
         isWallSticking = false;
         wallStickTimer = 0f;
         wallSlideUsedForCurrentContact = false;
+        if(ignoredLedgeCollisionDuringClimb) SetLedgeMarkerCollisionIgnored(false);
+        isLedgeHanging = false;
+        isLedgeClimbing = false;
+        currentLedgeCollider = null;
+        SetLedgeAnimatorState(false);
         StopSlideEffectsServerRpc();
 
         if(isCrouched) {
@@ -416,6 +678,18 @@ public class PlayerMovement : NetworkBehaviour {
         }
         UpdateControllerHeight();
 
+        // Handle an existing ledge hang before ordinary movement input is read.
+        // This prevents crouch/drop keys that overlap a movement binding from moving the player while attached.
+        if(isLedgeHanging) {
+            UpdateLedgeHang();
+            playerAnimator.SetFloat("Vertical", 0f);
+            playerAnimator.SetFloat("Horizontal", 0f);
+            playerAnimator.SetBool("Sprinting", false);
+            armsAnimator.SetBool("Sprinting", false);
+            playerAnimator.SetBool("Walking", false);
+            return;
+        }
+
         // =========================
         // MOVEMENT / JUMP / GRAVITY
         // =========================
@@ -423,8 +697,8 @@ public class PlayerMovement : NetworkBehaviour {
         float vert = 0f;
         // Horizontal Movement
         if(allowedToMove) {
-            horiz = Input.GetAxis("Horizontal");
-            vert = Input.GetAxis("Vertical");
+            horiz = (KeyBindingManager.GetKey(GameAction.MoveRight) ? 1f : 0f) - (KeyBindingManager.GetKey(GameAction.MoveLeft) ? 1f : 0f);
+            vert = (KeyBindingManager.GetKey(GameAction.MoveForward) ? 1f : 0f) - (KeyBindingManager.GetKey(GameAction.MoveBackward) ? 1f : 0f);
             Vector3 inputVector = cachedTransform.right * horiz + cachedTransform.forward * vert;
 
             float targetHeadHeight = isCrouched ? crouchHeight : originalHeadHeight.y;
@@ -443,28 +717,29 @@ public class PlayerMovement : NetworkBehaviour {
                 }
 
                 if(transform.parent.GetComponent<PlayerHandler>().stamina.Value <= 0) {
-                    source.PlayOneShot(breathClip);
+                    //source.PlayOneShot(breathClip);
+                   // playerSoundsManager.PlaySound(PlayerSoundsManager.PlayerSound.OutOfBreathStamina);
                 }
                 if(transform.parent.GetComponent<PlayerHandler>().stamina.Value == staminaDuration) {
                     isTired = false;
                 }
 
                 StaminaUpdate();
-                if((Input.GetKey(KeyCode.W) && groundCheckerScript.isGrounded && Input.GetKey(KeyCode.LeftShift) && !isTired && allowedToMove && !isCrouched) || sliding) {
+                if((KeyBindingManager.GetKey(GameAction.MoveForward) && groundCheckerScript.isGrounded && KeyBindingManager.GetKey(GameAction.Sprint) && !isTired && allowedToMove && !isCrouched) || sliding) {
                     isSprinting = true;
                     sprintActualMultiplier = sprintMultiplier;
                 }
-                else if((isTired || groundCheckerScript.isGrounded) || (!Input.GetKey(KeyCode.W) || !Input.GetKey(KeyCode.LeftShift))) // or is Grounded (we don't want to disable sprinting 
+                else if((isTired || groundCheckerScript.isGrounded) || (!KeyBindingManager.GetKey(GameAction.MoveForward) || !KeyBindingManager.GetKey(GameAction.Sprint))) // or is Grounded (we don't want to disable sprinting 
                 {
                     isSprinting = false;
                     sprintActualMultiplier = 1;
                 }
 
-                if(!sliding && allowedToCrouch && allowedToMove && (Input.GetKeyDown(crouchKey) || Input.GetKeyUp(crouchKey)) && !isSprinting && !afterlife) {
+                if(!sliding && allowedToCrouch && allowedToMove && (KeyBindingManager.GetKeyDown(GameAction.Crouch) || KeyBindingManager.GetKeyUp(GameAction.Crouch)) && !isSprinting && !afterlife) {
                     Crouch(true);
                 }
                 // Start Slide
-                else if(!sliding && allowedToCrouch && allowedToMove && (Input.GetKeyDown(crouchKey) || Input.GetKeyUp(crouchKey))
+                else if(!sliding && allowedToCrouch && allowedToMove && (KeyBindingManager.GetKeyDown(GameAction.Crouch) || KeyBindingManager.GetKeyUp(GameAction.Crouch))
                     && isSprinting && groundCheckerScript.isGrounded && !slideOnCooldown && !afterlife) {
 
                     sliding = true;
@@ -475,6 +750,8 @@ public class PlayerMovement : NetworkBehaviour {
                     armsAnimator.SetTrigger("Slide");
                     allowedToCrouch = false;
                     SlideEffectsServerRpc();
+                    playerSoundsManager.PlaySound(PlayerSoundsManager.PlayerSound.SlideSFX);
+
                     transform.parent.GetComponent<PlayerHandler>().stamina.Value -= staminaConsumtionOnSlide;
                     if(transform.parent.GetComponent<PlayerHandler>().stamina.Value < 0) transform.parent.GetComponent<PlayerHandler>().stamina.Value = 0;
                 }
@@ -532,6 +809,20 @@ public class PlayerMovement : NetworkBehaviour {
 
         // Wall contact is evaluated before this frame's controller move so it can affect movement immediately.
         bool hasGroundContact = groundCheckerScript.isGrounded || controller.isGrounded;
+        if(hasGroundContact && ledgeRegrabBlockedCollider != null) {
+            if(ignoredLedgeCollisionDuringClimb) SetLedgeMarkerCollisionIgnored(false);
+            ledgeRegrabBlockedCollider = null;
+        }
+        if(!hasGroundContact && TryFindLedge(out RaycastHit ledgeHit, out float ledgeTopHeight)) {
+            BeginLedgeHang(ledgeHit, ledgeTopHeight);
+            playerAnimator.SetFloat("Vertical", 0f);
+            playerAnimator.SetFloat("Horizontal", 0f);
+            playerAnimator.SetBool("Sprinting", false);
+            armsAnimator.SetBool("Sprinting", false);
+            playerAnimator.SetBool("Walking", false);
+            return;
+        }
+
         if(hasGroundContact) {
             isWallSticking = false;
             wallSlideUsedForCurrentContact = false;
@@ -549,6 +840,8 @@ public class PlayerMovement : NetworkBehaviour {
                     isWallSticking = true;
                     wallSlideUsedForCurrentContact = true;
                     wallStickTimer = wallSlideDuration;
+
+                    playerSoundsManager.PlaySound(PlayerSoundsManager.PlayerSound.WallGrabSFX);
 
                     PlayerHandler cameraOwner = transform.parent.GetComponent<PlayerHandler>();
                     if(cameraOwner != null && cameraOwner.cameraReference != null) {
@@ -602,12 +895,12 @@ public class PlayerMovement : NetworkBehaviour {
             armsAnimator.SetBool("WallRunningLeft", false);
             armsAnimator.SetBool("WallRunningRight", false);
         }
-        if(Input.GetButtonDown("Jump") && allowedToMove && hasGroundContact) {
+        if(KeyBindingManager.GetKeyDown(GameAction.Jump) && allowedToMove && hasGroundContact) {
             isWallSticking = false;
             wallSlideUsedForCurrentContact = false;
             Jump();
         }
-        else if(isWallSticking && Input.GetButtonDown("Jump") && allowedToMove) {
+        else if(isWallSticking && KeyBindingManager.GetKeyDown(GameAction.Jump) && allowedToMove) {
             StartWallHop();
             groundCheck.GetComponent<GroundChecker>().ResetAirTime();
         }
@@ -656,7 +949,7 @@ public class PlayerMovement : NetworkBehaviour {
         
         if(playerHandlerScript.stamina.Value <= 0) {
             isTired = true;
-            source.PlayOneShot(breathClip);
+            playerSoundsManager.PlaySound(PlayerSoundsManager.PlayerSound.OutOfBreathStamina);
         }
         if(playerHandlerScript.stamina.Value == staminaDuration) {
             isTired = false;
@@ -674,7 +967,6 @@ public class PlayerMovement : NetworkBehaviour {
         Debug.Log("PLAYING DAMN FEATHERS.");
         feathersVFXA.Play();
         feathersVFXB.Play();
-        source.PlayOneShot(slideClip);
     }
 
     [ServerRpc]
@@ -696,3 +988,4 @@ public class PlayerMovement : NetworkBehaviour {
     }
 
 }
+

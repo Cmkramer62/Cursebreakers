@@ -35,6 +35,7 @@ public class SpellStellae : NetworkBehaviour {
     public Transform magicFollowPoint, luxTransformPoint;
     public GameObject luxSpell, stellaeParticlesParent;
     public HashSet<Collider> collidersInside = new HashSet<Collider>();
+    [SerializeField] private List<Collider> collidersInsideDebug = new List<Collider>();
 
     // ============
     // Light Mode Variables
@@ -115,20 +116,20 @@ public class SpellStellae : NetworkBehaviour {
 
     
     private void OnDisable() {
-        if(stellaeBeamParticles != null && stellaeBeamParticles.isPlaying) {
-            stellaeBeamParticles.Stop();
-        }
-
         SetLightToLuxMode();
 
         if(!IsOwner)
             return;
+
+        SetFlashlightServerRpc(false);
 
         foreach(var thing in collidersInside) {
             thing.GetComponent<StellaeClue>().PlayerWithAlgorLeft();
         }
         collidersInside.Clear();
         ChangeChargingServerRpc(false);
+        sourceCharging.Stop();
+        sourceMainEnergy.Stop();
     }
 
     // Sets the light to have following presets of Lux. And targeting the left side.
@@ -240,6 +241,8 @@ public class SpellStellae : NetworkBehaviour {
     }
 
     private void Update() {
+        collidersInsideDebug.Clear();
+        collidersInsideDebug.AddRange(collidersInside);
 
         // We don't start charging if entering a clue with full charge. But if the player expends, while inside, this catches that and charges.
         if(!stellaeCharging.Value && stellaeBeamShooting.Value && collidersInside.Count > 0 && staminaRemaining != sprintDuration)
@@ -250,18 +253,18 @@ public class SpellStellae : NetworkBehaviour {
         }
 
         // Activate while holding F, provided the player isn't tired.
-        if(Input.GetKeyDown(KeyCode.F) && !isTired && !stellaeBeamShooting.Value) {
+        if(KeyBindingManager.GetKeyDown(GameAction.UseAbility) && !isTired && !stellaeBeamShooting.Value) {
             SetFlashlightServerRpc(true);
         }
 
         // Turn off when F is released or the player becomes tired.
-        else if( (Input.GetKeyUp(KeyCode.F) && stellaeBeamShooting.Value) || (isTired && stellaeBeamShooting.Value) ) {
+        else if( (KeyBindingManager.GetKeyUp(GameAction.UseAbility) && stellaeBeamShooting.Value) || (isTired && stellaeBeamShooting.Value) ) {
             SetFlashlightServerRpc(false);
             if(isTired && stellaeBeamShooting.Value) {
                 PlayOutOfEnergyServerRpc();
             }
         }
-        else if(Input.GetKeyDown(KeyCode.F) && isTired && !stellaeBeamShooting.Value) {
+        else if(KeyBindingManager.GetKeyDown(GameAction.UseAbility) && isTired && !stellaeBeamShooting.Value) {
             PlayOutOfEnergyServerRpc();
         }
     }
@@ -332,3 +335,4 @@ public class SpellStellae : NetworkBehaviour {
         stellaeCharging.Value = state;
     }
 }
+

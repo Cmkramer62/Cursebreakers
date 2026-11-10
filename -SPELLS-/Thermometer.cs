@@ -124,3 +124,4 @@ public class Thermometer : NetworkBehaviour {
         return collidersInside.Count;
     }
 }
+

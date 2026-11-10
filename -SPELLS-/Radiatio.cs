@@ -20,7 +20,7 @@ public class Radiatio : NetworkBehaviour  {
     public GameObject magicCanvasExlamationPointGlyph;
     public GameObject particles, canvas;
     [SerializeField] private GameObject chainsGlowing, chainsNormal;
-    private int priorEMFLevel = -1;
+    private int amountOfEMFInside = 0;
 
     /*
      * On a tick, set the scanner's lights to be what the value of defaultEMF is in the Tool Controller.
@@ -33,10 +33,10 @@ public class Radiatio : NetworkBehaviour  {
 
     public override void OnNetworkSpawn() {
         toolController.amountOfRadiatioDetected.OnValueChanged += OnRadiatingCursesAmountChanged;
-        toolController.defaultEMF.OnValueChanged += OnScannerChanged;
+        toolController.visibleEMFLevel.OnValueChanged += OnScannerChanged;
 
         OnRadiatingCursesAmountChanged(0, toolController.amountOfRadiatioDetected.Value);
-        OnScannerChanged(0, toolController.defaultEMF.Value);
+        OnScannerChanged(0, toolController.visibleEMFLevel.Value);
 
         StartCoroutine(DelayedSpawning());
     }
@@ -114,7 +114,7 @@ public class Radiatio : NetworkBehaviour  {
             chainsGlowing.SetActive(true);
             chainsNormal.SetActive(false);
 
-            OnScannerChanged(0, toolController.defaultEMF.Value);
+            OnScannerChanged(0, toolController.realEMFLevel.Value);
             particles.GetComponent<DelayFollow>().enabled = true;
             canvas.GetComponent<DelayFollow>().enabled = true;
         }
@@ -133,10 +133,12 @@ public class Radiatio : NetworkBehaviour  {
             particles.GetComponent<DelayFollow>().enabled = false;
             canvas.GetComponent<DelayFollow>().enabled = false;
         }
+        amountOfEMFInside = 0;
+        toolController.realEMFLevel.Value = 0;
         // play shrink anim on uI
     }
 
-    
+
     void OnScannerChanged(int oldValue, int newValue) {
         //Debug.Log("Scanner owner: " + IsOwner);
          ScannerEffects(newValue);
@@ -177,7 +179,14 @@ public class Radiatio : NetworkBehaviour  {
     }
 
     private IEnumerator WaitForNetworkSceneLoad() {
-        if((!IsServer || !IsOwner) && SceneManager.GetActiveScene().isLoaded)
+        MultiplayerManager multiplayerManager = MultiplayerManager.Instance;
+        string hubSceneName = multiplayerManager != null ? multiplayerManager.hubSceneName : "Hub 1";
+        bool loadingMatchFromHub = SceneManager.GetActiveScene().name == hubSceneName &&
+            multiplayerManager != null && multiplayerManager.IsMatchTransitioning;
+
+        // Hub1 is already a complete playable scene. Only wait when it is the temporary
+        // active scene during the coordinated transition into a match.
+        if(SceneManager.GetActiveScene().isLoaded && !loadingMatchFromHub)
             yield break;
 
         bool sceneLoaded = false;
@@ -204,8 +213,8 @@ public class Radiatio : NetworkBehaviour  {
         if(other.CompareTag("EMFClue")) {
             Debug.Log("Detected emf clue.");
             //collidersInside.Add(other);
-            priorEMFLevel = toolController.defaultEMF.Value;
-            toolController.defaultEMF.Value = other.GetComponent<RadiatioClue>().emfLevel.Value;
+            amountOfEMFInside++;
+            toolController.realEMFLevel.Value = other.GetComponent<RadiatioClue>().emfLevel.Value;
         }
     }
 
@@ -216,9 +225,13 @@ public class Radiatio : NetworkBehaviour  {
         if(other.CompareTag("EMFClue")) {
             Debug.Log("Left emf clue.");
 
-            //collidersInside.Remove(other);
-            toolController.defaultEMF.Value = priorEMFLevel;
+            amountOfEMFInside--;
+            if(amountOfEMFInside <= 0) {
+                amountOfEMFInside = 0;
+                toolController.realEMFLevel.Value = 0;
+            }
         }
     }
 
 }
+

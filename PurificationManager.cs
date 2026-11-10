@@ -95,3 +95,4 @@ public class PurificationManager : NetworkBehaviour {
     }
     #endregion
 }
+

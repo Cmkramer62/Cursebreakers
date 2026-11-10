@@ -25,8 +25,9 @@ public class ToolController : NetworkBehaviour {
     public List<CursedObject> cursedObjectsWithinRange = new List<CursedObject>();
 
     private CursedObject[] listOfAllCurses;
-    public NetworkVariable<int> defaultEMF = new NetworkVariable<int>(0), 
-        defaultTemp = new NetworkVariable<int>(60);
+    public NetworkVariable<int> realEMFLevel = new NetworkVariable<int>(0), 
+        defaultTemp = new NetworkVariable<int>(60),
+            visibleEMFLevel = new NetworkVariable<int>(0);
     public NetworkVariable<int> amountOfRadiatioDetected = new NetworkVariable<int>(0);
     public float averageTemperature = -1;
 
@@ -62,8 +63,9 @@ public class ToolController : NetworkBehaviour {
             return;
         }
         algorCrystalTransform = playerItemMeshes[5].transform.GetChild(0).transform;
-        InvokeRepeating("UpdateEMF", 0, 2);
-       // InvokeRepeating("CheckHolyWater", 0, Random.Range(2, 4));
+        StartCoroutine(UpdateEMF());
+        //InvokeRepeating("UpdateEMF", 0, 2);
+        // InvokeRepeating("CheckHolyWater", 0, Random.Range(2, 4));
     }
 
     // Update is called once per frame
@@ -76,14 +78,14 @@ public class ToolController : NetworkBehaviour {
 
         if(!cycleCooldown && playerAlive && allowedToCycle && Input.GetAxis("Mouse ScrollWheel") > 0f) CycleDownServerRpc();
         else if(!cycleCooldown && playerAlive && allowedToCycle && Input.GetAxis("Mouse ScrollWheel") < 0f) CycleUpServerRpc();
-        else if(!cycleCooldown && playerAlive && allowedToCycle && Input.GetKeyDown(KeyCode.Alpha1)) CycleToServerRpc(0);
-        else if(!cycleCooldown && playerAlive && allowedToCycle && Input.GetKeyDown(KeyCode.Alpha2)) CycleToServerRpc(1);
-        else if(!cycleCooldown && playerAlive && allowedToCycle && Input.GetKeyDown(KeyCode.Alpha3)) CycleToServerRpc(2);
-        else if(!cycleCooldown && playerAlive && allowedToCycle && Input.GetKeyDown(KeyCode.Alpha4)) CycleToServerRpc(3);
-        else if(!cycleCooldown && playerAlive && allowedToCycle && Input.GetKeyDown(KeyCode.Alpha5)) CycleToServerRpc(4);
-        else if(!cycleCooldown && playerAlive && allowedToCycle && Input.GetKeyDown(KeyCode.Alpha6)) CycleToServerRpc(5);
-        else if(!cycleCooldown && playerAlive && allowedToCycle && Input.GetKeyDown(KeyCode.Alpha7)) CycleToServerRpc(6);
-        else if(!cycleCooldown && playerAlive && allowedToCycle && Input.GetKeyDown(KeyCode.Alpha8)) CycleToServerRpc(7);
+        else if(!cycleCooldown && playerAlive && allowedToCycle && KeyBindingManager.GetKeyDown(GameAction.Spell1)) CycleToServerRpc(0);
+        else if(!cycleCooldown && playerAlive && allowedToCycle && KeyBindingManager.GetKeyDown(GameAction.Spell2)) CycleToServerRpc(1);
+        else if(!cycleCooldown && playerAlive && allowedToCycle && KeyBindingManager.GetKeyDown(GameAction.Spell3)) CycleToServerRpc(2);
+        else if(!cycleCooldown && playerAlive && allowedToCycle && KeyBindingManager.GetKeyDown(GameAction.Spell4)) CycleToServerRpc(3);
+        else if(!cycleCooldown && playerAlive && allowedToCycle && KeyBindingManager.GetKeyDown(GameAction.Spell5)) CycleToServerRpc(4);
+        else if(!cycleCooldown && playerAlive && allowedToCycle && KeyBindingManager.GetKeyDown(GameAction.Spell6)) CycleToServerRpc(5);
+        else if(!cycleCooldown && playerAlive && allowedToCycle && KeyBindingManager.GetKeyDown(GameAction.Spell7)) CycleToServerRpc(6);
+        else if(!cycleCooldown && playerAlive && allowedToCycle && KeyBindingManager.GetKeyDown(GameAction.Spell8)) CycleToServerRpc(7);
 
         //geistLightScript.GeistLightUIUpdate();
         cameraScript.CameraUIUpdate();
@@ -231,7 +233,12 @@ public class ToolController : NetworkBehaviour {
             float iceDist = Vector3.Distance(algorCrystalTransform.position, col.transform.position);
             float influence = 1f - Mathf.Clamp01(iceDist / maxRange);
 
-            temperature = Mathf.Lerp(temperature, -20f, influence);
+            if(col.GetComponent<AlgorClue>().realCrystal.Value) {
+                temperature = Mathf.Lerp(temperature, -20f, influence);
+            }
+            else {
+                temperature = Mathf.Lerp(temperature, col.GetComponent<AlgorClue>().fakeTemp.Value, influence);
+            }
         }
 
         temperature = Mathf.Clamp(temperature, -20f, 60f);
@@ -239,15 +246,27 @@ public class ToolController : NetworkBehaviour {
         defaultTemp.Value = Mathf.RoundToInt(temperature);
     }
 
-    private void UpdateEMF() {
-        //playerItemMeshes[3].GetComponent<Scanner>().levelEMF = defaultEMF;
-        if(playerItemMeshes[3].activeInHierarchy && defaultEMF.Value != 7) {
+    private IEnumerator UpdateEMF() {
+        /*
+        if(playerItemMeshes[3].activeInHierarchy && realEMFLevel.Value != 7) {
             int fluctuation = Random.Range(-1, 2);
-            defaultEMF.Value += fluctuation;
-            if(defaultEMF.Value == 7) defaultEMF.Value = 6;
-            else if(defaultEMF.Value == -1) defaultEMF.Value = 0;
+            realEMFLevel.Value += fluctuation;
+            if(realEMFLevel.Value == 7) realEMFLevel.Value = 6;
+            else if(realEMFLevel.Value == -1) realEMFLevel.Value = 0;
 
         }
+        */
+        if(playerItemMeshes[3].activeInHierarchy) {
+            if(visibleEMFLevel.Value < realEMFLevel.Value) {
+                visibleEMFLevel.Value += 1;
+            }
+            else if(visibleEMFLevel.Value > realEMFLevel.Value) {
+                visibleEMFLevel.Value -= 1;
+            }
+        }
+
+        yield return new WaitForSeconds(Random.Range(0.5f, 1.4f));
+        StartCoroutine(UpdateEMF());
     }
 
     public void CheckHolyWater() {
@@ -284,3 +303,4 @@ public class ToolController : NetworkBehaviour {
         ArmsAnimationTriggerClientRpc("CameraActivation");
     }
 }
+

@@ -126,3 +126,4 @@ public class CurseGameManager : NetworkBehaviour {
         return spawnPoints[index].transform;
     }
 }
+

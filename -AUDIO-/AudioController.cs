@@ -27,9 +27,10 @@ public static class AudioController {
         caller.StartCoroutine(FadeInCoroutine(source, timeToFade / 2, newVolume));
     }
 
-    public static void FadeOutAudio(MonoBehaviour caller, AudioSource source, float timeToFade) {
+    /// <summary>Start a fade-out and return its handle so callers can cancel it.</summary>
+    public static Coroutine FadeOutAudio(MonoBehaviour caller, AudioSource source, float timeToFade) {
         //Debug.Log("FadeOutThis -> " + source.name);
-        caller.StartCoroutine(FadeOutCoroutine(source, timeToFade));
+        return caller.StartCoroutine(FadeOutCoroutine(source, timeToFade));
     }
 
     private static IEnumerator FadeOutCoroutine(AudioSource audioSource, float duration) {
@@ -60,9 +61,10 @@ public static class AudioController {
         audioSource.Stop(); // Stop the audio source after fading out
     }
     
-    public static void FadeInAudio(MonoBehaviour caller, AudioSource source, float timeToFade, float endVolume) {
+    /// <summary>Start a fade-in and return its handle so callers can cancel it.</summary>
+    public static Coroutine FadeInAudio(MonoBehaviour caller, AudioSource source, float timeToFade, float endVolume) {
         //Debug.Log("FadeInThis -> " + source.name);
-        caller.StartCoroutine(FadeInCoroutine(source, timeToFade, endVolume));
+        return caller.StartCoroutine(FadeInCoroutine(source, timeToFade, endVolume));
     }
 
     private static IEnumerator FadeInCoroutine(AudioSource audioSource, float duration, float endVolume) {
@@ -79,3 +81,4 @@ public static class AudioController {
         audioSource.volume = endVolume; // Ensure volume is exactly 0 at the end
     }
 }
+

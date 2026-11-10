@@ -67,12 +67,12 @@ public class GameTimerClient : MonoBehaviour {
         float diff = maxTime / 4;
         float t = 1f - ((float)serverTimer.timeLeft.Value / ((float)maxTime - diff));
         //Debug.Log(t + " " + vignetteComponent.intensity.value);
-        if(maxTime <= stageOne) vignetteComponent.intensity.value = Mathf.Lerp(0.203f, 1f, t);
+        if(maxTime <= stageOne) vignetteComponent.intensity.value = Mathf.Lerp(0.203f, 0.479f, t);
 
         if(serverTimer.timeLeft.Value <= stageTwo) {
-            vignetteComponent.intensity.value = Mathf.Lerp(vignetteComponent.intensity.value, .8f, Time.deltaTime / serverTimer.timeLeft.Value);
+            vignetteComponent.intensity.value = Mathf.Lerp(vignetteComponent.intensity.value, 0.479f, Time.deltaTime / serverTimer.timeLeft.Value);
             Color c = smokeMaterial.color;
-            c.a = Mathf.Lerp(c.a, .8f, Time.deltaTime / serverTimer.timeLeft.Value * .25f);
+            c.a = Mathf.Lerp(c.a, .4f, Time.deltaTime / serverTimer.timeLeft.Value * .25f);
             smokeMaterial.color = c;
         }
 
@@ -160,3 +160,4 @@ public class GameTimerClient : MonoBehaviour {
     }
 
 }
+

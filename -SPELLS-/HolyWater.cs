@@ -56,7 +56,7 @@ public class HolyWater : NetworkBehaviour {
         }
 
         // Activate while holding F, provided the player isn't tired.
-        if(Input.GetKeyDown(KeyCode.F)) {
+        if(KeyBindingManager.GetKeyDown(GameAction.UseAbility)) {
             // Splash Water
             ThrowHolyWaterServerRpc();
         }
@@ -103,3 +103,4 @@ public class HolyWater : NetworkBehaviour {
         rb.AddForce(launchDirection * throwForce, ForceMode.Impulse);
     }
 }
+

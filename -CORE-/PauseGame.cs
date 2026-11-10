@@ -21,7 +21,7 @@ public class PauseGame : MonoBehaviour {
 
     // Update is called once per frame
     void Update() {
-        if(allowedToPause && (Input.GetKeyDown(KeyCode.Tab))) {
+        if(allowedToPause && (KeyBindingManager.GetKeyDown(GameAction.Pause))) {
             //mapUI.SetActive(false);
             PauseGameHandler();
         }
@@ -101,11 +101,12 @@ public class PauseGame : MonoBehaviour {
     }
 
     public void ExitPausedUI() {
-        for(int i = 0; i < pauseMainChildren.Length; i++) {
-            pauseMainChildren[i].SetActive(false);
-        }
-        PauseTitleButtonPressed(2);
-        objectivesUI.SetActive(true);
+        //for(int i = 0; i < pauseMainChildren.Length; i++) {
+         //   pauseMainChildren[i].SetActive(false);
+        //}
+        //PauseTitleButtonPressed(2);
+        //objectivesUI.SetActive(true);
     }
 
 }
+

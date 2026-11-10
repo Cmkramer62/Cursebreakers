@@ -153,3 +153,4 @@ public class ProfanusClueEmitter : MonoBehaviour {
         transform.rotation = Quaternion.LookRotation(direction);
     }
 }
+

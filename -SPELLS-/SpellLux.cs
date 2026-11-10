@@ -56,7 +56,14 @@ public class SpellLux : NetworkBehaviour {
     }
 
     private IEnumerator WaitForNetworkSceneLoad() {
-        if((!IsServer || !IsOwner) && SceneManager.GetActiveScene().isLoaded)
+        MultiplayerManager multiplayerManager = MultiplayerManager.Instance;
+        string hubSceneName = multiplayerManager != null ? multiplayerManager.hubSceneName : "Hub 1";
+        bool loadingMatchFromHub = SceneManager.GetActiveScene().name == hubSceneName &&
+            multiplayerManager != null && multiplayerManager.IsMatchTransitioning;
+
+        // Hub1 is already a complete playable scene. Only wait when it is the temporary
+        // active scene during the coordinated transition into a match.
+        if(SceneManager.GetActiveScene().isLoaded && !loadingMatchFromHub)
             yield break;
 
         bool sceneLoaded = false;
@@ -76,3 +83,4 @@ public class SpellLux : NetworkBehaviour {
         NetworkManager.Singleton.SceneManager.OnSceneEvent -= OnSceneEvent;
     }
 }
+

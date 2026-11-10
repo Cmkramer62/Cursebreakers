@@ -72,7 +72,7 @@ public class SpellFulgor : NetworkBehaviour {
     void Update() {
         if(!IsOwner) return;
 
-        if(Input.GetKeyDown(KeyCode.F) && !flashOnCooldown) {
+        if(KeyBindingManager.GetKeyDown(GameAction.UseAbility) && !flashOnCooldown) {
             TakePictureServerRpc();
             
             StartCoroutine(Cooldown());
@@ -205,3 +205,4 @@ public class SpellFulgor : NetworkBehaviour {
         NetworkManager.Singleton.SceneManager.OnSceneEvent -= OnSceneEvent;
     }
 }
+

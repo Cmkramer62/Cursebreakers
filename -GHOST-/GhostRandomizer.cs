@@ -62,7 +62,7 @@ public class GhostRandomizer : NetworkBehaviour {
     public GameObject ghostGeistParticles;
     public Bell bellScript;
     //public GameObject[] enviroParticles, horns;
-    [SerializeField] private GameObject algorClueEmitter, radiatioClueEmitter, stellaeClueEmitter, profanusClueEmitter;
+    [SerializeField] private GameObject algorClueEmitter, radiatioClueEmitter, stellaeClueEmitter, profanusClueEmitter, evocareClueEmitter;
     public RuntimeAnimatorController floatingController;
     public bool searchWithSound = false, materialOverride = false;
 
@@ -167,6 +167,9 @@ public class GhostRandomizer : NetworkBehaviour {
             yield return null;
         }
         TurnOnClueEmission(0);
+        TurnOnClueEmission(1);
+        TurnOnClueEmission(2);
+
     }
 
     public void TurnOnClueEmission(int indexOfClue) {
@@ -211,6 +214,7 @@ public class GhostRandomizer : NetworkBehaviour {
 
         // Evocare (???) No Clue Activation?
         else {
+            evocareClueEmitter.SetActive(true);
             searchWithSound = true;
         }
         
@@ -339,3 +343,4 @@ public class GhostRandomizer : NetworkBehaviour {
     #endregion
 
 }
+

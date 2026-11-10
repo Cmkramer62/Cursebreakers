@@ -59,9 +59,10 @@ public class CurseGameManagerClient : MonoBehaviour {
             potentialGoalCurse = networkObject.gameObject;
         }
         if(potentialGoalCurse != null) {
-            goalCurseImage.sprite = curseTypeSprites[potentialGoalCurse.GetComponentInChildren<CursedObject>().cursesList[0]]; // First curse reveal.
-            goalCurseText.text = curseTypeSprites[potentialGoalCurse.GetComponentInChildren<CursedObject>().cursesList[0]].name.Split(' ')[1];
-            objectivesScript.SetFreebieTrait(potentialGoalCurse.GetComponentInChildren<CursedObject>().cursesList[0]);
+            //goalCurseImage.sprite = curseTypeSprites[potentialGoalCurse.GetComponentInChildren<CursedObject>().cursesList[0]]; // First curse reveal.
+            //goalCurseText.text = curseTypeSprites[potentialGoalCurse.GetComponentInChildren<CursedObject>().cursesList[0]].name.Split(' ')[1];
+           // objectivesScript.SetFreebieTrait(potentialGoalCurse.GetComponentInChildren<CursedObject>().cursesList[0]);
+           // SET AS MANY OBJECTIVES MARKED IN UI AS WE HAVE GIVING FREEBIES.
         }
         else Debug.Log("ERROR IN C-GAME MANAGER, COULD NOT GET GOALCURSE.");
 
@@ -84,3 +85,4 @@ public class CurseGameManagerClient : MonoBehaviour {
         }
     }
 }
+

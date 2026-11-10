@@ -486,3 +486,4 @@ public class Death : NetworkBehaviour {
                 LayerMask.NameToLayer("Default");
     }
 }
+

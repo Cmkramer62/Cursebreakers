@@ -51,7 +51,7 @@ public class InteractRaycast : NetworkBehaviour {
             }
             
             // INPUT SECTION
-            if(Input.GetKeyDown(KeyCode.E)) {
+            if(KeyBindingManager.GetKeyDown(GameAction.Interact)) {
                 source.PlayOneShot(clip, volumeOfClick);
                 crosshairAnimator.Play("Crosshair Bump Anim");
                 switch(hit.transform.gameObject.tag) {
@@ -115,7 +115,7 @@ public class InteractRaycast : NetworkBehaviour {
                         
                 }
             }
-            else if(Input.GetKey(KeyCode.E)) {
+            else if(KeyBindingManager.GetKey(GameAction.Interact)) {
                 if(hit.transform.gameObject.CompareTag("PlayerBody") && !afterlife) {
                     // crosshair, "hold E to channel a life".
                     // Start charging sequence, expending a stamina bar.
@@ -150,7 +150,7 @@ public class InteractRaycast : NetworkBehaviour {
                     }
                 }
             }
-            else if((Input.GetKeyUp(KeyCode.E) && deathScript.channelingLife) || GetComponent<MouseLook>().playerBody.GetComponent<ToolController>().heldIndex.Value != 0) {
+            else if((KeyBindingManager.GetKeyUp(GameAction.Interact) && deathScript.channelingLife) || GetComponent<MouseLook>().playerBody.GetComponent<ToolController>().heldIndex.Value != 0) {
                 deathScript.channelingLife = false; // UNOPTIMIZED?
                 deathScript.playerArmsAnimator.SetBool("Channeling", false);
                // Debug.Log("channel trigger off");

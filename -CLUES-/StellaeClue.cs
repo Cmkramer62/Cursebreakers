@@ -95,7 +95,7 @@ public class StellaeClue : NetworkBehaviour {
                 return;
 
             if(!played) {
-                sourceClueEmit.PlayOneShot(clueAppearClip, appearVolume);
+                //sourceClueEmit.PlayOneShot(clueAppearClip, appearVolume);
                 source.volume = windEnergyVolume;
                 source.Play();
                 particles.Play();

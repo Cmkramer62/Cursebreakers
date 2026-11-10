@@ -120,3 +120,4 @@ public class TextPrompter : MonoBehaviour {
         textBackground.SetActive(false);
     }
 }
+

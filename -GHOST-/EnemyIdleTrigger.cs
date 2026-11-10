@@ -17,3 +17,4 @@ public class EnemyIdleTrigger : MonoBehaviour {
 
     }
 }
+

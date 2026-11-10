@@ -31,3 +31,4 @@ public class AudioManager : MonoBehaviour {
     public static void PlayConfirm() => Instance.source.PlayOneShot(Instance.confirmClip);
     public static void PlayDeny() => Instance.source.PlayOneShot(Instance.denyClip);
 }
+
